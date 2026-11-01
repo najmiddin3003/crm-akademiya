@@ -14,7 +14,7 @@ import {
   type RankFacetKey,
   type RankFacets,
 } from "@/lib/examRanking";
-import type { GroupExam } from "@/lib/imtihon";
+import { isGroupless, type GroupExam } from "@/lib/imtihon";
 import { examGroupTitle } from "./sarhisobCore";
 
 // MARKAZ REYTINGI — eski (SarhisobView) va yangi (v2/imtihon/SarhisobListV2) Sarhisob uchun
@@ -46,9 +46,12 @@ export function useCenterRanking(live: GroupExam[], month: string, course: strin
   const stats = useMemo(() => rankStats(ranked), [ranked]);
 
   // Guruh nomi barcha sarhisoblardan — tanlangan guruh shu oyda bo'lmasa ham nomi bilan ko'rinsin.
+  // Guruhsiz ro'yxatlar (har fanda bo'lishi mumkin) — bitta «Guruhsiz» tanlovi, fan nomisiz.
   const groupNames = useMemo(() => {
     const m = new Map<string, string>();
-    for (const e of live) if (!m.has(String(e.groupId))) m.set(String(e.groupId), `${e.course} · ${examGroupTitle(e, t)}`);
+    for (const e of live) {
+      if (!m.has(String(e.groupId))) m.set(String(e.groupId), isGroupless(e) ? t("Guruhsiz") : `${e.course} · ${examGroupTitle(e, t)}`);
+    }
     return m;
   }, [live, t]);
 

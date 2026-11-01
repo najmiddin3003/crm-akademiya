@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { UserPlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { ListChecks, UserPlus, Users, X } from "lucide-react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import Select from "@/components/ui/Select";
+import Segmented from "@/components/ui/Segmented";
 import DateField from "@/components/ui/DateField";
 import MonthYearPicker, { monthYearFromIso, monthYearToIso } from "@/components/ui/MonthYearPicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -15,9 +16,12 @@ import { groupLabel } from "@/lib/groups";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { uzDateIso } from "@/lib/uzTime";
-import { groupAvgPct, groupExamMonth, imPct, imTier, type GroupExam } from "@/lib/imtihon";
+import { groupAvgPct, groupExamMonth, imPct, imTier, isGroupless, type GroupExam } from "@/lib/imtihon";
+import { examGroupLabel, examGroupTitle } from "@/lib/examRanking";
 import TierBadge from "./TierBadge";
 import NewStudentModal from "./NewStudentModal";
+import PupilSearchInput from "./PupilSearchInput";
+import { priorResults, pupilOfRow, rosterOfExam } from "./examRoster";
 import { useT } from "@/components/shared/Language";
 
 // Imtihon → Sarhisob → "Natija qo'shish" — o'ng tomondan ochiladigan panel
@@ -54,6 +58,13 @@ import { useT } from "@/components/shared/Language";
 // ro'yxat — guruhning hozirgi o'quvchilari + sarhisobda bo'lib guruhdan chiqqanlar;
 // bo'sh qoldirilgani sarhisobdan chiqadi. Saqlash → PUT /api/imtihon/group/:id
 // (yangi versiyadagi ExamEntryV2 bilan bir xil qoida).
+//
+// GURUHSIZ RO'YXAT (01.11.2026, tepada «Guruh bo'yicha | Guruhsiz ro'yxat»; qoidalari lib/imtihon.ts
+// da, yangi versiyadagi bilan bir xil): qadamlar Fan → Savollar → Natijalar, ustoz va guruh yo'q.
+// O'quvchi ism/telefon bo'yicha qidirib qo'shiladi (PupilSearchInput; Enter — keyingi qator, oxirida —
+// yana qidiruv), bazada yo'q bo'lsa «Yangi o'quvchi» (NewStudentModal, guruhsiz karta). Shu oy va
+// fandan boshqa sarhisobda natijasi bori — «bu oyda bor». Har qo'shilgan o'quvchiga natija shart
+// (bo'shi × bilan olib tashlanadi). Saqlash — `groupless: true`; tahrirda usul qulf.
 
 const inputCls =
   "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -84,6 +95,7 @@ export default function GroupExamDrawer({
   onSaved,
   initialMonth,
   editing = null,
+  exams = [],
 }: {
   onClose: () => void;
   onSaved: (exam: GroupExam) => void;
@@ -91,6 +103,8 @@ export default function GroupExamDrawer({
   initialMonth?: string;
   /** Tahrirlanadigan sarhisob (bo'lmasa — yangi natija). */
   editing?: GroupExam | null;
+  /** Joriy filialning sarhisoblari — guruhsiz ro'yxatda «bu oyda bor» belgisi uchun. */
+  exams?: GroupExam[];
 }) {
   const { t, months: MONTH_NAMES } = useT();
   const modal = useModalClose(onClose, "drawer");
@@ -107,22 +121,35 @@ export default function GroupExamDrawer({
   );
   const [course, setCourse] = useState(ed?.course ?? "");
   const [teacherId, setTeacherId] = useState("");
-  const [groupId, setGroupId] = useState(ed ? String(ed.groupId) : "");
+  const [groupId, setGroupId] = useState(ed && !isGroupless(ed) ? String(ed.groupId) : "");
+  /** Kiritish usuli (tahrirda — sarhisobniki, qulf). */
+  const [mode, setMode] = useState<"group" | "groupless">(ed && isGroupless(ed) ? "groupless" : "group");
+  const groupless = mode === "groupless";
+  /** Guruhsiz ro'yxat — qo'lda yig'iladi (tahrirda sarhisobdagilar). */
+  const [roster, setRoster] = useState<Pupil[]>(() => (ed && isGroupless(ed) ? rosterOfExam(ed) : []));
+  /** Usul almashtirish so'ralgan — kiritilgan natija bor, panel ichida tasdiq. */
+  const [askMode, setAskMode] = useState<"group" | "groupless" | null>(null);
+  const inputs = useRef(new Map<number, HTMLInputElement>());
+  const searchRef = useRef<HTMLInputElement>(null);
+  /** Ro'yxatga qo'shilgan o'quvchi — qatori chizilgach natija maydoniga fokus. */
+  const focusAfter = useRef<number | null>(null);
   // Qaysi guruh uchun yuklangani bilan birga saqlanadi — "yuklanmoqda"
   // holati shundan hosil qilinadi va guruh almashganda eski ro'yxat bir
   // zum ham ko'rinmaydi.
   const [loaded, setLoaded] = useState<{ groupId: string; list: Pupil[] } | null>(null);
   // Tahrirda ro'yxat oxirida — sarhisobda bor, lekin guruhda endi yo'q o'quvchilar.
   const { students, extraIds } = useMemo(() => {
-    const roster = loaded && loaded.groupId === groupId ? loaded.list : [];
-    if (!ed || !loaded || loaded.groupId !== groupId) return { students: roster, extraIds: new Set<number>() };
-    const have = new Set(roster.map((p) => p.id));
+    if (groupless) return { students: roster, extraIds: new Set<number>() };
+    const list = loaded && loaded.groupId === groupId ? loaded.list : [];
+    if (!ed || !loaded || loaded.groupId !== groupId) return { students: list, extraIds: new Set<number>() };
+    const have = new Set(list.map((p) => p.id));
     const extra = ed.students
       .filter((s) => !have.has(s.pupilId))
       .map((s) => ({ id: s.pupilId, firstName: s.name, lastName: "", phone: s.phone }) as unknown as Pupil);
-    return { students: [...roster, ...extra], extraIds: new Set(extra.map((p) => p.id)) };
-  }, [loaded, groupId, ed]);
-  const studentsLoading = Boolean(groupId) && loaded?.groupId !== groupId;
+    return { students: [...list, ...extra], extraIds: new Set(extra.map((p) => p.id)) };
+  }, [groupless, roster, loaded, groupId, ed]);
+  const studentsLoading = !groupless && Boolean(groupId) && loaded?.groupId !== groupId;
+  const rosterIds = useMemo(() => new Set(roster.map((p) => p.id)), [roster]);
   /** Shu paneldan yangi qo'shilgan o'quvchilar — jadvalda "Yangi" yorlig'i. */
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [total, setTotal] = useState(ed ? String(ed.total) : "");
@@ -205,6 +232,8 @@ export default function GroupExamDrawer({
 
   function changeCourse(v: string) {
     setCourse(v);
+    // Guruhsizda fan — faqat yorliq: ro'yxat va natijalar qoladi.
+    if (groupless) return;
     setTeacherId("");
     setGroupId("");
     setCorrect({});
@@ -223,6 +252,63 @@ export default function GroupExamDrawer({
     setGroupId(v);
     setCorrect({});
     setAddedIds([]);
+  }
+
+  /** Usul almashadi: guruh, ro'yxat va natijalar tozalanadi (fan, oy, sana, savollar soni qoladi). */
+  function applyMode(next: "group" | "groupless") {
+    setMode(next);
+    setAskMode(null);
+    setTeacherId("");
+    setGroupId("");
+    setRoster([]);
+    setCorrect({});
+    setAddedIds([]);
+  }
+
+  function changeMode(v: string) {
+    const next = v === "groupless" ? "groupless" : "group";
+    if (ed || next === mode) return;
+    const entered = Object.values(correct).some((x) => x !== "") || addedIds.length > 0 || roster.length > 0;
+    if (entered) setAskMode(next);
+    else applyMode(next);
+  }
+
+  /** Guruhsiz ro'yxatga (bori — o'z qatoriga); qidiruvdan tanlansa fokus uning natija maydoniga. */
+  function addToRoster(pupil: Pupil, isNew = false) {
+    setRoster((list) => (list.some((x) => x.id === pupil.id) ? list : [...list, pupil]));
+    if (isNew) setAddedIds((ids) => (ids.includes(pupil.id) ? ids : [...ids, pupil.id]));
+    const el = inputs.current.get(pupil.id);
+    if (el) el.focus();
+    else focusAfter.current = pupil.id;
+  }
+
+  function removeFromRoster(id: number) {
+    setRoster((list) => list.filter((x) => x.id !== id));
+    setCorrect((m) => {
+      const next = { ...m };
+      delete next[id];
+      return next;
+    });
+    setAddedIds((ids) => ids.filter((x) => x !== id));
+  }
+
+  // Qo'shilgan qator chizilgach — natija maydoniga fokus (har chizishdan keyin tekshiriladi, arzon).
+  useEffect(() => {
+    const id = focusAfter.current;
+    if (id === null) return;
+    const el = inputs.current.get(id);
+    if (!el) return;
+    focusAfter.current = null;
+    el.focus();
+  });
+
+  /** Guruhsizda Enter — keyingi qator, oxirgisida — yana qidiruvga (ketma-ket kiritish). */
+  function onResultKey(e: KeyboardEvent<HTMLInputElement>, i: number) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const nextPupil = students[i + 1];
+    if (nextPupil) inputs.current.get(nextPupil.id)?.focus();
+    else searchRef.current?.focus();
   }
 
   // Sana o'zgarsa oy unga ergashadi (referens `pickDate`); oyni keyin
@@ -256,6 +342,8 @@ export default function GroupExamDrawer({
   const avg = groupAvgPct(filled.map((x) => ({ pct: x.pct })));
 
   const selectedGroup = useMemo(() => groups.find((g) => String(g.id) === groupId) || null, [groups, groupId]);
+  // Guruhsiz ro'yxat: shu oy va fan bo'yicha boshqa sarhisobdagi natija — «bu oyda bor».
+  const prior = useMemo(() => priorResults(groupless ? exams : [], month, course, ed?.id), [groupless, exams, month, course, ed]);
   const monthLabel = (() => {
     const v = monthYearFromIso(month);
     return v ? `${MONTH_NAMES[v.month - 1]} ${v.year}` : month;
@@ -263,11 +351,14 @@ export default function GroupExamDrawer({
 
   async function save() {
     if (!course) return showError(t("Fan yo'nalishini tanlang"));
-    if (!teacherName) return showError(t("Ustozni tanlang"));
-    if (!groupId) return showError(t("Guruhni tanlang"));
+    if (!groupless && !teacherName) return showError(t("Ustozni tanlang"));
+    if (!groupless && !groupId) return showError(t("Guruhni tanlang"));
     if (!date) return showError(t("Imtihon sanasini tanlang"));
     if (totalNum <= 0) return showError(t("Savollar sonini kiriting"));
     if (filled.length === 0) return showError(t("Kamida bitta o'quvchining natijasini kiriting"));
+    // Guruhsizda har qo'shilgan o'quvchi — atayin qo'shilgan: natijasiz qolsa jimgina tushib qolmasin.
+    const blank = groupless ? students.filter((x) => (correct[x.id] ?? "") === "").length : 0;
+    if (blank) return showError(t("{n} ta o'quvchining natijasi yozilmagan — yozing yoki ro'yxatdan olib tashlang", { n: blank }));
     setSaving(true);
     try {
       const res = await fetch(ed ? `/api/imtihon/group/${ed.id}` : "/api/imtihon/group", {
@@ -277,8 +368,8 @@ export default function GroupExamDrawer({
           date,
           month,
           course,
-          teacher: teacherName,
-          groupId: Number(groupId),
+          // Guruhsiz ro'yxat — ustoz va guruhsiz (server `groupless: true` ni o'zi tekshiradi).
+          ...(groupless ? { groupless: true, teacher: "", groupId: 0 } : { teacher: teacherName, groupId: Number(groupId) }),
           total: totalNum,
           students: filled.map(({ p }) => ({ pupilId: p.id, correct: Math.trunc(Number(correct[p.id])) })),
         }),
@@ -291,7 +382,7 @@ export default function GroupExamDrawer({
       }
       const exam = data.exam as GroupExam;
       onSaved(exam);
-      const p = { groupLabel: exam.groupLabel, studentCount: exam.studentCount, avgPct: exam.avgPct };
+      const p = { groupLabel: examGroupLabel(exam, t), studentCount: exam.studentCount, avgPct: exam.avgPct };
       showSuccess(
         ed
           ? t("Sarhisob yangilandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", p)
@@ -313,7 +404,7 @@ export default function GroupExamDrawer({
       ? t("Avval ustozni tanlang")
       : selectPlaceholder(groupsLoading, groupOptions.length, "Bu fan bo'yicha guruh yo'q");
 
-  const showResults = Boolean(groupId) && totalNum > 0;
+  const showResults = (groupless ? Boolean(course) : Boolean(groupId)) && totalNum > 0;
 
   return (
     <Modal onClose={onClose} controller={modal} bare variant="drawer" size="2xl" zIndex={110} locked={saving}>
@@ -321,7 +412,11 @@ export default function GroupExamDrawer({
         <div className="min-w-0">
           <h3 className="text-[16px] font-semibold">{ed ? t("Natijani tahrirlash") : t("Natija qo'shish")}</h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {ed ? t("Bo'sh qoldirilgan o'quvchi sarhisobdan chiqadi") : t("Guruh bo'yicha sarhisob — o'zlashtirish avtomatik hisoblanadi")}
+            {groupless
+              ? t("Guruhsiz ro'yxat — o'quvchilar qidirib qo'shiladi, guruhga qo'shilmaydi")
+              : ed
+                ? t("Bo'sh qoldirilgan o'quvchi sarhisobdan chiqadi")
+                : t("Guruh bo'yicha sarhisob — o'zlashtirish avtomatik hisoblanadi")}
           </p>
         </div>
         <button
@@ -335,16 +430,48 @@ export default function GroupExamDrawer({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        {/* Kiritish usuli — tahrirda qulf */}
+        <Segmented
+          value={mode}
+          onChange={changeMode}
+          disabled={Boolean(ed)}
+          options={[
+            { value: "group", label: "Guruh bo'yicha", icon: Users },
+            { value: "groupless", label: "Guruhsiz ro'yxat", icon: ListChecks, hint: "O'quvchi qidirib qo'shiladi va guruhga qo'shilmaydi. Natija markaz reytingiga tushadi, tanga berilmaydi." },
+          ]}
+        />
+        {askMode && (
+          <div role="alert" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <span className="min-w-0 flex-1">{t("Kiritilgan natijalar va ro'yxat tozalanadi.")}</span>
+            <button type="button" onClick={() => setAskMode(null)} className="h-8 px-3 rounded-md border border-border bg-card hover:bg-secondary text-[12px] font-medium text-foreground">
+              {t("Bekor qilish")}
+            </button>
+            <button type="button" onClick={() => applyMode(askMode)} className="h-8 px-3 rounded-md bg-primary text-white text-[12px] font-medium hover:opacity-90">
+              {t("Almashtirish")}
+            </button>
+          </div>
+        )}
+
         {/* Qadamlar chizig'i */}
         <div className="flex flex-wrap gap-1.5">
-          <Step n={1} label={t("Fan")} done={Boolean(course)} />
-          <Step n={2} label={t("Ustoz")} done={Boolean(teacherName)} />
-          <Step n={3} label={t("Guruh")} done={Boolean(groupId)} />
-          <Step n={4} label={t("Savollar")} done={totalNum > 0} />
-          <Step n={5} label={t("Natijalar")} done={filled.length > 0} />
+          {groupless ? (
+            <>
+              <Step n={1} label={t("Fan")} done={Boolean(course)} />
+              <Step n={2} label={t("Savollar")} done={totalNum > 0} />
+              <Step n={3} label={t("Natijalar")} done={filled.length > 0} />
+            </>
+          ) : (
+            <>
+              <Step n={1} label={t("Fan")} done={Boolean(course)} />
+              <Step n={2} label={t("Ustoz")} done={Boolean(teacherName)} />
+              <Step n={3} label={t("Guruh")} done={Boolean(groupId)} />
+              <Step n={4} label={t("Savollar")} done={totalNum > 0} />
+              <Step n={5} label={t("Natijalar")} done={filled.length > 0} />
+            </>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={`grid grid-cols-1 gap-3 ${groupless ? "" : "sm:grid-cols-2"}`}>
           <Select
             label={t("Fan (yo'nalish)")}
             required
@@ -353,10 +480,11 @@ export default function GroupExamDrawer({
             options={courseOptions}
             placeholder={selectPlaceholder(coursesLoading, courseOptions.length, "Kurs qo'shilmagan")}
             loading={coursesLoading}
-            disabled={Boolean(ed)}
+            disabled={Boolean(ed) && !groupless}
             searchable
             searchPlaceholder={t("Fanni qidirish")}
           />
+          {!groupless && (
           <Select
             label={t("Ustoz")}
             required
@@ -370,8 +498,10 @@ export default function GroupExamDrawer({
             searchPlaceholder={t("Ustozni qidirish")}
             emptyText={t("Bu fan bo'yicha ustoz yo'q")}
           />
+          )}
         </div>
 
+        {!groupless && (
         <Select
           label={t("Guruh")}
           required
@@ -385,8 +515,9 @@ export default function GroupExamDrawer({
           searchPlaceholder={t("Guruhni qidirish")}
           emptyText={t("Bu fan bo'yicha guruh yo'q")}
         />
+        )}
 
-        {groupId ? (
+        {(groupless ? course : groupId) ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -426,7 +557,9 @@ export default function GroupExamDrawer({
           </>
         ) : (
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-[13px] text-primary">
-            {t("Guruhni tanlang — unga biriktirilgan o'quvchilar ro'yxatda avtomatik chiqadi.")}
+            {groupless
+              ? t("Fanni tanlang — keyin o'quvchilarni ism yoki telefon bo'yicha qidirib qo'shasiz.")
+              : t("Guruhni tanlang — unga biriktirilgan o'quvchilar ro'yxatda avtomatik chiqadi.")}
           </div>
         )}
 
@@ -444,9 +577,19 @@ export default function GroupExamDrawer({
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-card hover:bg-secondary text-[12px] font-medium"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                {t("O'quvchi qo'shish")}
+                {groupless ? t("Yangi o'quvchi") : t("O'quvchi qo'shish")}
               </button>
             </div>
+            {groupless && (
+              <div className="px-3 py-2.5 border-b border-border">
+                <PupilSearchInput
+                  inputRef={searchRef}
+                  onPick={(row) => addToRoster(pupilOfRow(row))}
+                  placeholder={t("O'quvchini ism yoki telefon bo'yicha qidiring…")}
+                  note={(row) => (rosterIds.has(row.id) ? t("ro'yxatda") : prior.has(row.id) ? t("bu oyda bor") : null)}
+                />
+              </div>
+            )}
             <div className="table-box in-modal">
               <table className="w-full text-sm">
                 <thead className="bg-secondary/40">
@@ -455,6 +598,11 @@ export default function GroupExamDrawer({
                     <th className="text-left px-3 py-2.5">{t("O'quvchi")}</th>
                     <th className="text-left px-3 py-2.5 w-36 whitespace-nowrap">{t("To'g'ri javob")}</th>
                     <th className="text-left px-3 py-2.5 w-32">{t("O'zlashtirish")}</th>
+                    {groupless && (
+                      <th className="w-10 px-2 py-2.5">
+                        <span className="sr-only">{t("Olib tashlash")}</span>
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -467,9 +615,18 @@ export default function GroupExamDrawer({
                   )}
                   {!studentsLoading && students.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
-                        <div className="font-semibold text-foreground mb-0.5">{t("Guruhda o'quvchi yo'q")}</div>
-                        {t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}
+                      <td colSpan={groupless ? 5 : 4} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
+                        {groupless ? (
+                          <>
+                            <div className="font-semibold text-foreground mb-0.5">{t("Ro'yxat hozircha bo'sh")}</div>
+                            {t("Yuqoridagi qidiruvdan o'quvchini tanlang; bazada bo'lmasa — «Yangi o'quvchi».")}
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-semibold text-foreground mb-0.5">{t("Guruhda o'quvchi yo'q")}</div>
+                            {t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}
+                          </>
+                        )}
                       </td>
                     </tr>
                   )}
@@ -477,6 +634,7 @@ export default function GroupExamDrawer({
                     students.map((p, i) => {
                       const raw = correct[p.id] ?? "";
                       const pct = pctOf(p);
+                      const before = groupless ? prior.get(p.id) : undefined;
                       return (
                         <tr key={p.id} className="border-b border-border/50 last:border-b-0">
                           <td className="px-3 py-2 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
@@ -492,11 +650,30 @@ export default function GroupExamDrawer({
                                 {t("guruhda emas")}
                               </span>
                             )}
+                            {/* Guruhsiz: ikkinchi qator — telefon va «bu oyda bor» (tor ekranda bo'linmasin). */}
+                            {groupless && (p.phone || before) && (
+                              <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] font-normal">
+                                {p.phone && <span className="whitespace-nowrap tabular-nums text-muted-foreground">{p.phone}</span>}
+                                {before && (
+                                  <span
+                                    title={t("Shu oy va fan bo'yicha boshqa sarhisobda natijasi bor — ikkalasi saqlansa, reyting va botda keyingisi hisoblanadi.")}
+                                    className="whitespace-nowrap inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-[11px] font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200"
+                                  >
+                                    {t("bu oyda bor: {where} · {pct}%", { where: examGroupTitle(before.exam, t), pct: before.pct })}
+                                  </span>
+                                )}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <input
+                              ref={(el) => {
+                                if (el) inputs.current.set(p.id, el);
+                                else inputs.current.delete(p.id);
+                              }}
                               value={raw}
                               onChange={(e) => mark(p.id, e.target.value)}
+                              onKeyDown={groupless ? (e) => onResultKey(e, i) : undefined}
                               type="number"
                               min={0}
                               max={totalNum}
@@ -509,6 +686,19 @@ export default function GroupExamDrawer({
                           <td className="px-3 py-2">
                             {pct === null ? <span className="text-[12px] text-muted-foreground">—</span> : <TierBadge pct={pct} />}
                           </td>
+                          {groupless && (
+                            <td className="px-2 py-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => removeFromRoster(p.id)}
+                                title={t("Ro'yxatdan olib tashlash")}
+                                aria-label={t("{name} — ro'yxatdan olib tashlash", { name: pupilFullName(p) })}
+                                className="h-8 w-8 rounded-md inline-flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-rose-500"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
@@ -519,7 +709,7 @@ export default function GroupExamDrawer({
                       <td colSpan={2} className="px-3 py-2.5 text-[12px] text-muted-foreground">
                         {t("{n} ta o'quvchi · {filled} tasi kiritildi", { n: students.length, filled: filled.length })}
                       </td>
-                      <td className="px-3 py-2.5 text-[12px] font-semibold whitespace-nowrap">{t("Guruh o'rtachasi")}</td>
+                      <td className="px-3 py-2.5 text-[12px] font-semibold whitespace-nowrap">{groupless ? t("Ro'yxat o'rtachasi") : t("Guruh o'rtachasi")}</td>
                       <td className="px-3 py-2.5">
                         {filled.length ? (
                           <span className={`text-[14px] font-bold tabular-nums ${imTier(avg).text}`}>{avg}%</span>
@@ -527,6 +717,7 @@ export default function GroupExamDrawer({
                           <span className="text-[12px] text-muted-foreground">—</span>
                         )}
                       </td>
+                      {groupless && <td />}
                     </tr>
                   </tfoot>
                 )}
@@ -556,7 +747,9 @@ export default function GroupExamDrawer({
         </button>
       </div>
 
-      {newStudentOpen && selectedGroup && (
+      {newStudentOpen && groupless && <NewStudentModal groupId={null} onClose={() => setNewStudentOpen(false)} onAdded={(pupil) => addToRoster(pupil, true)} />}
+
+      {newStudentOpen && !groupless && selectedGroup && (
         <NewStudentModal
           groupId={selectedGroup.id}
           groupLabel={groupLabel(selectedGroup)}

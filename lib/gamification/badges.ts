@@ -85,9 +85,12 @@ async function hasActive(db: Db, pupilId: number, type: string): Promise<boolean
   return (await db.collection(GAM.tx).countDocuments({ pupilId, type, status: "active" }, { limit: 1 })) > 0;
 }
 
-/** Biror Sarhisob natijasi ≥ 90% (natijaning o'zidan — tanga 0 bo'lsa ham, TZ 4.8.5). */
+/**
+ * Biror Sarhisob natijasi ≥ 90% (natijaning o'zidan — tanga 0 bo'lsa ham, TZ 4.8.5). Guruhsiz ro'yxat
+ * (groupId 0, lib/imtihon.ts) hisoblanmaydi — u gamifikatsiyaga umuman ta'sir qilmaydi (tanga ham yo'q).
+ */
 async function hasExcellent(db: Db, pupilId: number, sinceMonth: string | null): Promise<boolean> {
-  const q: Record<string, unknown> = { students: { $elemMatch: { pupilId, pct: { $gte: 90 } } } };
+  const q: Record<string, unknown> = { groupId: { $gt: 0 }, students: { $elemMatch: { pupilId, pct: { $gte: 90 } } } };
   if (sinceMonth) q.month = { $gte: sinceMonth };
   return (await db.collection("group_exams").countDocuments(q, { limit: 1 })) > 0;
 }

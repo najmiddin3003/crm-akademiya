@@ -8,8 +8,8 @@ import { primaryBtn, secondaryBtn } from "@/components/v2/ui/buttons";
 import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { pupilAvgPct } from "@/components/imtihon/SarhisobDetailDrawer";
-import { useMonthLabel } from "@/components/imtihon/sarhisobCore";
-import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
+import { examGroupLabel, useMonthLabel } from "@/components/imtihon/sarhisobCore";
+import { groupExamMonth, isGroupless, type GroupExam } from "@/lib/imtihon";
 import { CompareRow, ScoreBar, examBand } from "./examBits";
 
 // YANGI VERSIYA — SARHISOB TAFSILOTI (o'ngdan panel). Rasmi kelmagan — eski tafsilot
@@ -70,7 +70,7 @@ export default function SarhisobDetailV2({
     <V2Dialog
       variant="right"
       width={560}
-      title={exam.groupLabel}
+      title={examGroupLabel(exam, t)}
       subtitle={[monthLabel(month), d ? dayMonthLabel(d, lang) : exam.date, t("{total} ta savol", { total: exam.total })].join(" · ")}
       onClose={onClose}
       footerStart={
@@ -147,7 +147,7 @@ export default function SarhisobDetailV2({
         <section>
           <h3 className="text-v2-small font-semibold text-v2-text">{t("Taqqoslash")}</h3>
           <div className="mt-2.5 space-y-3">
-            <CompareRow label={t("Bu guruh")} value={exam.avgPct} strong />
+            <CompareRow label={isGroupless(exam) ? t("Bu ro'yxat") : t("Bu guruh")} value={exam.avgPct} strong />
             <CompareRow label={t("{course} · markaz o'rtachasi", { course: exam.course })} value={cmp.subj} />
             <CompareRow label={t("Barcha fanlar · markaz")} value={cmp.center} />
           </div>
@@ -169,7 +169,7 @@ export default function SarhisobDetailV2({
                       {s.correct} / {exam.total}
                       <span className={`ml-2 ${delta > 0 ? "text-v2-success" : delta < 0 ? "text-v2-danger" : "text-v2-text-3"}`}>
                         {delta > 0 ? "+" : ""}
-                        {delta}% {t("guruhga nisbatan")}
+                        {delta}% {isGroupless(exam) ? t("ro'yxatga nisbatan") : t("guruhga nisbatan")}
                       </span>
                     </div>
                   </div>

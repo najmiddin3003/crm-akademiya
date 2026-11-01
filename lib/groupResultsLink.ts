@@ -67,5 +67,6 @@ export function parseCenterResultsKey(raw: string): { branchId: number; mask: nu
 
 /** API javobidagi sarhisobga havola kaliti qo'shiladi (bazaga YOZILMAYDI). */
 export function withLinkKey<T extends { groupId: number }>(exam: T): T & { linkKey: string } {
-  return { ...exam, linkKey: groupResultsKey(exam.groupId) };
+  // Guruhsiz ro'yxatda (groupId 0, lib/imtihon.ts) guruh sahifasi yo'q — kalit bo'sh, tugma ko'rinmaydi.
+  return { ...exam, linkKey: exam.groupId > 0 ? groupResultsKey(exam.groupId) : "" };
 }

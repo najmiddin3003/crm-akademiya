@@ -37,6 +37,7 @@ export default function ExamSideCard({
   exams,
   pupil,
   onBack,
+  groupless = false,
 }: {
   month: string;
   course: string;
@@ -47,6 +48,8 @@ export default function ExamSideCard({
   exams: GroupExam[];
   pupil: SidePupil | null;
   onBack: () => void;
+  /** Guruhsiz ro'yxat (lib/imtihon.ts) — «guruh» o'rniga «ro'yxat». */
+  groupless?: boolean;
 }) {
   const { t, months } = useT();
   const monthLabel = useMonthLabel();
@@ -84,7 +87,11 @@ export default function ExamSideCard({
         </button>
         <h2 className="mt-2 text-v2-section text-v2-text">{pupil.name}</h2>
         <p className="mt-0.5 text-v2-small text-v2-text-2">
-          {pupil.rank !== null ? t("Guruhda {rank}-o'rin · {n} tadan", { rank: pupil.rank, n: pupil.of }) : t("Bu imtihonda natija kiritilmagan")}
+          {pupil.rank === null
+            ? t("Bu imtihonda natija kiritilmagan")
+            : groupless
+              ? t("Ro'yxatda {rank}-o'rin · {n} tadan", { rank: pupil.rank, n: pupil.of })
+              : t("Guruhda {rank}-o'rin · {n} tadan", { rank: pupil.rank, n: pupil.of })}
         </p>
         {pupil.pct !== null && (
           <div className="mt-3 flex items-center gap-2.5">
@@ -129,13 +136,13 @@ export default function ExamSideCard({
         <span className="text-v2-small text-v2-text-3">{monthName}</span>
       </div>
       <div className="mt-3 space-y-3">
-        <CompareRow label={t("Bu guruh")} value={groupAvg} strong />
+        <CompareRow label={groupless ? t("Bu ro'yxat") : t("Bu guruh")} value={groupAvg} strong />
         <CompareRow label={course ? t("{course} · markaz o'rtachasi", { course }) : t("Fan · markaz o'rtachasi")} value={cmp.subj} />
         <CompareRow label={t("Barcha fanlar · markaz")} value={cmp.center} />
       </div>
 
       <div className="mt-4 border-t border-v2-border pt-4">
-        <h3 className="text-v2-small font-semibold text-v2-text">{t("Guruh ichida")}</h3>
+        <h3 className="text-v2-small font-semibold text-v2-text">{groupless ? t("Ro'yxat ichida") : t("Guruh ichida")}</h3>
         <div className="mt-2.5 grid grid-cols-3 gap-2">
           {(
             [
@@ -150,7 +157,9 @@ export default function ExamSideCard({
             </div>
           ))}
         </div>
-        <p className="mt-3 text-v2-caption font-normal text-v2-text-2">{t("O'quvchi qatoriga bosilsa, uning oylar bo'yicha natijalari va guruhdagi o'rni ochiladi.")}</p>
+        <p className="mt-3 text-v2-caption font-normal text-v2-text-2">{groupless
+            ? t("O'quvchi qatoriga bosilsa, uning oylar bo'yicha natijalari va ro'yxatdagi o'rni ochiladi.")
+            : t("O'quvchi qatoriga bosilsa, uning oylar bo'yicha natijalari va guruhdagi o'rni ochiladi.")}</p>
       </div>
     </section>
   );

@@ -25,6 +25,9 @@ import { useT } from "@/components/shared/Language";
 // ketadi; imtihon topshirayotgan o'quvchi lid emas.
 //
 // Ichki oyna panel (zIndex 110) USTIDA ochiladi — 120.
+//
+// GURUHSIZ RO'YXAT (01.11.2026, `groupId` null): o'quvchi faqat O'quvchilar bo'limiga yoziladi —
+// guruhga BIRIKTIRILMAYDI (to'lov, qarz, davomat tegilmaydi), panelda ro'yxatga qo'shiladi.
 
 /** "941558855" → "94 155 88 55" — ilovaning boshqa joylaridagi format. */
 function formatLocalPhone(digits: string): string {
@@ -41,10 +44,11 @@ export default function NewStudentModal({
   onClose,
   onAdded,
 }: {
-  groupId: number;
-  groupLabel: string;
+  /** `null` — guruhsiz ro'yxat: guruhga biriktirilmaydi. */
+  groupId: number | null;
+  groupLabel?: string;
   onClose: () => void;
-  /** O'quvchi yaratilib guruhga qo'shilgach — panel ro'yxatiga qo'shish uchun. */
+  /** O'quvchi yaratilib (guruhli bo'lsa — guruhga qo'shilgach) — panel ro'yxatiga qo'shish uchun. */
   onAdded: (pupil: Pupil) => void;
 }) {
   const { t } = useT();
@@ -108,6 +112,12 @@ export default function NewStudentModal({
       }
       const pupil = created.pupil as Pupil;
       invalidateStudents();
+      if (groupId === null) {
+        showSuccess(t("{name} qo'shildi", { name: `${pupil.firstName} ${pupil.lastName}`.trim() }));
+        onAdded(pupil);
+        modal.close();
+        return;
+      }
       const joined = await fetch(`/api/groups/${groupId}/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +130,7 @@ export default function NewStudentModal({
         setSaving(false);
         return;
       }
-      showSuccess(t("{name} qo'shildi — {group}", { name: `${pupil.firstName} ${pupil.lastName}`.trim(), group: groupLabel }));
+      showSuccess(t("{name} qo'shildi — {group}", { name: `${pupil.firstName} ${pupil.lastName}`.trim(), group: groupLabel ?? "" }));
       onAdded(pupil);
       modal.close();
     } catch {
@@ -133,7 +143,9 @@ export default function NewStudentModal({
     <Modal onClose={onClose} controller={modal} bare size="md" zIndex={120} locked={saving} panelClassName="p-5">
       <h3 className="text-[16px] font-semibold">{t("Yangi o'quvchi")}</h3>
       <p className="text-[12px] text-muted-foreground mt-0.5 mb-4">
-        {t("O'quvchi O'quvchilar bo'limiga yoziladi va {group} guruhiga biriktiriladi.", { group: groupLabel })}
+        {groupId === null
+          ? t("O'quvchi O'quvchilar bo'limiga yoziladi va ro'yxatga qo'shiladi — guruhga biriktirilmaydi.")
+          : t("O'quvchi O'quvchilar bo'limiga yoziladi va {group} guruhiga biriktiriladi.", { group: groupLabel ?? "" })}
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

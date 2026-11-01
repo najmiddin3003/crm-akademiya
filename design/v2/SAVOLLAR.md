@@ -1327,6 +1327,27 @@ hovuz, bitta reyting. Ochiq sahifa kirishsiz: sarlavha va filial nomi, oy tanlov
 *Savol:* barcha filiallar birga reyting kerakmi? Ustoz sukut bo'yicha yashirin — to'g'rimi? *Taxmin:* filiallar
 alohida (CRM'dagi reyting ham shunday); ustoz kerak bo'lsa — oynada bitta katakcha, tanlov eslab qolinadi.
 
+**240. Imtihon natijasi — guruhsiz ro'yxat** — taxmin (01.11.2026, «hali to'liq hammani guruhga joylamaganmiz …
+bu safarga 1 ta umumiy ro'yxat qilaylik … qaysi guruhda o'qiysiz demasin, Markaz bo'yicha 1 ta ro'yxat … O'quvchi
+ism familiyasi, to'g'ri javoblar soni, foizi, qaysi fanligi chiqib tursa bo'ldi»; savollarga javob: bazada yo'q
+o'quvchiga «karta ham ochilsin», «ikkala versiyada»; rasmi yo'q)
+«Natija qo'shish»ning tepasida «Guruh bo'yicha | Guruhsiz ro'yxat» (ikkala versiyada; tahrirda qulf — sarhisob
+qaysi usulda kiritilgan bo'lsa shunda qoladi). Guruhsizda faqat fan, oy, sana, savollar soni — ustoz va guruh yo'q.
+O'quvchi ism yoki telefon bo'yicha butun filial bazasidan qidirib qo'shiladi (bir xil ismlilar telefoni bilan
+ajraladi); tanlangach kursor uning natija maydoniga o'tadi, Enter — keyingi qator, oxirgisida — yana qidiruv.
+Bazada yo'q bo'lsa «Yangi o'quvchi» — karta ochiladi (O'quvchilar bo'limiga, GURUHSIZ: to'lov, qarz, davomatga
+ta'sir yo'q; yangi versiyadagi oynada ixtiyoriy «Guruh» maydoni qoladi). Har qo'shilgan o'quvchiga natija shart —
+bo'shi saqlashni to'xtatadi (× bilan olib tashlanadi). Yangi versiyada Excel/CSV yuklasa bo'ladi: butun bazadan
+moslanadi, bir xil ism telefon bilan ajratiladi, ajralmasa yoki topilmasa — xabarda ro'yxat (taxmin bilan
+yozilmaydi). Shu oy va fandan boshqa sarhisobda natijasi bor o'quvchi «bu oyda bor: <qayerda> · <foiz>» belgisi
+bilan chiqadi (to'sib qo'ymaydi; ikkalasi saqlansa reyting va botda keyingisi). Bir oyda bir fandan bir nechta
+guruhsiz ro'yxat bo'lishi mumkin (bir necha xodim parallel kiritsa bir-birini o'chirmasin). Bazada `groupId 0`,
+yorlig'i «Guruhsiz». Natija markaz reytingiga, ochiq reyting havolasiga va o'quvchilar botiga tushadi; Sarhisob
+tangalari va nishonlar BERILMAYDI; guruh havolasi yo'q; «Guruhlar» soniga kirmaydi; ochiq sahifada guruh katagi bo'sh.
+*Savol:* guruhsiz natijaga ham tanga berilsinmi? O'quvchilar guruhga joylangach eski guruhsiz sarhisoblarni guruhga
+ko'chirish kerakmi? *Taxmin:* tanga yo'q (guruh–oy yopilishiga bog'liq qoida); ko'chirish shart emas — reyting va bot
+o'quvchi bo'yicha ishlaydi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

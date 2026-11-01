@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Loader2, Search } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import FloatingPanel from "@/components/v2/ui/FloatingPanel";
@@ -13,6 +13,9 @@ import { fieldCls } from "./fields";
 //
 // Klaviatura: ↑↓ yurish, Enter tanlash (forma saqlanmaydi — `data-enter-ignore`),
 // Esc ro'yxatni yopadi.
+//
+// `clearOnPick` — tanlangach maydon tozalanadi (ketma-ket qo'shish: Imtihon → guruhsiz ro'yxat,
+// 01.11.2026); `inputRef` — chaqiruvchi fokusni maydonga qaytara olsin.
 
 function initialsOf(name: string): string {
   const p = name.trim().split(/\s+/).filter(Boolean);
@@ -34,6 +37,8 @@ export default function StudentSearchField({
   placeholder,
   trailing,
   footer,
+  clearOnPick = false,
+  inputRef: givenRef,
 }: {
   onPick: (s: StudentRow) => void;
   invalid?: boolean;
@@ -43,13 +48,18 @@ export default function StudentSearchField({
   trailing?: (s: StudentRow) => ReactNode;
   /** Ro'yxat ostidagi qator (masalan «Yangi o'quvchi qo'shish»). */
   footer?: ReactNode;
+  /** Tanlangach qidiruv matni tozalansin (ro'yxatga ketma-ket qo'shish). */
+  clearOnPick?: boolean;
+  /** Maydonning o'zi — tashqaridan fokus qaytarish uchun. */
+  inputRef?: RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useT();
   const [q, setQ] = useState("");
   const [result, setResult] = useState<{ q: string; items: StudentRow[] } | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const ownRef = useRef<HTMLInputElement>(null);
+  const inputRef = givenRef ?? ownRef;
   const listId = useId();
   const query = q.trim();
 
@@ -80,6 +90,7 @@ export default function StudentSearchField({
 
   const pick = (s: StudentRow) => {
     setOpen(false);
+    if (clearOnPick) setQ("");
     onPick(s);
   };
 

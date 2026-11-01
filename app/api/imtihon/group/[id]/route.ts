@@ -7,7 +7,7 @@ import { uzStamp } from "@/lib/uzTime";
 import { onExamSaved } from "@/lib/gamification/exams";
 import { buildExamStudents, mirrorKeysOf, syncMonthlyMirror, type MirrorKey } from "@/lib/groupExamsServer";
 import { withLinkKey } from "@/lib/groupResultsLink";
-import { groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "@/lib/imtihon";
+import { GROUPLESS_GROUP_ID, groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "@/lib/imtihon";
 
 // IMTIHON → SARHISOB: BITTA SARHISOBNI TAHRIRLASH, ARXIVLASH, O'CHIRISH (01.11.2026,
 // foydalanuvchi: «edit/delete/archive ham bo'lishi kerak»). Qo'shish —
@@ -17,6 +17,8 @@ import { groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "
 //            (yuborilmagan — natijasi o'chirilgan — o'quvchi sarhisobdan chiqadi). GURUH
 //            O'ZGARMAYDI (boshqa guruh — boshqa o'quvchilar; noto'g'ri guruhga kiritilgan
 //            bo'lsa — o'chirib, qaytadan). Guruh nomi/bosqichi kiritilgandagidek qoladi.
+//            Guruhsiz ro'yxat (groupId 0) guruhsizligicha qoladi — yuk `groupless: true` bilan
+//            keladi, aks holda «guruhini o'zgartirib bo'lmaydi».
 //   PATCH  — `{ archived: boolean }`: arxivga / arxivdan (faqat ko'rinish, GroupExam.archived).
 //   DELETE — butunlay o'chiradi.
 //
@@ -40,9 +42,9 @@ async function findOwn(db: Db, scope: BranchScope, rawId: string): Promise<Group
   return doc ? { ...doc, month: groupExamMonth(doc) } : null;
 }
 
-/** Tangalar va bot ko'zgusi — xatosi amalni yiqitmaydi, logga yoziladi. */
+/** Tangalar va bot ko'zgusi — xatosi amalni yiqitmaydi, logga yoziladi. Guruhsiz ro'yxatda tanga yo'q. */
 async function afterChange(db: Db, groupId: number, months: string[], keys: MirrorKey[]): Promise<void> {
-  for (const month of new Set(months)) {
+  for (const month of groupId === GROUPLESS_GROUP_ID ? [] : new Set(months)) {
     try {
       await onExamSaved(db, groupId, month);
     } catch (e) {

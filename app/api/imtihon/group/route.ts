@@ -7,7 +7,15 @@ import { uzStamp } from "@/lib/uzTime";
 import { onExamSaved } from "@/lib/gamification/exams";
 import { buildExamStudents, mirrorKeysOf, syncMonthlyMirror } from "@/lib/groupExamsServer";
 import { withLinkKey } from "@/lib/groupResultsLink";
-import { groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "@/lib/imtihon";
+import {
+  GROUPLESS_GROUP_ID,
+  GROUPLESS_LABEL,
+  groupAvgPct,
+  groupExamMonth,
+  isGroupless,
+  sanitizeGroupExam,
+  type GroupExam,
+} from "@/lib/imtihon";
 
 // Imtihon → Sarhisob — "Natija qo'shish" paneli backend'i (MongoDB `group_exams`).
 //
@@ -18,6 +26,9 @@ import { groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "
 // FILIAL BO'YICHA KESILADI: guruh joriy filialda bo'lishi shart (aks holda
 // 404), yozuvga ham shu filial yoziladi va GET faqat shu filialnikini
 // qaytaradi — guruhlar ro'yxati bilan bir xil qamrov (lib/groupScope.ts).
+//
+// GURUHSIZ RO'YXAT (01.11.2026, `groupless: true` → groupId 0, lib/imtihon.ts): guruh va
+// ustozsiz; o'quvchilar shu filial bazasidan, guruhga qo'shilmaydi; tanga berilmaydi.
 
 const notLoggedIn = () => NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
@@ -52,8 +63,16 @@ export async function POST(req: Request) {
   if (!scope) return notLoggedIn();
   const db = await ensureIndexes();
 
-  const group = await db.collection<Group>("groups").findOne(withBranch({ id: input.groupId }, scope));
-  if (!group) return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
+  // GURUHSIZ RO'YXAT (groupId 0, lib/imtihon.ts) — guruh qidirilmaydi; o'quvchilar baribir shu
+  // filial bazasidan (buildExamStudents), guruhga qo'shilmaydi.
+  let groupPart: Pick<GroupExam, "groupId" | "groupName" | "groupLabel" | "level">;
+  if (input.groupId === GROUPLESS_GROUP_ID) {
+    groupPart = { groupId: GROUPLESS_GROUP_ID, groupName: "", groupLabel: GROUPLESS_LABEL, level: "" };
+  } else {
+    const group = await db.collection<Group>("groups").findOne(withBranch({ id: input.groupId }, scope));
+    if (!group) return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
+    groupPart = { groupId: group.id, groupName: group.name ?? "", groupLabel: groupLabel(group), level: group.level ?? "" };
+  }
 
   // O'quvchilar ism/telefoni BAZADAN olinadi (mijoz yuborgani emas) — lib/groupExamsServer.ts.
   const students = await buildExamStudents(db, scope, input);
@@ -72,10 +91,7 @@ export async function POST(req: Request) {
     month: input.month,
     course: input.course,
     teacher: input.teacher,
-    groupId: group.id,
-    groupName: group.name ?? "",
-    groupLabel: groupLabel(group),
-    level: group.level ?? "",
+    ...groupPart,
     branchId: branchForInsert(scope),
     total: input.total,
     students,
@@ -88,11 +104,13 @@ export async function POST(req: Request) {
 
   // GAMIFIKATSIYA (TZ 4.8): natija saqlangani = guruh–oy yopildi →
   // Sarhisob va o'sish tangalari (lib/gamification/exams.ts). Xatosi
-  // natija saqlanishini yiqitmaydi — logga yoziladi.
-  try {
-    await onExamSaved(db, group.id, input.month);
-  } catch (e) {
-    console.error("[gamification] Sarhisob hodisasi", { groupId: group.id, month: input.month }, e);
+  // natija saqlanishini yiqitmaydi — logga yoziladi. Guruhsiz ro'yxatga tanga yo'q.
+  if (!isGroupless(exam)) {
+    try {
+      await onExamSaved(db, exam.groupId, input.month);
+    } catch (e) {
+      console.error("[gamification] Sarhisob hodisasi", { groupId: exam.groupId, month: input.month }, e);
+    }
   }
 
   // `monthly_exams` GA KO'CHIRISH. CRM'da bu jadvalning o'z sahifasi endi

@@ -1,4 +1,4 @@
-import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
+import { GROUPLESS_GROUP_ID, groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import { searchPhoneDigits } from "@/lib/phoneSearch";
 import type { CenterShareShow } from "@/lib/centerShare";
 
@@ -61,8 +61,17 @@ export const RANK_HIGH_PCT = 80;
  * Guruh nomi: «7» → «7-guruh» (`t` — joriy til), qolgani o'z nomi bilan (bo'sh bo'lsa — to'liq
  * yorliq). CRM va ochiq sahifa uchun bitta (components/imtihon/sarhisobCore ham shuni beradi).
  */
-export function examGroupTitle(r: { groupName: string; groupLabel: string }, t: (key: string, params?: { n: string }) => string): string {
+export function examGroupTitle(r: { groupId?: number; groupName: string; groupLabel: string }, t: (key: string, params?: { n: string }) => string): string {
+  if (r.groupId === GROUPLESS_GROUP_ID) return t("Guruhsiz");
   return /^\d+$/.test(r.groupName) ? t("{n}-guruh", { n: r.groupName }) : r.groupName || r.groupLabel;
+}
+
+/**
+ * Sarhisobning to'liq nomi (ro'yxat, oyna sarlavhasi, xabarlar): guruhniki — saqlangan yorliq
+ * («Matematika (13-guruh)»), guruhsiz ro'yxat — «Matematika (guruhsiz)» joriy tilda.
+ */
+export function examGroupLabel(e: { groupId: number; course: string; groupLabel: string }, t: (key: string, params?: { course: string }) => string): string {
+  return e.groupId === GROUPLESS_GROUP_ID ? t("{course} (guruhsiz)", { course: e.course }) : e.groupLabel;
 }
 
 /** O'quvchi kaliti: `pupils.id`, bo'lmasa (eski yozuv) — ism. */
@@ -168,7 +177,8 @@ export function rankStats(rows: RankRow[]): RankStats {
   return {
     results: rows.length,
     pupils: new Set(rows.map(rankPupilKey)).size,
-    groups: new Set(rows.map((r) => r.groupId)).size,
+    // Guruhsiz ro'yxat (groupId 0) guruh emas — sanalmaydi.
+    groups: new Set(rows.filter((r) => r.groupId !== GROUPLESS_GROUP_ID).map((r) => r.groupId)).size,
     avg: rows.length ? Math.round(rows.reduce((s, r) => s + r.pct, 0) / rows.length) : null,
     high: rows.filter((r) => r.pct >= RANK_HIGH_PCT).length,
   };
@@ -290,7 +300,9 @@ export function rankRowOfPublic(r: PublicRankRow, i: number): RankRow {
     phone: "",
     course: r.course,
     teacher: r.teacher,
-    groupId: 0,
+    // -1, 0 emas: 0 — guruhsiz ro'yxat (examGroupTitle «Guruhsiz» der edi); ochiq sahifada guruh
+    // haqida faqat nomi bor, guruhsiz o'quvchida u bo'sh.
+    groupId: -1,
     groupName: r.groupName,
     groupLabel: "",
     level: r.level,

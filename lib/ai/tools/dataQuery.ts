@@ -79,7 +79,7 @@ export const DATA_COLLECTIONS: Record<string, string> = {
     "Bonuses of employees and students: id, type (employee | student), recipientName, givenBy, amount, note, " +
     "createdAt ('DD.MM.YYYY HH:mm' string), cashboxId.",
   pupil_comments: "Comments on students: id, pupilId, text, date (YYYY-MM-DD), time (HH:mm), by (author), createdAt.",
-  group_exams: "Group exams and results.",
+  group_exams: "Group exams and results. groupId 0 = groupless center list (groupLabel \"Guruhsiz\", no teacher).",
   monthly_exams: "Monthly exam results.",
   contracts: "Student contracts.",
   planned_expenses: "Planned expenses.",

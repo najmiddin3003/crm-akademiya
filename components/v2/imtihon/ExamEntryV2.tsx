@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { AlertTriangle, Check, ChevronDown, Download, FileUp, Loader2, Plus, Users } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Download, FileUp, ListChecks, Loader2, Plus, Users, X } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useTeachers } from "@/hooks/useTeachers";
 import { useGroups } from "@/hooks/useGroups";
+import { loadPupilsCached } from "@/hooks/useStudents";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { uzDateIso } from "@/lib/uzTime";
-import { groupAvgPct, groupExamMonth, imPct, liveExams, type GroupExam } from "@/lib/imtihon";
+import { groupAvgPct, groupExamMonth, imPct, isGroupless, liveExams, type GroupExam } from "@/lib/imtihon";
 import V2Picker, { type PickerOption } from "@/components/v2/form/V2Picker";
 import V2DateField from "@/components/v2/form/V2DateField";
 import V2Confirm from "@/components/v2/form/V2Confirm";
+import StudentSearchField, { studentPhoneLabel } from "@/components/v2/form/StudentSearchField";
 import { shiftMonth } from "@/components/v2/form/MonthChips";
 import { fieldCls } from "@/components/v2/form/fields";
 import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
@@ -21,10 +23,11 @@ import { timeLabel } from "@/components/v2/ui/groupStatus";
 import { ROW_TINT } from "@/components/v2/ui/table";
 import { primaryBtn, secondaryBtn } from "@/components/v2/ui/buttons";
 import NewStudentDrawerV2 from "@/components/v2/students/NewStudentDrawerV2";
-import { downloadCsv, intOf, normHeader, readFileRows } from "@/components/imtihon/importUtils";
-import { useMonthLabel } from "@/components/imtihon/sarhisobCore";
+import { downloadCsv, readFileRows } from "@/components/imtihon/importUtils";
+import { examGroupLabel, examGroupTitle, useMonthLabel } from "@/components/imtihon/sarhisobCore";
+import { findResultColumns, matchResultRows, namesPreview, priorResults, pupilOfRow, rosterOfExam } from "@/components/imtihon/examRoster";
 import ExamSideCard, { type SidePupil } from "./ExamSideCard";
-import { ImtihonHeader, ScoreBar, examBand } from "./examBits";
+import { ImtihonHeader, ScoreBar, SegmentSwitch, examBand } from "./examBits";
 
 // YANGI VERSIYA — IMTIHON → SARHISOB → «NATIJA KIRITISH» (rasm «Sarhisob · Natija
 // kiritish», yorug'/qorong'i, 23.10.2026):
@@ -52,6 +55,15 @@ import { ImtihonHeader, ScoreBar, examBand } from "./examBits";
 // chiqib ketganlar («guruhda emas»). Bo'sh qoldirilgan o'quvchi sarhisobdan chiqadi.
 // Saqlash — PUT /api/imtihon/group/:id (tangalar va bot ko'zgusi serverda qayta
 // moslanadi). «Saqlanmagan» — boshlang'ich holatdan farq qilsa.
+//
+// GURUHSIZ RO'YXAT (01.11.2026, «Guruh bo'yicha | Guruhsiz ro'yxat»; foydalanuvchi: «hali hammani
+// guruhga joylamaganmiz … Markaz bo'yicha 1 ta ro'yxat qilish kerak … qaysi guruhda o'qiysiz
+// demasin»; qoidalari lib/imtihon.ts da): ustoz va guruh yo'q — fan, oy, sana, savollar soni. Ro'yxat
+// qo'lda: o'quvchi ism/telefon bo'yicha qidirib qo'shiladi (tanlangach — natija maydoniga, Enter —
+// yana qidiruvga), bazada yo'q bo'lsa «Yangi o'quvchi» (karta ochiladi, guruhsiz), Excel'dan yuklansa
+// butun filial bazasidan moslanadi (components/imtihon/examRoster.ts). Shu oy va fandan boshqa
+// sarhisobda natijasi bori «bu oyda bor» belgisi bilan. Har qo'shilgan o'quvchiga natija yozilishi
+// shart (bo'sh qator — olib tashlanadi). Saqlash — `groupless: true`; tahrirda usul qulf.
 
 const norm = (s: string) => (s || "").trim().toLowerCase();
 
@@ -72,9 +84,6 @@ function teachesCourse(kurs: string, course: string): boolean {
   return (kurs || "").split(",").some((k) => norm(k) === want);
 }
 
-/** Ism solishtirish: apostrof turlari va bo'shliqlar farq qilmasin. */
-const normName = (s: string) => s.toLowerCase().replace(/[‘’ʻʼ`'"]/g, "").replace(/\s+/g, " ").trim();
-
 function dateOfIso(iso: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
@@ -82,6 +91,9 @@ function dateOfIso(iso: string): Date | null {
 function isoOfDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+/** Natija kiritish usuli — guruh bo'yicha yoki guruhsiz ro'yxat (lib/imtihon.ts). */
+type EntryMode = "group" | "groupless";
 
 const smallBtn =
   "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-v2-md border border-v2-border-strong bg-v2-surface px-3 text-v2-small font-medium text-v2-text transition-[background-color,box-shadow] hover:bg-v2-surface-2 focus-visible:shadow-v2-focus focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
@@ -106,7 +118,7 @@ export default function ExamEntryV2({
   const ed = editing;
   const { t } = useT();
   const [lang] = useLang();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showToast } = useToast();
   const monthLabel = useMonthLabel();
 
   const { activeNames, loading: coursesLoading } = useOfflineCourseList();
@@ -118,7 +130,7 @@ export default function ExamEntryV2({
   const [courseAuto, setCourseAuto] = useState(false);
   /** Xodim id; guruhdagi (tahrirda — sarhisobdagi) ustoz ro'yxatda bo'lmasa — "g:<ism>". */
   const [teacherId, setTeacherId] = useState(ed?.teacher ? `g:${ed.teacher}` : "");
-  const [groupId, setGroupId] = useState(ed ? String(ed.groupId) : "");
+  const [groupId, setGroupId] = useState(ed && !isGroupless(ed) ? String(ed.groupId) : "");
   const [month, setMonth] = useState(ed ? groupExamMonth(ed) : initialMonth);
   const [date, setDate] = useState(() => ed?.date || uzDateIso());
   const [total, setTotal] = useState(ed ? String(ed.total) : "");
@@ -139,21 +151,33 @@ export default function ExamEntryV2({
   const [importing, setImporting] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [askLeave, setAskLeave] = useState(false);
+  /** Kiritish usuli (tahrirda — sarhisobniki, qulf). */
+  const [mode, setMode] = useState<EntryMode>(ed && isGroupless(ed) ? "groupless" : "group");
+  const groupless = mode === "groupless";
+  /** Guruhsiz ro'yxat — qo'lda yig'iladi (tahrirda sarhisobdagilar). */
+  const [roster, setRoster] = useState<Pupil[]>(() => (ed && isGroupless(ed) ? rosterOfExam(ed) : []));
+  /** Usul almashtirish so'ralgan (kiritilgan natija bor — avval tasdiq). */
+  const [askMode, setAskMode] = useState<EntryMode | null>(null);
   const inputs = useRef(new Map<number, HTMLInputElement>());
   const fileRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  /** Ro'yxatga qo'shilgan o'quvchi — qatori chizilgach natija maydoniga fokus. */
+  const focusAfter = useRef<number | null>(null);
 
   // Tahrirda ro'yxat oxirida — sarhisobda bor, lekin guruhda endi yo'q o'quvchilar
   // (ism/telefon sarhisobdagidek; server ham ularning eski yozuvini saqlaydi).
   const { students, extraIds } = useMemo(() => {
-    const roster = loaded && loaded.groupId === groupId ? loaded.list : [];
-    if (!ed || !loaded || loaded.groupId !== groupId) return { students: roster, extraIds: new Set<number>() };
-    const have = new Set(roster.map((p) => p.id));
+    if (groupless) return { students: roster, extraIds: new Set<number>() };
+    const list = loaded && loaded.groupId === groupId ? loaded.list : [];
+    if (!ed || !loaded || loaded.groupId !== groupId) return { students: list, extraIds: new Set<number>() };
+    const have = new Set(list.map((p) => p.id));
     const extra = ed.students
       .filter((s) => !have.has(s.pupilId))
       .map((s) => ({ id: s.pupilId, firstName: s.name, lastName: "", phone: s.phone }) as unknown as Pupil);
-    return { students: [...roster, ...extra], extraIds: new Set(extra.map((p) => p.id)) };
-  }, [loaded, groupId, ed]);
-  const studentsLoading = Boolean(groupId) && loaded?.groupId !== groupId;
+    return { students: [...list, ...extra], extraIds: new Set(extra.map((p) => p.id)) };
+  }, [groupless, roster, loaded, groupId, ed]);
+  const studentsLoading = !groupless && Boolean(groupId) && loaded?.groupId !== groupId;
+  const rosterIds = useMemo(() => new Set(roster.map((p) => p.id)), [roster]);
   const group = useMemo(() => groups.find((g) => String(g.id) === groupId) ?? null, [groups, groupId]);
   const teacherName = teacherId.startsWith("g:") ? teacherId.slice(2) : (teachers.find((x) => String(x.id) === teacherId)?.name ?? "");
   const totalNum = Math.min(999, Math.trunc(Number(total) || 0));
@@ -255,6 +279,59 @@ export default function ExamEntryV2({
     setPicked(null);
   }
 
+  /** Usul almashadi: guruh, ro'yxat va natijalar tozalanadi (fan, oy, sana, savollar soni qoladi). */
+  function applyMode(next: EntryMode) {
+    setMode(next);
+    setGroupId("");
+    setCourseAuto(false);
+    setRoster([]);
+    setTried(false);
+    resetResults();
+  }
+
+  function changeMode(next: EntryMode) {
+    if (ed || next === mode) return;
+    const entered = Object.values(correct).some((v) => v !== "") || addedIds.length > 0 || roster.length > 0;
+    if (entered) setAskMode(next);
+    else applyMode(next);
+  }
+
+  /** Guruhsiz ro'yxatga (bori — o'z qatoriga); qidiruvdan tanlansa fokus uning natija maydoniga. */
+  function addToRoster(pupil: Pupil, isNew = false) {
+    setRoster((list) => (list.some((x) => x.id === pupil.id) ? list : [...list, pupil]));
+    if (isNew) setAddedIds((ids) => (ids.includes(pupil.id) ? ids : [...ids, pupil.id]));
+    setPicked(pupil.id);
+    // Yangi o'quvchi oynasi hali ochiq bo'lishi mumkin («yana qo'shish») — fokus uning ostiga ketmasin.
+    if (isNew) return;
+    const el = inputs.current.get(pupil.id);
+    if (el) {
+      el.focus();
+      el.select();
+    } else focusAfter.current = pupil.id;
+  }
+
+  function removeFromRoster(id: number) {
+    setRoster((list) => list.filter((x) => x.id !== id));
+    setCorrect((m) => {
+      const next = { ...m };
+      delete next[id];
+      return next;
+    });
+    setAddedIds((ids) => ids.filter((x) => x !== id));
+    setPicked((cur) => (cur === id ? null : cur));
+  }
+
+  // Qo'shilgan qator chizilgach — natija maydoniga fokus (har chizishdan keyin tekshiriladi, arzon).
+  useEffect(() => {
+    const id = focusAfter.current;
+    if (id === null) return;
+    const el = inputs.current.get(id);
+    if (!el) return;
+    focusAfter.current = null;
+    el.focus();
+    el.select();
+  });
+
   function changeGroup(v: string) {
     setGroupId(v);
     resetResults();
@@ -306,7 +383,21 @@ export default function ExamEntryV2({
   const rows = students.map((p) => ({ p, raw: correct[p.id] ?? "", pct: pctOf(p) }));
   const filled = rows.filter((r): r is { p: Pupil; raw: string; pct: number } => r.pct !== null);
   const avg = filled.length ? groupAvgPct(filled.map((r) => ({ pct: r.pct }))) : null;
-  const initial = useMemo(() => (ed ? { correct: correctOf(ed), total: String(ed.total), date: ed.date, month: groupExamMonth(ed), teacher: ed.teacher } : null), [ed]);
+  const initial = useMemo(
+    () =>
+      ed
+        ? {
+            correct: correctOf(ed),
+            total: String(ed.total),
+            date: ed.date,
+            month: groupExamMonth(ed),
+            teacher: ed.teacher,
+            course: ed.course,
+            roster: ed.students.map((s) => s.pupilId).join(","),
+          }
+        : null,
+    [ed],
+  );
   const dirty =
     !saved &&
     (initial
@@ -314,9 +405,11 @@ export default function ExamEntryV2({
         total !== initial.total ||
         date !== initial.date ||
         month !== initial.month ||
-        norm(teacherName) !== norm(initial.teacher) ||
+        (groupless
+          ? course !== initial.course || roster.map((x) => x.id).join(",") !== initial.roster
+          : norm(teacherName) !== norm(initial.teacher)) ||
         addedIds.length > 0
-      : Object.values(correct).some((v) => v !== "") || addedIds.length > 0);
+      : Object.values(correct).some((v) => v !== "") || addedIds.length > 0 || roster.length > 0);
 
   // Saqlanmagan natija bor — sahifani yopish/yangilashdan oldin brauzer so'raydi.
   useEffect(() => {
@@ -337,6 +430,8 @@ export default function ExamEntryV2({
         : null,
     [exams, groupId, month, course, ed],
   );
+  // Guruhsiz ro'yxat: shu oy va fan bo'yicha boshqa sarhisobdagi natija — «bu oyda bor».
+  const prior = useMemo(() => priorResults(groupless ? exams : [], month, course, ed?.id), [groupless, exams, month, course, ed]);
   // O'ng karta taqqoslashi — arxivdagisiz va tahrirlanayotganining eski natijasisiz.
   const sideExams = useMemo(() => liveExams(exams).filter((r) => r.id !== ed?.id), [exams, ed]);
 
@@ -352,6 +447,7 @@ export default function ExamEntryV2({
     if (e.key === "Enter" || e.key === "ArrowDown") {
       e.preventDefault();
       if (i + 1 < students.length) focusRowAt(i + 1);
+      else if (groupless) searchRef.current?.focus();
       else (e.currentTarget as HTMLInputElement).blur();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -361,21 +457,24 @@ export default function ExamEntryV2({
 
   // ── Tekshiruv va saqlash ──
   const errCourse = tried && !course;
-  const errTeacher = tried && !teacherName;
-  const errGroup = tried && !groupId;
+  const errTeacher = tried && !groupless && !teacherName;
+  const errGroup = tried && !groupless && !groupId;
   const errTotal = tried && totalNum <= 0;
 
   async function save() {
     setTried(true);
     if (!course) return showError(t("Fan yo'nalishini tanlang"));
-    if (!teacherName) return showError(t("Ustozni tanlang"));
-    if (!groupId) return showError(t("Guruhni tanlang"));
+    if (!groupless && !teacherName) return showError(t("Ustozni tanlang"));
+    if (!groupless && !groupId) return showError(t("Guruhni tanlang"));
     if (!date) return showError(t("Imtihon sanasini tanlang"));
     if (totalNum <= 0) return showError(t("Savollar sonini kiriting"));
     // Savollar soni keyin kamaytirilgan bo'lsa — undan katta natija jimgina tushib qolmasin.
     const over = rows.filter((r) => r.raw !== "" && Number(r.raw) > totalNum);
     if (over.length) return showError(t("{n} ta o'quvchining natijasi savollar sonidan ko'p — tuzating", { n: over.length }));
     if (filled.length === 0) return showError(t("Kamida bitta o'quvchining natijasini kiriting"));
+    // Guruhsizda har qo'shilgan o'quvchi — atayin qo'shilgan: natijasiz qolsa jimgina tushib qolmasin.
+    const blank = groupless ? rows.filter((r) => r.raw === "").length : 0;
+    if (blank) return showError(t("{n} ta o'quvchining natijasi yozilmagan — yozing yoki ro'yxatdan olib tashlang", { n: blank }));
     setSaving(true);
     try {
       const res = await fetch(ed ? `/api/imtihon/group/${ed.id}` : "/api/imtihon/group", {
@@ -385,8 +484,8 @@ export default function ExamEntryV2({
           date,
           month,
           course,
-          teacher: teacherName,
-          groupId: Number(groupId),
+          // Guruhsiz ro'yxat — ustoz va guruhsiz (server `groupless: true` ni o'zi tekshiradi).
+          ...(groupless ? { groupless: true, teacher: "", groupId: 0 } : { teacher: teacherName, groupId: Number(groupId) }),
           total: totalNum,
           students: filled.map((r) => ({ pupilId: r.p.id, correct: Math.trunc(Number(r.raw)) })),
         }),
@@ -398,7 +497,7 @@ export default function ExamEntryV2({
         return;
       }
       const exam = data.exam as GroupExam;
-      const p = { groupLabel: exam.groupLabel, studentCount: exam.studentCount, avgPct: exam.avgPct };
+      const p = { groupLabel: examGroupLabel(exam, t), studentCount: exam.studentCount, avgPct: exam.avgPct };
       showSuccess(
         ed
           ? t("Sarhisob yangilandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", p)
@@ -423,16 +522,17 @@ export default function ExamEntryV2({
 
   // ── Eksport va Excel'dan yuklash ──
   function exportCsv() {
-    if (!group || !students.length) return;
+    const base = groupless ? `${course || "fan"}_guruhsiz` : group ? `${group.course || "guruh"}_${group.name || group.id}` : "";
+    if (!base || !students.length) return;
     const head = ["№", "O'quvchi", "To'g'ri javob", "Savollar", "O'zlashtirish %"];
     const out: unknown[][] = [head];
     rows.forEach((r, i) => out.push([i + 1, pupilFullName(r.p), r.raw, totalNum || "", r.pct ?? ""]));
-    const safe = `${group.course || "guruh"}_${group.name || group.id}`.replace(/[\\/:*?"<>|\s]+/g, "_");
+    const safe = base.replace(/[\\/:*?"<>|\s]+/g, "_");
     downloadCsv(out, `Natija_${safe}_${date}.csv`);
   }
 
   async function importFile(file: File) {
-    if (!students.length) {
+    if (!groupless && !students.length) {
       showError(t("Avval guruhni tanlang"));
       return;
     }
@@ -445,69 +545,47 @@ export default function ExamEntryV2({
       showError(t(e instanceof Error ? e.message : "Fayl o'qilmadi"));
       return;
     }
-    // Sarlavha qatori (birinchi 5 qatordan): «O'quvchi/Ism» va «To'g'ri javob/Ball».
-    let nameCol = -1;
-    let corrCol = -1;
-    let start = 0;
-    for (let i = 0; i < Math.min(table.length, 5); i++) {
-      const h = table[i].map(normHeader);
-      const n = h.findIndex((x) => /oquvchi|ism|fio|familiya|name|student/.test(x));
-      const c = h.findIndex((x) => /togri|javob|correct|ball|natija/.test(x));
-      if (n >= 0 && c >= 0) {
-        nameCol = n;
-        corrCol = c;
-        start = i + 1;
-        break;
-      }
-    }
-    // Sarlavhasiz fayl: ism — harfli birinchi ustun, natija — undan keyingi raqamli ustun.
-    if (nameCol < 0) {
-      for (const r of table) {
-        const n = r.findIndex((c) => /\p{L}/u.test(String(c)));
-        const c = n >= 0 ? r.findIndex((x, j) => j > n && /^\s*\d+\s*$/.test(String(x))) : -1;
-        if (n >= 0 && c >= 0) {
-          nameCol = n;
-          corrCol = c;
-          break;
-        }
+    // Guruhsizda — butun filial bazasi (id/ism/telefon, keshdan) + ro'yxatdagilar.
+    let pool: Pupil[] = students;
+    if (groupless) {
+      try {
+        const base = (await loadPupilsCached({ light: true })) as unknown as Pupil[];
+        const have = new Set(students.map((x) => x.id));
+        pool = [...students, ...base.filter((x) => !have.has(x.id))];
+      } catch {
+        setImporting(false);
+        showError(t("O'quvchilar ro'yxati yuklanmadi — qayta urinib ko'ring"));
+        return;
       }
     }
     setImporting(false);
-    if (nameCol < 0) {
+    const cols = findResultColumns(table);
+    if (!cols) {
       showError(t("Faylda o'quvchi ismi va to'g'ri javoblar ustuni topilmadi"));
       return;
     }
-    const byName = new Map<string, Pupil>();
-    for (const p of students) {
-      byName.set(normName(pupilFullName(p)), p);
-      byName.set(normName(`${p.lastName ?? ""} ${p.firstName ?? ""}`), p);
-    }
-    const next = { ...correct };
-    let ok = 0;
-    const missing: string[] = [];
-    for (const r of table.slice(start)) {
-      const name = String(r[nameCol] ?? "").trim();
-      const raw = String(r[corrCol] ?? "").trim();
-      if (!name || raw === "") continue;
-      const p = byName.get(normName(name));
-      if (!p) {
-        missing.push(name);
-        continue;
-      }
-      let v = String(intOf(raw));
-      if (totalNum > 0 && Number(v) > totalNum) v = String(totalNum);
-      next[p.id] = v;
-      ok += 1;
-    }
-    if (!ok) {
-      showError(t("Fayldagi ismlar guruh o'quvchilariga mos kelmadi"));
+    const res = matchResultRows(table, cols, pool, { total: totalNum, strict: groupless });
+    if (!res.hits.length) {
+      showError(groupless ? t("Fayldagi ismlar bazadagi o'quvchilarga mos kelmadi") : t("Fayldagi ismlar guruh o'quvchilariga mos kelmadi"));
       return;
     }
-    setCorrect(next);
+    setCorrect((m) => ({ ...m, ...Object.fromEntries(res.hits.map((h) => [h.pupil.id, String(h.correct)])) }));
+    if (groupless) {
+      setRoster((list) => {
+        const have = new Set(list.map((x) => x.id));
+        return [...list, ...res.hits.map((h) => h.pupil).filter((x) => !have.has(x.id))];
+      });
+      const detail = [
+        res.missing.length ? t("Bazada topilmadi: {names}", { names: namesPreview(res.missing) }) : "",
+        res.ambiguous.length ? t("Bir xil ismli bir nechta o'quvchi — qidiruv bilan qo'shing: {names}", { names: namesPreview(res.ambiguous) }) : "",
+      ].filter(Boolean);
+      showToast({ tone: "success", title: t("{n} ta natija yuklandi", { n: res.hits.length }), detail: detail.length ? detail : undefined });
+      return;
+    }
     showSuccess(
-      missing.length
-        ? t("{n} ta natija yuklandi · topilmadi: {names}", { n: ok, names: missing.slice(0, 3).join(", ") + (missing.length > 3 ? "…" : "") })
-        : t("{n} ta natija yuklandi", { n: ok }),
+      res.missing.length
+        ? t("{n} ta natija yuklandi · topilmadi: {names}", { n: res.hits.length, names: namesPreview(res.missing) })
+        : t("{n} ta natija yuklandi", { n: res.hits.length }),
     );
   }
 
@@ -550,8 +628,31 @@ export default function ExamEntryV2({
         }
       />
 
+      {/* Kiritish usuli: guruh bo'yicha yoki guruhsiz ro'yxat (tahrirda qulf) */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <SegmentSwitch
+          label={t("Kiritish usuli")}
+          value={mode}
+          onChange={changeMode}
+          disabled={Boolean(ed)}
+          options={[
+            { value: "group", label: t("Guruh bo'yicha"), icon: Users },
+            { value: "groupless", label: t("Guruhsiz ro'yxat"), icon: ListChecks },
+          ]}
+        />
+        {groupless && (
+          <p className="min-w-0 flex-1 text-v2-small text-v2-text-2">
+            {t("O'quvchi qidirib qo'shiladi va guruhga qo'shilmaydi. Natija markaz reytingiga tushadi, tanga berilmaydi.")}
+          </p>
+        )}
+      </div>
+
       {/* Tanlovlar paneli */}
-      <div className="grid grid-cols-2 gap-3 rounded-v2-lg border border-v2-border bg-v2-surface-2 p-4 min-[40rem]:grid-cols-3 min-[80rem]:grid-cols-[1fr_1.4fr_1.3fr_1fr_0.95fr_0.75fr]">
+      <div
+        className={`grid grid-cols-2 gap-3 rounded-v2-lg border border-v2-border bg-v2-surface-2 p-4 ${
+          groupless ? "min-[48rem]:grid-cols-[1.6fr_1fr_1fr_0.8fr]" : "min-[40rem]:grid-cols-3 min-[80rem]:grid-cols-[1fr_1.4fr_1.3fr_1fr_0.95fr_0.75fr]"
+        }`}
+      >
         <div className="min-w-0">
           {label(
             t("Fan"),
@@ -564,7 +665,7 @@ export default function ExamEntryV2({
             value={course}
             onChange={changeCourse}
             options={courseOptions}
-            disabled={Boolean(ed)}
+            disabled={Boolean(ed) && !groupless}
             loading={coursesLoading && !courseOptions.length}
             placeholder={t("Fanni tanlang")}
             searchPlaceholder={t("Fanni qidirish")}
@@ -572,43 +673,47 @@ export default function ExamEntryV2({
             renderValue={(o) => <span className="font-semibold text-v2-text">{o.label}</span>}
           />
         </div>
-        <div className="min-w-0">
-          {label(t("Ustoz"), errTeacher)}
-          <V2Picker
-            size="sm"
-            label={t("Ustoz")}
-            value={teacherId}
-            onChange={setTeacherId}
-            options={teacherOptions}
-            loading={teachersLoading && !teacherOptions.length}
-            placeholder={t("Ustozni tanlang")}
-            searchable
-            searchPlaceholder={t("Ustozni qidirish")}
-            emptyText={t("O'qituvchi topilmadi")}
-            width={300}
-            state={errTeacher ? "error" : "default"}
-            renderValue={(o) => <span className="font-semibold text-v2-text">{o.label}</span>}
-          />
-        </div>
-        <div className="min-w-0">
-          {label(t("Guruh"), errGroup)}
-          <V2Picker
-            size="sm"
-            label={t("Guruh")}
-            value={groupId}
-            onChange={changeGroup}
-            options={groupOptions}
-            disabled={Boolean(ed)}
-            loading={groupsLoading && !groupOptions.length}
-            placeholder={t("Guruhni tanlang")}
-            searchable
-            searchPlaceholder={t("Guruh yoki o'qituvchi")}
-            emptyText={course ? t("Bu fan bo'yicha guruh yo'q") : t("Guruh topilmadi")}
-            width={340}
-            state={errGroup ? "error" : "default"}
-            renderValue={(o) => <span className="font-semibold text-v2-text">{o.label}</span>}
-          />
-        </div>
+        {!groupless && (
+          <div className="min-w-0">
+            {label(t("Ustoz"), errTeacher)}
+            <V2Picker
+              size="sm"
+              label={t("Ustoz")}
+              value={teacherId}
+              onChange={setTeacherId}
+              options={teacherOptions}
+              loading={teachersLoading && !teacherOptions.length}
+              placeholder={t("Ustozni tanlang")}
+              searchable
+              searchPlaceholder={t("Ustozni qidirish")}
+              emptyText={t("O'qituvchi topilmadi")}
+              width={300}
+              state={errTeacher ? "error" : "default"}
+              renderValue={(o) => <span className="font-semibold text-v2-text">{o.label}</span>}
+            />
+          </div>
+        )}
+        {!groupless && (
+          <div className="min-w-0">
+            {label(t("Guruh"), errGroup)}
+            <V2Picker
+              size="sm"
+              label={t("Guruh")}
+              value={groupId}
+              onChange={changeGroup}
+              options={groupOptions}
+              disabled={Boolean(ed)}
+              loading={groupsLoading && !groupOptions.length}
+              placeholder={t("Guruhni tanlang")}
+              searchable
+              searchPlaceholder={t("Guruh yoki o'qituvchi")}
+              emptyText={course ? t("Bu fan bo'yicha guruh yo'q") : t("Guruh topilmadi")}
+              width={340}
+              state={errGroup ? "error" : "default"}
+              renderValue={(o) => <span className="font-semibold text-v2-text">{o.label}</span>}
+            />
+          </div>
+        )}
         <div className="min-w-0">
           {label(t("Oy"), false)}
           <V2Picker
@@ -653,7 +758,7 @@ export default function ExamEntryV2({
       <div className="grid items-start gap-4 min-[64rem]:grid-cols-[minmax(0,1fr)_300px]">
         {/* O'quvchilar kartasi */}
         <section className="min-w-0 overflow-hidden rounded-v2-lg border border-v2-border bg-v2-surface shadow-v2-sm" aria-label={t("O'quvchilar")}>
-          {!groupId ? (
+          {!groupless && !groupId ? (
             <div className="p-6">
               <div className="flex flex-col items-center gap-2 rounded-v2-lg bg-v2-surface-2 px-6 py-10 text-center">
                 <span className="flex size-10 items-center justify-center rounded-v2-md bg-v2-surface text-v2-text-3 shadow-v2-sm">
@@ -668,13 +773,15 @@ export default function ExamEntryV2({
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <span className="text-v2-body font-semibold text-v2-text">{studentsLoading ? t("O'quvchilar") : t("{n} ta o'quvchi", { n: students.length })}</span>{" "}
-                  <span className="text-v2-small text-v2-text-2">{ed ? t("bo'sh qoldirilgani sarhisobdan chiqadi") : t("guruhdan avtomatik olindi")}</span>
+                  <span className="text-v2-small text-v2-text-2">
+                    {groupless ? t("qidirib qo'shiladi — guruhga qo'shilmaydi") : ed ? t("bo'sh qoldirilgani sarhisobdan chiqadi") : t("guruhdan avtomatik olindi")}
+                  </span>
                 </div>
-                <button type="button" onClick={() => setNewOpen(true)} disabled={!group} className={smallBtn}>
+                <button type="button" onClick={() => setNewOpen(true)} disabled={!groupless && !group} className={smallBtn}>
                   <Plus className="size-4" strokeWidth={1.75} aria-hidden />
-                  {t("O'quvchi qo'shish")}
+                  {groupless ? t("Yangi o'quvchi") : t("O'quvchi qo'shish")}
                 </button>
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={!students.length || importing} className={smallBtn}>
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={(!groupless && !students.length) || importing} className={smallBtn}>
                   {importing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileUp className="size-4" strokeWidth={1.75} aria-hidden />}
                   {t("Excel'dan yuklash")}
                 </button>
@@ -692,6 +799,24 @@ export default function ExamEntryV2({
                 />
               </div>
 
+              {groupless && (
+                <div className="px-4 pb-3">
+                  <StudentSearchField
+                    inputRef={searchRef}
+                    clearOnPick
+                    onPick={(row) => addToRoster(pupilOfRow(row))}
+                    placeholder={t("O'quvchini ism yoki telefon bo'yicha qidiring…")}
+                    trailing={(row) =>
+                      rosterIds.has(row.id) ? (
+                        <span className="text-v2-text-3">{t("ro'yxatda")}</span>
+                      ) : prior.has(row.id) ? (
+                        <span className="text-v2-warning">{t("bu oyda bor")}</span>
+                      ) : null
+                    }
+                  />
+                </div>
+              )}
+
               {dup && (
                 <div role="note" className="mx-4 mb-3 flex items-start gap-2 rounded-v2-md bg-v2-warning-bg px-3 py-2.5 text-v2-small text-v2-text">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0 text-v2-warning" strokeWidth={2} aria-hidden />
@@ -708,7 +833,7 @@ export default function ExamEntryV2({
               {/* `relative` — sarlavhadagi yashirin (sr-only, absolute) yozuv shu o'ram ichida kesilsin:
                   aks holda telefonda butun sahifa yonga suriladi (sarlavha kataklari sticky emas). */}
               <div className="relative overflow-x-auto">
-                <table className="w-full min-w-[600px] border-collapse text-v2-body">
+                <table className={`w-full border-collapse text-v2-body ${groupless ? "min-w-[760px]" : "min-w-[600px]"}`}>
                   <thead>
                     <tr className="bg-v2-surface-2 text-left text-v2-small text-v2-text-2 shadow-[inset_0_-1px_0_var(--v2-border),inset_0_1px_0_var(--v2-border)]">
                       <th className="w-12 py-2.5 pl-4 pr-2 font-medium">№</th>
@@ -718,6 +843,11 @@ export default function ExamEntryV2({
                       <th className="w-[120px] py-2.5 pl-2 pr-4">
                         <span className="sr-only">{t("Holat")}</span>
                       </th>
+                      {groupless && (
+                        <th className="w-12 py-2.5 pr-3">
+                          <span className="sr-only">{t("Olib tashlash")}</span>
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -741,9 +871,20 @@ export default function ExamEntryV2({
                       ))}
                     {!studentsLoading && students.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center">
-                          <div className="text-v2-body font-semibold text-v2-text">{t("Guruhda o'quvchi yo'q")}</div>
-                          <p className="mt-1 text-v2-small text-v2-text-2">{t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}</p>
+                        <td colSpan={groupless ? 6 : 5} className="px-4 py-8 text-center">
+                          {groupless ? (
+                            <>
+                              <div className="text-v2-body font-semibold text-v2-text">{t("Ro'yxat hozircha bo'sh")}</div>
+                              <p className="mx-auto mt-1 max-w-md text-v2-small text-v2-text-2">
+                                {t("Yuqoridagi qidiruvdan o'quvchini tanlang; bazada bo'lmasa — «Yangi o'quvchi». Excel'dan ham yuklasa bo'ladi.")}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-v2-body font-semibold text-v2-text">{t("Guruhda o'quvchi yo'q")}</div>
+                              <p className="mt-1 text-v2-small text-v2-text-2">{t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}</p>
+                            </>
+                          )}
                         </td>
                       </tr>
                     )}
@@ -753,6 +894,7 @@ export default function ExamEntryV2({
                         const highlight = focused || (focusRow === null && picked === r.p.id);
                         const over = r.raw !== "" && totalNum > 0 && Number(r.raw) > totalNum;
                         const name = pupilFullName(r.p);
+                        const before = groupless ? prior.get(r.p.id) : undefined;
                         return (
                           <tr
                             key={r.p.id}
@@ -767,6 +909,20 @@ export default function ExamEntryV2({
                               )}
                               {extraIds.has(r.p.id) && (
                                 <span className="ml-2 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("guruhda emas")}</span>
+                              )}
+                              {/* Guruhsiz: ikkinchi qator — telefon va «bu oyda bor» (tor ekranda bo'linmasin). */}
+                              {(r.p.phone || before) && groupless && (
+                                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-v2-caption">
+                                  {r.p.phone && <span className="whitespace-nowrap tabular-nums text-v2-text-3">{studentPhoneLabel(r.p.phone)}</span>}
+                                  {before && (
+                                    <span
+                                      title={t("Shu oy va fan bo'yicha boshqa sarhisobda natijasi bor — ikkalasi saqlansa, reyting va botda keyingisi hisoblanadi.")}
+                                      className="whitespace-nowrap rounded-v2-sm bg-v2-warning-bg px-1.5 py-px text-v2-text"
+                                    >
+                                      {t("bu oyda bor: {where} · {pct}%", { where: examGroupTitle(before.exam, t), pct: before.pct })}
+                                    </span>
+                                  )}
+                                </span>
                               )}
                             </td>
                             <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
@@ -816,6 +972,19 @@ export default function ExamEntryV2({
                                 <Check className="ml-auto size-4 text-v2-success" strokeWidth={2} aria-label={t("Kiritildi")} />
                               ) : null}
                             </td>
+                            {groupless && (
+                              <td className="py-2 pr-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => removeFromRoster(r.p.id)}
+                                  title={t("Ro'yxatdan olib tashlash")}
+                                  aria-label={t("{name} — ro'yxatdan olib tashlash", { name })}
+                                  className="inline-flex size-8 items-center justify-center rounded-v2-md text-v2-text-3 transition-colors hover:bg-v2-surface-2 hover:text-v2-danger focus-visible:outline-none focus-visible:shadow-v2-focus"
+                                >
+                                  <X className="size-4" strokeWidth={1.75} aria-hidden />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -832,7 +1001,7 @@ export default function ExamEntryV2({
                   <span className="mx-2 text-v2-text-3" aria-hidden>
                     •
                   </span>
-                  {t("Guruh o'rtachasi")} <span className="font-semibold tabular-nums text-v2-text">{avg === null ? "—" : `${avg}%`}</span>
+                  {groupless ? t("Ro'yxat o'rtachasi") : t("Guruh o'rtachasi")} <span className="font-semibold tabular-nums text-v2-text">{avg === null ? "—" : `${avg}%`}</span>
                 </div>
                 <div className="flex flex-col-reverse gap-2 min-[40rem]:flex-row">
                   <button type="button" onClick={requestLeave} disabled={saving} className={`${secondaryBtn} justify-center`}>
@@ -848,10 +1017,21 @@ export default function ExamEntryV2({
           )}
         </section>
 
-        <ExamSideCard month={month} course={course} groupAvg={avg} filled={filled.map((r) => r.pct)} exams={sideExams} pupil={sidePupil} onBack={() => setPicked(null)} />
+        <ExamSideCard
+          month={month}
+          course={course}
+          groupAvg={avg}
+          filled={filled.map((r) => r.pct)}
+          exams={sideExams}
+          pupil={sidePupil}
+          onBack={() => setPicked(null)}
+          groupless={groupless}
+        />
       </div>
 
-      {newOpen && group && (
+      {newOpen && groupless && <NewStudentDrawerV2 groups={groups} onClose={() => setNewOpen(false)} onSaved={(pupil) => addToRoster(pupil, true)} />}
+
+      {newOpen && !groupless && group && (
         <NewStudentDrawerV2
           initialGroupId={group.id}
           groups={groups}
@@ -860,6 +1040,20 @@ export default function ExamEntryV2({
             if (addedTo !== group.id) return;
             setLoaded((cur) => (cur && cur.groupId === String(group.id) ? { ...cur, list: [...cur.list, pupil] } : cur));
             setAddedIds((ids) => [...ids, pupil.id]);
+          }}
+        />
+      )}
+
+      {askMode && (
+        <V2Confirm
+          title={t("Kiritish usuli almashsinmi?")}
+          body={t("Kiritilgan natijalar va ro'yxat tozalanadi.")}
+          confirmLabel={t("Almashtirish")}
+          onCancel={() => setAskMode(null)}
+          onConfirm={() => {
+            const next = askMode;
+            setAskMode(null);
+            applyMode(next);
           }}
         />
       )}

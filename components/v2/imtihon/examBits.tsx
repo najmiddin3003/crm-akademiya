@@ -62,20 +62,52 @@ export type SarhisobView = "list" | "rank";
  */
 export function SarhisobViewSwitch({ value, onChange }: { value: SarhisobView; onChange: (v: SarhisobView) => void }) {
   const { t } = useT();
-  const options: { value: SarhisobView; label: string; icon?: typeof Trophy }[] = [
-    { value: "list", label: t("Guruhlar bo'yicha") },
-    { value: "rank", label: t("Markaz reytingi"), icon: Trophy },
-  ];
+  return (
+    <SegmentSwitch
+      label={t("Ko'rinish")}
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: "list", label: t("Guruhlar bo'yicha") },
+        { value: "rank", label: t("Markaz reytingi"), icon: Trophy },
+      ]}
+    />
+  );
+}
+
+/**
+ * Segment (DESIGN.md → «Tablar va almashtirgichlar»): `surface-2` quti, faol bo'lak `surface` + soya,
+ * 36 px. ← → bilan almashadi. Sarhisob ko'rinishi va natija kiritish usuli (guruh / guruhsiz) shundan.
+ */
+export function SegmentSwitch<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+  disabled = false,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string; icon?: typeof Trophy }[];
+  label: string;
+  /** Qulf (masalan tahrirda) — tanlangani ko'rinib turadi, almashmaydi. */
+  disabled?: boolean;
+}) {
   function onKey(e: KeyboardEvent<HTMLButtonElement>) {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    if (disabled || (e.key !== "ArrowRight" && e.key !== "ArrowLeft")) return;
     e.preventDefault();
-    const next = value === "list" ? "rank" : "list";
-    onChange(next);
+    const i = options.findIndex((o) => o.value === value);
+    onChange(options[(i + (e.key === "ArrowRight" ? 1 : options.length - 1)) % options.length].value);
     const group = e.currentTarget.parentElement;
     requestAnimationFrame(() => group?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus());
   }
   return (
-    <div role="radiogroup" aria-label={t("Ko'rinish")} className="inline-flex h-9 max-w-full shrink-0 items-center gap-0.5 rounded-v2-md border border-v2-border bg-v2-surface-2 p-0.5">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      aria-disabled={disabled || undefined}
+      className={`inline-flex h-9 max-w-full shrink-0 items-center gap-0.5 rounded-v2-md border border-v2-border bg-v2-surface-2 p-0.5 ${disabled ? "opacity-60" : ""}`}
+    >
       {options.map((o) => {
         const on = o.value === value;
         const Icon = o.icon;
@@ -86,9 +118,10 @@ export function SarhisobViewSwitch({ value, onChange }: { value: SarhisobView; o
             role="radio"
             aria-checked={on}
             tabIndex={on ? 0 : -1}
+            disabled={disabled}
             onClick={() => onChange(o.value)}
             onKeyDown={onKey}
-            className={`inline-flex h-full items-center gap-1.5 whitespace-nowrap rounded-[6px] px-3 text-v2-small font-medium transition-colors focus-visible:outline-none focus-visible:shadow-v2-focus ${
+            className={`inline-flex h-full items-center gap-1.5 whitespace-nowrap rounded-[6px] px-3 text-v2-small font-medium transition-colors focus-visible:outline-none focus-visible:shadow-v2-focus disabled:cursor-not-allowed ${
               on ? "bg-v2-surface text-v2-text shadow-v2-sm" : "text-v2-text-2 hover:text-v2-text"
             }`}
           >

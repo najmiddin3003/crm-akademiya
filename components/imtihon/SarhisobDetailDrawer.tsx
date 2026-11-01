@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { Archive, ArchiveRestore, Link2, Pencil, Share2, Trash2, X } from "lucide-react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
-import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
+import { groupExamMonth, isGroupless, type GroupExam } from "@/lib/imtihon";
+import { examGroupLabel } from "@/lib/examRanking";
 import TierBadge from "./TierBadge";
 import { useT } from "@/components/shared/Language";
 
@@ -73,6 +74,7 @@ export default function SarhisobDetailDrawer({
   const modal = useModalClose(onClose, "drawer");
 
   const month = groupExamMonth(exam);
+  const groupless = isGroupless(exam);
   const monthLabel = (() => {
     const m = /^(\d{4})-(\d{2})$/.exec(month);
     return m ? `${MONTH_NAMES[Number(m[2]) - 1]} ${m[1]}` : month;
@@ -91,7 +93,7 @@ export default function SarhisobDetailDrawer({
       <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
         <div className="min-w-0">
           <h3 className="text-[16px] font-semibold truncate">
-            {exam.groupLabel} ‧ {monthLabel}
+            {examGroupLabel(exam, t)} ‧ {monthLabel}
           </h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">{t("Sarhisob tafsiloti")}</p>
         </div>
@@ -139,7 +141,7 @@ export default function SarhisobDetailDrawer({
           <div>
             <div className="text-[12px] text-muted-foreground">{t("Fan / Ustoz")}</div>
             <div>
-              <b>{exam.course}</b> — {exam.teacher}
+              <b>{exam.course}</b> — {exam.teacher || "—"}
             </div>
           </div>
           <div>
@@ -153,7 +155,7 @@ export default function SarhisobDetailDrawer({
         <div className="rounded-xl border border-border overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border bg-secondary/30 text-[14px] font-semibold">{t("Solishtirish")}</div>
           <div className="px-4 py-3.5 space-y-2.5">
-            <CmpBar label={t("Bu guruh")} val={exam.avgPct} strong />
+            <CmpBar label={groupless ? t("Bu ro'yxat") : t("Bu guruh")} val={exam.avgPct} strong />
             <CmpBar label={t("{course} bo'yicha", { course: exam.course })} val={cmp.subjAvg} />
             <CmpBar label={t("Markaz o'rtachasi")} val={cmp.centerAvg} />
           </div>
@@ -169,7 +171,7 @@ export default function SarhisobDetailDrawer({
                   <th className="text-left px-3 py-2">{t("O'quvchi")}</th>
                   <th className="text-right px-3 py-2 whitespace-nowrap">{t("To'g'ri")}</th>
                   <th className="text-left px-3 py-2 w-28">{t("O'zlashtirish")}</th>
-                  <th className="text-right px-3 py-2 whitespace-nowrap">{t("Guruhga nisbatan")}</th>
+                  <th className="text-right px-3 py-2 whitespace-nowrap">{groupless ? t("Ro'yxatga nisbatan") : t("Guruhga nisbatan")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,7 +201,7 @@ export default function SarhisobDetailDrawer({
               </tbody>
               <tfoot>
                 <tr className="bg-secondary/30 border-t border-border">
-                  <td colSpan={3} className="px-3 py-2 text-[12px] font-semibold">{t("Guruh o'rtachasi")}</td>
+                  <td colSpan={3} className="px-3 py-2 text-[12px] font-semibold">{groupless ? t("Ro'yxat o'rtachasi") : t("Guruh o'rtachasi")}</td>
                   <td className="px-3 py-2" colSpan={2}>
                     <TierBadge pct={exam.avgPct} />
                   </td>

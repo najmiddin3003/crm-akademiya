@@ -7,12 +7,12 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import DeleteConfirmModal from "@/components/offline-courses/DeleteConfirmModal";
 import { uzDateIso } from "@/lib/uzTime";
-import { groupExamMonth, liveExams, type GroupExam } from "@/lib/imtihon";
+import { groupExamMonth, isGroupless, liveExams, type GroupExam } from "@/lib/imtihon";
 import { downloadCsv } from "./importUtils";
 import TierBadge from "./TierBadge";
 import GroupExamDrawer from "./GroupExamDrawer";
 import SarhisobDetailDrawer, { fmtExamDate, pupilAvgPct } from "./SarhisobDetailDrawer";
-import { sarhisobCsvRows, upsertExam, useCopyGroupLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
+import { examGroupLabel, sarhisobCsvRows, upsertExam, useCopyGroupLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
 import { useCenterRanking } from "./useCenterRanking";
 import CenterRankingView from "./CenterRankingView";
 import CenterShareDialog from "./CenterShareDialog";
@@ -327,9 +327,9 @@ export default function SarhisobView() {
                       >
                         <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{fmtExamDate(r.date)}</td>
                         <td className="px-4 py-3 text-[13px] font-medium">{r.course}</td>
-                        <td className="px-4 py-3 text-[13px]">{r.teacher}</td>
+                        <td className="px-4 py-3 text-[13px]">{r.teacher || "—"}</td>
                         <td className="px-4 py-3 text-[13px]">
-                          {r.groupLabel}
+                          {examGroupLabel(r, t)}
                           {r.level ? <span className="text-muted-foreground"> · {t(r.level)}</span> : null}
                         </td>
                         <td className="px-4 py-3 text-[13px] tabular-nums text-right">{r.studentCount}</td>
@@ -347,9 +347,9 @@ export default function SarhisobView() {
         </>
       )}
 
-      {addOpen &&<GroupExamDrawer onClose={() => setAddOpen(false)} onSaved={onSaved} initialMonth={fm} />}
+      {addOpen && <GroupExamDrawer onClose={() => setAddOpen(false)} onSaved={onSaved} initialMonth={fm} exams={exams} />}
 
-      {editing && <GroupExamDrawer key={editing.id} editing={editing} onClose={() => setEditing(null)} onSaved={onSaved} />}
+      {editing && <GroupExamDrawer key={editing.id} editing={editing} onClose={() => setEditing(null)} onSaved={onSaved} exams={exams} />}
 
       {open && (
         <SarhisobDetailDrawer
@@ -358,7 +358,7 @@ export default function SarhisobView() {
           busy={busyId === open.id}
           onClose={() => setOpenId(null)}
           onExport={(r) => exportCsv([r], groupExamMonth(r))}
-          onCopyLink={() => void copyGroupLink(open)}
+          onCopyLink={isGroupless(open) ? undefined : () => void copyGroupLink(open)}
           onEdit={() => {
             setOpenId(null);
             setEditing(open);
@@ -375,7 +375,7 @@ export default function SarhisobView() {
           message={t(
             "Natijalar butunlay o'chadi, shu oyning Sarhisob tangalari va o'quvchilar botidagi natija qayta hisoblanadi (faqat yashirish uchun — «Arxivlash»). O'chirilsinmi:",
           )}
-          name={`${confirmDel.groupLabel} · ${monthLabel(groupExamMonth(confirmDel))}`}
+          name={`${examGroupLabel(confirmDel, t)} · ${monthLabel(groupExamMonth(confirmDel))}`}
           onCancel={() => setConfirmDel(null)}
           onConfirm={() => {
             const ex = confirmDel;

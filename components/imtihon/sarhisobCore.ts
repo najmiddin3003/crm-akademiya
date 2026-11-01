@@ -5,6 +5,7 @@ import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import { CENTER_SHARE_DEFAULT, decodeShare, encodeShare, isValidShareMask, type CenterShareField, type CenterShareShow } from "@/lib/centerShare";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
+import { examGroupLabel } from "@/lib/examRanking";
 import { fmtExamDate } from "./SarhisobDetailDrawer";
 
 // IMTIHON → SARHISOB: UMUMIY YADRO — eski tab (SarhisobView.tsx) va yangi versiya
@@ -78,7 +79,7 @@ export function useExamActions(setExams: Dispatch<SetStateAction<GroupExam[]>>) 
     showToast({
       tone: "success",
       title: archived ? t("Sarhisob arxivlandi") : t("Sarhisob arxivdan chiqarildi"),
-      detail: archived ? [exam.groupLabel, t("Tangalar va botdagi natija o'zgarmaydi.")] : exam.groupLabel,
+      detail: archived ? [examGroupLabel(exam, t), t("Tangalar va botdagi natija o'zgarmaydi.")] : examGroupLabel(exam, t),
       action: archived ? { label: t("Arxivdan chiqarish"), onClick: () => void setArchived(exam, false) } : undefined,
     });
     return true;
@@ -88,7 +89,7 @@ export function useExamActions(setExams: Dispatch<SetStateAction<GroupExam[]>>) 
     const r = await send(exam, { method: "DELETE" });
     if (!r.ok) return false;
     setExams((prev) => prev.filter((x) => x.id !== exam.id));
-    showToast({ tone: "success", title: t("Sarhisob o'chirildi"), detail: t("{groupLabel} · {n} o'quvchi", { groupLabel: exam.groupLabel, n: exam.studentCount }) });
+    showToast({ tone: "success", title: t("Sarhisob o'chirildi"), detail: t("{groupLabel} · {n} o'quvchi", { groupLabel: examGroupLabel(exam, t), n: exam.studentCount }) });
     return true;
   }
 
@@ -240,7 +241,7 @@ export function useCenterShare(month: string, course: string) {
 }
 
 /** Guruh nomi: «7» → «7-guruh» — qoidasi lib/examRanking.ts da (ochiq reyting sahifasi ham shundan). */
-export { examGroupTitle } from "@/lib/examRanking";
+export { examGroupLabel, examGroupTitle } from "@/lib/examRanking";
 
 /** "2026-10" → "Oktabr 2026" (tanlangan tilda). */
 export function useMonthLabel() {

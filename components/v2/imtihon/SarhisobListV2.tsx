@@ -17,7 +17,7 @@ import { examGroupTitle, sarhisobCsvRows, useCopyGroupLink, useExamActions, useM
 import { useCenterRanking } from "@/components/imtihon/useCenterRanking";
 import { rankingCsvRows } from "@/lib/examRanking";
 import { uzDateIso } from "@/lib/uzTime";
-import { groupExamMonth, liveExams, type GroupExam } from "@/lib/imtihon";
+import { groupExamMonth, isGroupless, liveExams, type GroupExam } from "@/lib/imtihon";
 import CenterRankingV2 from "./CenterRankingV2";
 import CenterShareDialogV2 from "./CenterShareDialogV2";
 import SarhisobDetailV2 from "./SarhisobDetailV2";
@@ -157,8 +157,9 @@ export default function SarhisobListV2({
     const busy = busyId === r.id;
     return [
       { key: "h", heading: `${r.course} · ${groupTitle(r)}` },
-      // Arxivdagi sarhisob ochiq sahifada ko'rinmaydi — havolasi berilmaydi.
-      ...(r.archived ? [] : [{ key: "link", label: t("Havolani nusxalash"), icon: Link2, onSelect: () => void copyGroupLink(r) }]),
+      // Arxivdagi sarhisob ochiq sahifada ko'rinmaydi — havolasi berilmaydi; guruhsiz ro'yxatning guruh
+      // sahifasi yo'q (uning natijalari markaz reytingi havolasida).
+      ...(r.archived || isGroupless(r) ? [] : [{ key: "link", label: t("Havolani nusxalash"), icon: Link2, onSelect: () => void copyGroupLink(r) }]),
       { key: "edit", label: t("Tahrirlash"), icon: Pencil, onSelect: () => onEdit(r, fm), disabled: busy },
       r.archived
         ? { key: "unarchive", label: t("Arxivdan chiqarish"), icon: ArchiveRestore, onSelect: () => void setArchived(r, false), disabled: busy }
@@ -376,7 +377,7 @@ export default function SarhisobListV2({
                               <span className="truncate font-medium text-v2-text">{r.course}</span>
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-v2-small text-v2-text">{r.teacher}</td>
+                          <td className="px-3 py-3 text-v2-small text-v2-text">{r.teacher || "—"}</td>
                           <td className="px-3 py-3 text-v2-small">
                             <span className="font-semibold text-v2-text group-hover:underline group-hover:underline-offset-2">{groupTitle(r)}</span>
                             {r.level ? <span className="text-v2-text-3"> · {t(r.level)}</span> : null}

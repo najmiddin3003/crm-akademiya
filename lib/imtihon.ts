@@ -154,11 +154,13 @@ export interface GroupExam {
   month: string;
   /** Fan yo'nalishi — `offline_courses.name`. */
   course: string;
+  /** Guruhsiz ro'yxatda bo'sh bo'lishi mumkin. */
   teacher: string;
+  /** `GROUPLESS_GROUP_ID` (0) — guruhsiz ro'yxat (pastda). */
   groupId: number;
-  /** Guruh raqami (`groups.name`, odatda "13"). */
+  /** Guruh raqami (`groups.name`, odatda "13"); guruhsizda bo'sh. */
   groupName: string;
-  /** "Matematika (13-guruh)" — ro'yxatlarda ko'rinadigan nom. */
+  /** "Matematika (13-guruh)" — ro'yxatlarda ko'rinadigan nom; guruhsizda «Guruhsiz» (ekranda — examGroupLabel). */
   groupLabel: string;
   /** Guruh bosqichi — bo'sh bo'lishi mumkin. */
   level: string;
@@ -189,6 +191,22 @@ export interface GroupExam {
   linkKey?: string;
 }
 
+/*
+ * GURUHSIZ RO'YXAT (01.11.2026, foydalanuvchi: «hali hammani guruhga joylamaganmiz … Markaz bo'yicha
+ * 1 ta ro'yxat qilish kerak … qaysi guruhda o'qiysiz demasin»): guruh va ustozsiz kiritilgan sarhisob —
+ * `groupId` 0, `groupName`/`level` bo'sh, `groupLabel` «Guruhsiz» (ekranda — lib/examRanking.ts →
+ * examGroupLabel/examGroupTitle). O'quvchi butun filial bazasidan tanlanadi (bazada yo'q bo'lsa karta
+ * ochiladi) va GURUHGA QO'SHILMAYDI — to'lov, qarz, davomat tegilmaydi. Natija markaz reytingiga va
+ * o'quvchilar botiga (`monthly_exams`) tushadi; tanga va nishon BERILMAYDI (gamifikatsiya guruh–oy
+ * bo'yicha), guruh natijalari havolasi yo'q (lib/groupResultsLink.ts → withLinkKey).
+ */
+export const GROUPLESS_GROUP_ID = 0;
+export const GROUPLESS_LABEL = "Guruhsiz";
+
+export function isGroupless(exam: Pick<GroupExam, "groupId">): boolean {
+  return exam.groupId === GROUPLESS_GROUP_ID;
+}
+
 /** Arxivlanmagan sarhisoblar — ro'yxat, ko'rsatkich va taqqoslashlar shulardan. */
 export function liveExams<T extends Pick<GroupExam, "archived">>(list: T[]): T[] {
   return list.filter((r) => !r.archived);
@@ -204,7 +222,9 @@ export interface GroupExamInput {
   /** "YYYY-MM" — berilmasa sananing oyi. */
   month: string;
   course: string;
+  /** Guruhsiz ro'yxatda ixtiyoriy (bo'sh). */
   teacher: string;
+  /** `GROUPLESS_GROUP_ID` (0) — guruhsiz ro'yxat (mijoz `groupless: true` yuboradi). */
   groupId: number;
   total: number;
   students: { pupilId: number; correct: number }[];
@@ -225,10 +245,12 @@ export function sanitizeGroupExam(raw: unknown): { ok: true; input: GroupExamInp
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { ok: false, error: "Sarhisob oyini tanlang" };
   const course = String(r.course || "").trim();
   if (!course) return { ok: false, error: "Fan yo'nalishini tanlang" };
+  // Guruhsiz ro'yxat — faqat aniq `groupless: true` bilan (guruhi yo'q yuk eski xato bilan rad etiladi).
+  const groupless = r.groupless === true;
   const teacher = String(r.teacher || "").trim();
-  if (!teacher) return { ok: false, error: "Ustozni tanlang" };
-  const groupId = Number(r.groupId);
-  if (!Number.isFinite(groupId) || groupId <= 0) return { ok: false, error: "Guruhni tanlang" };
+  if (!teacher && !groupless) return { ok: false, error: "Ustozni tanlang" };
+  const groupId = groupless ? GROUPLESS_GROUP_ID : Number(r.groupId);
+  if (!groupless && (!Number.isInteger(groupId) || groupId <= 0)) return { ok: false, error: "Guruhni tanlang" };
   const total = Math.trunc(Number(r.total) || 0);
   if (total <= 0) return { ok: false, error: "Savollar sonini kiriting" };
   if (!Array.isArray(r.students) || r.students.length === 0) return { ok: false, error: "Kamida bitta o'quvchi tanlang" };
