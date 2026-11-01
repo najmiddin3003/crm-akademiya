@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, FilePlus, Plus } from "lucide-react";
+import { Download, FilePlus, Link2, Plus } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import V2Select from "@/components/v2/ui/V2Select";
@@ -11,7 +11,7 @@ import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { downloadCsv } from "@/components/imtihon/importUtils";
 import { pupilAvgPct } from "@/components/imtihon/SarhisobDetailDrawer";
-import { sarhisobCsvRows, useMonthLabel } from "@/components/imtihon/sarhisobCore";
+import { sarhisobCsvRows, useCopyPublicLink, useMonthLabel } from "@/components/imtihon/sarhisobCore";
 import { uzDateIso } from "@/lib/uzTime";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import SarhisobDetailV2 from "./SarhisobDetailV2";
@@ -22,6 +22,9 @@ import { ImtihonHeader, ScoreBar, examBand } from "./examBits";
 // filtri, to'rt ko'rsatkich, oydagi sarhisoblar jadvali (qator bosilsa — tafsilot),
 // «Eksport» (Sarhisob_YYYY-MM.csv, eski bilan bir xil) va «+ Natija kiritish»
 // (rasmdagi ekranga o'tadi). SAVOLLAR 139.
+// «Ochiq havolani nusxalash» (01.11.2026, SAVOLLAR 234) — o'quvchilar natijani kirishsiz
+// ko'radigan /natijalar sahifasi havolasi: joriy filial va tanlangan oy bilan (oyda natija
+// bo'lmasa — oysiz, sahifa eng oxirgi natijali oyni ochadi; sarhisobCore.publicResultsUrl).
 
 const th = "sticky top-0 z-10 whitespace-nowrap bg-v2-surface-2 py-2.5 text-left text-v2-small font-medium text-v2-text-2 shadow-[inset_0_-1px_0_var(--v2-border)]";
 
@@ -33,11 +36,14 @@ function dateOfIso(iso: string): Date | null {
 export default function SarhisobListV2({
   exams,
   loading,
+  branchId,
   initialMonth,
   onAdd,
 }: {
   exams: GroupExam[];
   loading: boolean;
+  /** Joriy filial (ochiq sahifa havolasi uchun); hali yuklanmagan — null. */
+  branchId: number | null;
   /** Manzildagi `oy=` (natija saqlangach shu oyga qaytiladi). */
   initialMonth: string | null;
   onAdd: (month: string) => void;
@@ -46,6 +52,7 @@ export default function SarhisobListV2({
   const [lang] = useLang();
   const { showSuccess } = useToast();
   const monthLabel = useMonthLabel();
+  const copyPublicLink = useCopyPublicLink();
   const [fMonth, setFMonth] = useState<string | null>(initialMonth);
   const [fCourse, setFCourse] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
@@ -92,6 +99,16 @@ export default function SarhisobListV2({
         tab="sarhisob"
         actions={
           <>
+            <button
+              type="button"
+              onClick={() => void copyPublicLink(branchId, exams.some((r) => groupExamMonth(r) === fm) ? fm : "")}
+              disabled={loading}
+              title={t("O'quvchilar natijalarni kirishsiz ko'radigan sahifa havolasi")}
+              className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              <Link2 className="size-4" strokeWidth={1.75} aria-hidden />
+              {t("Ochiq havolani nusxalash")}
+            </button>
             <button type="button" onClick={() => exportCsv(rows, fm)} disabled={rows.length === 0} className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}>
               <Download className="size-4" strokeWidth={1.75} aria-hidden />
               {t("Eksport")}

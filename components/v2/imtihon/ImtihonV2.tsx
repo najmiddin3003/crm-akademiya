@@ -56,7 +56,7 @@ export default function ImtihonV2() {
   const oy = sp.get("oy");
   const month = oy && MONTH_RE.test(oy) ? oy : null;
 
-  const { exams, setExams, loading } = useGroupExams();
+  const { exams, setExams, loading, branchId } = useGroupExams();
 
   // UzBMB bir marta ochilgach DOM'da qoladi (filtr va kiritish holati saqlansin).
   const [uzbmbSeen, setUzbmbSeen] = useState(tab === "uzbmb");
@@ -76,7 +76,7 @@ export default function ImtihonV2() {
         {entry ? (
           <ExamEntryV2 exams={exams} initialMonth={month ?? uzDateIso().slice(0, 7)} onSaved={onSaved} onLeave={() => goList(month)} />
         ) : (
-          <SarhisobListV2 key={month ?? "-"} exams={exams} loading={loading} initialMonth={month} onAdd={goEntry} />
+          <SarhisobListV2 key={month ?? "-"} exams={exams} loading={loading} branchId={branchId} initialMonth={month} onAdd={goEntry} />
         )}
       </div>
       {uzbmbSeen && (

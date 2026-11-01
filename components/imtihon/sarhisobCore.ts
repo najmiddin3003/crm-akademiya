@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/components/shared/Language";
+import { useToast } from "@/components/ui/Toast";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import { fmtExamDate } from "./SarhisobDetailDrawer";
 
@@ -14,13 +15,17 @@ import { fmtExamDate } from "./SarhisobDetailDrawer";
 export function useGroupExams() {
   const [exams, setExams] = useState<GroupExam[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Joriy (navbar) filial — ochiq sahifa havolasi shu filialniki bo'ladi. */
+  const [branchId, setBranchId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/imtihon/group")
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled && d.ok) setExams(d.exams as GroupExam[]);
+        if (cancelled || !d.ok) return;
+        setExams(d.exams as GroupExam[]);
+        if (Number.isInteger(d.branchId)) setBranchId(d.branchId as number);
       })
       .catch(() => {})
       .finally(() => {
@@ -31,7 +36,65 @@ export function useGroupExams() {
     };
   }, []);
 
-  return { exams, setExams, loading };
+  return { exams, setExams, loading, branchId };
+}
+
+/**
+ * OCHIQ NATIJALAR SAHIFASI havolasi (/natijalar, 01.11.2026): joriy filial va
+ * tanlangan oy bilan — o'quvchi havolani ochganda admin ko'rib turgan oyni
+ * ko'radi (sahifada oyni o'zi almashtira oladi). `month` bo'sh — oysiz havola:
+ * sahifa doim natijasi bor ENG OXIRGI oyni ochadi (tugma natijasi yo'q oyda —
+ * masalan sukutdagi joriy oyda — shunday beradi; yangi natija kiritilgach
+ * havola o'zi o'sha oyga o'tadi). Domen — ochiq turgan sayt (Akademiya /
+ * boshqa markaz o'z manzili bilan).
+ */
+export function publicResultsUrl(branchId: number | null, month: string): string {
+  const q = new URLSearchParams();
+  if (branchId !== null) q.set("filial", String(branchId));
+  if (/^\d{4}-\d{2}$/.test(month)) q.set("oy", month);
+  const s = q.toString();
+  return `${window.location.origin}/natijalar${s ? `?${s}` : ""}`;
+}
+
+/** Matnni nusxalaydi: Clipboard API, bo'lmasa (eski brauzer, ruxsat yo'q) — vaqtinchalik maydon orqali. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // pastdagi zaxira yo'l
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/** «Ochiq havolani nusxalash» tugmasi: nusxalaydi va havolani xabarda ko'rsatadi (nusxalanmasa ham — qo'lda olish uchun). */
+export function useCopyPublicLink() {
+  const { t } = useT();
+  const { showSuccess, showError } = useToast();
+  return useCallback(
+    async (branchId: number | null, month: string) => {
+      const link = publicResultsUrl(branchId, month);
+      if (await copyText(link)) showSuccess(t("Havola nusxalandi: {link}", { link }));
+      else showError(t("Havolani nusxalab bo'lmadi — qo'lda ko'chiring: {link}", { link }));
+    },
+    [t, showSuccess, showError],
+  );
 }
 
 /** "2026-10" → "Oktabr 2026" (tanlangan tilda). */

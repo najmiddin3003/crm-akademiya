@@ -40,7 +40,8 @@ export async function GET() {
   // `month` 21.09.2026 da qo'shildi — undan oldingi hujjatlarda yo'q,
   // mijoz doim to'ldirilgan holda olsin.
   const exams = rows.map((r) => ({ ...r, month: groupExamMonth(r) }));
-  return NextResponse.json({ ok: true, exams });
+  // `branchId` — «Ochiq havolani nusxalash» tugmasi uchun (/natijalar?filial=…, lib/publicResults.ts).
+  return NextResponse.json({ ok: true, exams, branchId: scope.branchId });
 }
 
 export async function POST(req: Request) {

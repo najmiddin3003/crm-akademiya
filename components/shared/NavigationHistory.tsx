@@ -20,8 +20,10 @@ const MAX_STACK = 50;
 // ochilmas edi (chiqib ketgan xodim yoki nomzod bilan bir brauzer).
 // "/sorovnoma", "/me" va "/xodim" (botlarning Mini App'lari) 28.09.2026 da
 // qo'shildi: ular ham tarixga tushib, keyin kirish sahifasi CRM o'rniga
-// o'sha yerga qaytarib yuborardi.
-const PUBLIC_PREFIXES = ["/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me", "/xodim"];
+// o'sha yerga qaytarib yuborardi. "/natijalar" (ochiq imtihon natijalari,
+// 01.11.2026) — xuddi shu sabab: admin havolani tekshirgach login o'rniga
+// natijalarga tushib qolardi (proxy.ts → PUBLIC_PATHS bilan bir xil bo'lsin).
+const PUBLIC_PREFIXES = ["/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me", "/xodim", "/natijalar"];
 const isAppPath = (p: string) => p !== "/" && !PUBLIC_PREFIXES.some((x) => p === x || p.startsWith(x + "/") || p.startsWith(x + "?"));
 
 interface NavHistoryValue {

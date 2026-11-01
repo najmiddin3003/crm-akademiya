@@ -48,7 +48,11 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/s
 // `/me/tg` Telegram Mini App, TZ 5.8). Himoya API'da: token yoki `initData`.
 // "/xodim" — xodimlar botining «👤 Profilim» Mini App'i (28.09.2026): sahifa
 // bo'sh qobiq, ma'lumot /api/xodim/* dan `initData` imzosi bilan keladi.
-const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me", "/xodim"];
+// "/natijalar" — imtihon natijalari (Sarhisob) o'quvchilar uchun, kirishsiz
+// (01.11.2026). Havolasi Imtihon → Sarhisob'dagi tugmadan; ma'lumot sahifa
+// bilan serverda keladi (lib/publicResults.ts — ochiq API yo'q), telefonlar
+// serverda yashiriladi.
+const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me", "/xodim", "/natijalar"];
 
 /** Ekran qulflangan bo'lsa ham ishlashi kerak bo'lgan API'lar. */
 const LOCKED_ALLOWED_API = new Set([

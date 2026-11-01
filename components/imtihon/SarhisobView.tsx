@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { FilePlus, Share2 } from "lucide-react";
+import { FilePlus, Link2, Share2 } from "lucide-react";
 import Select from "@/components/ui/Select";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -11,7 +11,7 @@ import { downloadCsv } from "./importUtils";
 import TierBadge from "./TierBadge";
 import GroupExamDrawer from "./GroupExamDrawer";
 import SarhisobDetailDrawer, { fmtExamDate, pupilAvgPct } from "./SarhisobDetailDrawer";
-import { sarhisobCsvRows, useGroupExams, useMonthLabel } from "./sarhisobCore";
+import { sarhisobCsvRows, useCopyPublicLink, useGroupExams, useMonthLabel } from "./sarhisobCore";
 import { useT } from "@/components/shared/Language";
 
 // Imtihon → Sarhisob tabi (referens sarhisob.html → renderList).
@@ -26,6 +26,9 @@ import { useT } from "@/components/shared/Language";
 // Ilgari bu ro'yxat alohida /imtihon/sarhisob sahifasida, tabda esa
 // o'quvchi-o'quvchi "Oylik imtihon" jadvali (Excel import bilan) turardi;
 // 21.09.2026 da referens bo'yicha "Oylik imtihon" Sarhisobga almashdi.
+// «Ochiq havolani nusxalash» (01.11.2026) — o'quvchilar natijani kirishsiz
+// ko'radigan /natijalar sahifasi havolasi (joriy filial + tanlangan oy; oyda natija
+// bo'lmasa — oysiz, sarhisobCore.publicResultsUrl).
 
 function Kpi({ value, label }: { value: string | number; label: string }) {
   return (
@@ -41,7 +44,8 @@ export default function SarhisobView() {
   const { showSuccess } = useToast();
 
   // Ro'yxat, oy nomi va CSV — umumiy yadro (sarhisobCore.ts; yangi versiya ham shundan).
-  const { exams, setExams, loading } = useGroupExams();
+  const { exams, setExams, loading, branchId } = useGroupExams();
+  const copyPublicLink = useCopyPublicLink();
   // `null` — foydalanuvchi hali tanlamagan: eng oxirgi sarhisob oyi
   // (bo'lmasa joriy oy) ko'rsatiladi.
   const [fMonth, setFMonth] = useState<string | null>(null);
@@ -104,6 +108,16 @@ export default function SarhisobView() {
           className="w-48"
         />
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => void copyPublicLink(branchId, exams.some((r) => groupExamMonth(r) === fm) ? fm : "")}
+          disabled={loading}
+          title={t("O'quvchilar natijalarni kirishsiz ko'radigan sahifa havolasi")}
+          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Link2 className="w-4 h-4" />
+          <span>{t("Ochiq havolani nusxalash")}</span>
+        </button>
         <button
           onClick={() => exportCsv(rows, fm)}
           disabled={rows.length === 0}

@@ -234,6 +234,95 @@ export function groupExamMonth(exam: Pick<GroupExam, "date"> & { month?: string 
   return exam.month || String(exam.date || "").slice(0, 7);
 }
 
+/* ============================================================
+   OCHIQ NATIJALAR SAHIFASI — /natijalar (01.11.2026)
+   ============================================================ */
+
+/**
+ * Ochiq sahifadagi o'quvchi natijasi. `pupilId` va to'liq telefon YO'Q —
+ * telefon serverda yashiriladi (`maskPhoneTail`), mijozga to'liq raqam
+ * umuman yetib bormaydi.
+ */
+export interface PublicExamStudent {
+  name: string;
+  /** "** *** 45 67" — faqat oxirgi 4 raqam; raqam yo'q bo'lsa "". */
+  phone: string;
+  correct: number;
+  pct: number;
+}
+
+/** Ochiq sahifadagi sarhisob — kim kiritgani va o'quvchi id'lari olib tashlangan. */
+export interface PublicExam {
+  id: number;
+  date: string;
+  month: string;
+  course: string;
+  teacher: string;
+  groupName: string;
+  groupLabel: string;
+  level: string;
+  total: number;
+  avgPct: number;
+  studentCount: number;
+  /** Natija bo'yicha kamayish tartibida. */
+  students: PublicExamStudent[];
+}
+
+/** Ochiq sahifadagi filial (hovuz — bitta qator, lib/branchPools.ts). */
+export interface PublicBranch {
+  id: number;
+  name: string;
+}
+
+/** /natijalar sahifasining ma'lumoti — lib/publicResults.ts → loadPublicResults. */
+export interface PublicResults {
+  /** Tanlangan filial; `null` — barcha filiallar. */
+  branch: PublicBranch | null;
+  /** Tanlov ro'yxati: natijasi bor filiallar (+ tanlangani). */
+  branches: PublicBranch[];
+  /** Natijasi bor oylar ("YYYY-MM"), yangisi birinchi; havoladagi oy ham qo'shiladi. */
+  months: string[];
+  /** Ko'rsatilayotgan oy; natija umuman yo'q bo'lsa — `null`. */
+  month: string | null;
+  exams: PublicExam[];
+}
+
+/**
+ * Telefon raqamining faqat OXIRGI 4 RAQAMI qoladi, qolgani yulduzcha
+ * (foydalanuvchi: «telefon raqam oxirgi 4 xonali raqami ko'rinsin, qolgani
+ * yulduzcha»). O'zbek raqami (998 bilan yoki 9 xonali) — "** *** 45 67";
+ * boshqa uzunlikda — har raqam o'rniga yulduzcha. 4 raqamdan kam — "".
+ */
+export function maskPhoneTail(raw: string | null | undefined): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (digits.length < 4) return "";
+  const local = digits.length === 12 && digits.startsWith("998") ? digits.slice(3) : digits;
+  const tail = local.slice(-4);
+  if (local.length === 9) return `** *** ${tail.slice(0, 2)} ${tail.slice(2)}`;
+  return `${"*".repeat(local.length - 4)} ${tail.slice(0, 2)} ${tail.slice(2)}`.trim();
+}
+
+/** Bazadagi sarhisob → ochiq sahifa ko'rinishi (telefon yashirilgan, o'quvchilar natija bo'yicha). */
+export function publicExamOf(exam: GroupExam): PublicExam {
+  const students = [...(exam.students ?? [])]
+    .sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name))
+    .map((s) => ({ name: s.name, phone: maskPhoneTail(s.phone), correct: s.correct, pct: s.pct }));
+  return {
+    id: exam.id,
+    date: exam.date,
+    month: groupExamMonth(exam),
+    course: exam.course,
+    teacher: exam.teacher,
+    groupName: exam.groupName,
+    groupLabel: exam.groupLabel,
+    level: exam.level,
+    total: exam.total,
+    avgPct: exam.avgPct,
+    studentCount: students.length,
+    students,
+  };
+}
+
 const MONTH_NAMES: Record<string, string> = {
   "01": "Yanvar", "02": "Fevral", "03": "Mart", "04": "Aprel",
   "05": "May", "06": "Iyun", "07": "Iyul", "08": "Avgust",

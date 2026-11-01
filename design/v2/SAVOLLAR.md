@@ -1234,6 +1234,17 @@ sahifasidagidek), Kassa — tanlov. «To'lov turlari» — faqat tushum; turlar 
 **233. «Namuna» belgisi** — qoida
 Dizayner izohi — ko'rsatilmaydi.
 
+**234. Ochiq imtihon natijalari (/natijalar)** — taxmin (01.11.2026, rasmi yo'q)
+Kirishsiz sahifa, havola Imtihon → Sarhisob'dagi «Ochiq havolani nusxalash» tugmasidan (eski va yangi
+versiyada): joriy filial (1+2 hovuz — Sarhisob'dagidek) va tanlangan oy; oyda natija bo'lmasa — oysiz,
+sahifa natijasi bor eng oxirgi oyni ochadi. Sahifada: oy, filial (natijasi borlari), fan; Sarhisob'dagi
+to'rt ko'rsatkich; guruh kartalari (fan, guruh, ustoz, sana, savollar, guruh o'rtachasi) — ochilsa taqqoslash
+va o'quvchilar o'rni bilan (teng natija — teng o'rin). Qidiruv — ism (kirilda ham) yoki telefonning oxirgi
+4 raqami: o'quvchining natijasi, guruhdagi o'rni va guruhga nisbatan. Telefon serverda yashiriladi
+(«** *** 45 67»), o'quvchi id'si va kim kiritgani sahifaga bormaydi; qidiruv tizimlariga berilmaydi.
+*Savol:* hamma o'quvchining natijasi ko'rinsinmi yoki faqat o'zini qidirib topsinmi? *Taxmin:* hammasi
+(«qolgan ma'lumotlarni ko'rishsin»); faqat o'zi kerak bo'lsa — kartalar yashiriladi, qidiruv qoladi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
