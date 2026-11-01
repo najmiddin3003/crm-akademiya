@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { AlertTriangle, Check, ChevronDown, Download, FileUp, ListChecks, Loader2, Plus, Users, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Download, FileUp, ListChecks, Loader2, Plus, RotateCw, Search, Users, X } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
@@ -14,9 +14,9 @@ import { groupAvgPct, groupExamMonth, imPct, isGroupless, liveExams, type GroupE
 import V2Picker, { type PickerOption } from "@/components/v2/form/V2Picker";
 import V2DateField from "@/components/v2/form/V2DateField";
 import V2Confirm from "@/components/v2/form/V2Confirm";
-import StudentSearchField, { studentPhoneLabel } from "@/components/v2/form/StudentSearchField";
+import { studentPhoneLabel } from "@/components/v2/form/StudentSearchField";
 import { shiftMonth } from "@/components/v2/form/MonthChips";
-import { fieldCls } from "@/components/v2/form/fields";
+import { Chip, fieldCls } from "@/components/v2/form/fields";
 import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { timeLabel } from "@/components/v2/ui/groupStatus";
@@ -25,7 +25,21 @@ import { primaryBtn, secondaryBtn } from "@/components/v2/ui/buttons";
 import NewStudentDrawerV2 from "@/components/v2/students/NewStudentDrawerV2";
 import { downloadCsv, readFileRows } from "@/components/imtihon/importUtils";
 import { examGroupLabel, examGroupTitle, useMonthLabel } from "@/components/imtihon/sarhisobCore";
-import { findResultColumns, matchResultRows, namesPreview, priorResults, pupilOfRow, rosterOfExam } from "@/components/imtihon/examRoster";
+import {
+  centerRoster,
+  filterRoster,
+  findResultColumns,
+  groupsByPupil,
+  matchResultRows,
+  namesPreview,
+  priorResults,
+  pupilOfRow,
+  rosterIndex,
+  rosterOfExam,
+  sortByName,
+  type RosterFilter,
+} from "@/components/imtihon/examRoster";
+import { useActivePupils, useOutsideSearch, useVirtualRows } from "@/components/imtihon/useCenterRoster";
 import ExamSideCard, { type SidePupil } from "./ExamSideCard";
 import { ImtihonHeader, ScoreBar, SegmentSwitch, examBand } from "./examBits";
 
@@ -58,12 +72,18 @@ import { ImtihonHeader, ScoreBar, SegmentSwitch, examBand } from "./examBits";
 //
 // GURUHSIZ RO'YXAT (01.11.2026, «Guruh bo'yicha | Guruhsiz ro'yxat»; foydalanuvchi: «hali hammani
 // guruhga joylamaganmiz … Markaz bo'yicha 1 ta ro'yxat qilish kerak … qaysi guruhda o'qiysiz
-// demasin»; qoidalari lib/imtihon.ts da): ustoz va guruh yo'q — fan, oy, sana, savollar soni. Ro'yxat
-// qo'lda: o'quvchi ism/telefon bo'yicha qidirib qo'shiladi (tanlangach — natija maydoniga, Enter —
-// yana qidiruvga), bazada yo'q bo'lsa «Yangi o'quvchi» (karta ochiladi, guruhsiz), Excel'dan yuklansa
-// butun filial bazasidan moslanadi (components/imtihon/examRoster.ts). Shu oy va fandan boshqa
-// sarhisobda natijasi bori «bu oyda bor» belgisi bilan. Har qo'shilgan o'quvchiga natija yozilishi
-// shart (bo'sh qator — olib tashlanadi). Saqlash — `groupless: true`; tahrirda usul qulf.
+// demasin»; qoidalari lib/imtihon.ts da): ustoz va guruh yo'q — fan, oy, sana, savollar soni.
+// Ro'yxat — filialning BARCHA faol o'quvchilari (o'sha kuni kechqurun: «"ro'yxat bo'sh" chiqyapti,
+// o'rniga markazdagi barcha o'quvchilar ro'yxati chiqsin, guruhsiz o'quvchilar chiqsin»), alifbo
+// bo'yicha; har qatorda telefon va guruhi (yoki «guruhsiz»). Tepada qidiruv (ism/telefon) va filtr
+// «Hammasi | Guruhsiz | Kiritilgan»; faollar orasida topilmasa — butun bazadan (arxivdagi ham)
+// qidiruv, bazada yo'q bo'lsa «Yangi o'quvchi» (karta, guruhsiz). Atayin qo'shilganlar ro'yxat
+// boshida. Natija yozilmagani saqlanmaydi; tahrirda sukut filtr «Kiritilgan». ~5 000 qator — faqat
+// ko'rinib turganlari chiziladi (useVirtualRows). Enter: qidiruv bo'lsa — qidiruvga qaytadi (keyingi
+// ism), bo'lmasa — keyingi qator. Excel'dan yuklansa butun filial bazasidan moslanadi (ismdoshlardan
+// faoli oldin). Shu oy va fandan boshqa sarhisobda natijasi bori «bu oyda bor» belgisi bilan.
+// Saqlash — `groupless: true`; tahrirda usul qulf. Yordamchilar — components/imtihon/examRoster.ts va
+// useCenterRoster.ts (eski panel bilan bitta).
 
 const norm = (s: string) => (s || "").trim().toLowerCase();
 
@@ -154,8 +174,14 @@ export default function ExamEntryV2({
   /** Kiritish usuli (tahrirda — sarhisobniki, qulf). */
   const [mode, setMode] = useState<EntryMode>(ed && isGroupless(ed) ? "groupless" : "group");
   const groupless = mode === "groupless";
-  /** Guruhsiz ro'yxat — qo'lda yig'iladi (tahrirda sarhisobdagilar). */
-  const [roster, setRoster] = useState<Pupil[]>(() => (ed && isGroupless(ed) ? rosterOfExam(ed) : []));
+  /** Guruhsiz ro'yxatga atayin qo'shilganlar (yangi karta, bazadan, Excel'dan; tahrirda — sarhisobdagilar) — ro'yxat boshida. */
+  const [extras, setExtras] = useState<Pupil[]>(() => (ed && isGroupless(ed) ? rosterOfExam(ed) : []));
+  /** Guruhsiz ro'yxat qidiruvi — ism yoki telefon. */
+  const [query, setQuery] = useState("");
+  /** Guruhsiz ro'yxat filtri; tahrirda sukut — natijasi borlar. */
+  const [filter, setFilter] = useState<RosterFilter>(ed && isGroupless(ed) ? "entered" : "all");
+  /** «Kiritilgan» tanlangan paytdagi natijali o'quvchilar — natijasi o'chirilsa ham qatori qochib ketmaydi. */
+  const [enteredSnap, setEnteredSnap] = useState<Set<number>>(() => new Set(ed && isGroupless(ed) ? ed.students.map((s) => s.pupilId) : []));
   /** Usul almashtirish so'ralgan (kiritilgan natija bor — avval tasdiq). */
   const [askMode, setAskMode] = useState<EntryMode | null>(null);
   const inputs = useRef(new Map<number, HTMLInputElement>());
@@ -163,6 +189,14 @@ export default function ExamEntryV2({
   const searchRef = useRef<HTMLInputElement>(null);
   /** Ro'yxatga qo'shilgan o'quvchi — qatori chizilgach natija maydoniga fokus. */
   const focusAfter = useRef<number | null>(null);
+
+  // Guruhsiz ro'yxat — filialning faol o'quvchilari (alifbo bo'yicha), atayin qo'shilganlar boshida.
+  const active = useActivePupils(groupless);
+  const sortedBase = useMemo(() => (active.list ? sortByName(active.list) : []), [active.list]);
+  const baseIds = useMemo(() => new Set((active.list ?? []).map((p) => p.id)), [active.list]);
+  const roster = useMemo(() => centerRoster(sortedBase, extras), [sortedBase, extras]);
+  const rosterIdSet = useMemo(() => new Set(roster.map((p) => p.id)), [roster]);
+  const groupsOf = useMemo(() => groupsByPupil(groups), [groups]);
 
   // Tahrirda ro'yxat oxirida — sarhisobda bor, lekin guruhda endi yo'q o'quvchilar
   // (ism/telefon sarhisobdagidek; server ham ularning eski yozuvini saqlaydi).
@@ -176,8 +210,21 @@ export default function ExamEntryV2({
       .map((s) => ({ id: s.pupilId, firstName: s.name, lastName: "", phone: s.phone }) as unknown as Pupil);
     return { students: [...list, ...extra], extraIds: new Set(extra.map((p) => p.id)) };
   }, [groupless, roster, loaded, groupId, ed]);
-  const studentsLoading = !groupless && Boolean(groupId) && loaded?.groupId !== groupId;
-  const rosterIds = useMemo(() => new Set(roster.map((p) => p.id)), [roster]);
+  const studentsLoading = groupless ? active.list === null && !active.error : Boolean(groupId) && loaded?.groupId !== groupId;
+
+  // Guruhsiz ro'yxat: qidiruv + filtr, faqat ko'rinib turgan qatorlar chiziladi.
+  const index = useMemo(() => (groupless ? rosterIndex(roster) : []), [groupless, roster]);
+  const visible = useMemo(() => filterRoster(index, { query, filter, groupsOf, entered: enteredSnap }), [index, query, filter, groupsOf, enteredSnap]);
+  const grouplessCount = useMemo(() => (groupless ? roster.reduce((n, p) => n + (groupsOf.has(p.id) ? 0 : 1), 0) : 0), [groupless, roster, groupsOf]);
+  // Filtr ichida topilmadi, lekin «Hammasi» da bor — filtrni almashtirish taklif qilinadi.
+  const allMatches = useMemo(
+    () => (groupless && visible.length === 0 && filter !== "all" && query.trim() ? filterRoster(index, { query, filter: "all", groupsOf, entered: enteredSnap }).length : 0),
+    [groupless, visible.length, filter, query, index, groupsOf, enteredSnap],
+  );
+  const virt = useVirtualRows(visible.length, 61);
+  // Faollar orasida umuman topilmadi — butun bazadan (arxivdagi, muzlatilgan).
+  const outside = useOutsideSearch(query, groupless && !studentsLoading && visible.length === 0 && allMatches === 0);
+  const outsideRows = outside.rows.filter((r) => !rosterIdSet.has(r.id));
   const group = useMemo(() => groups.find((g) => String(g.id) === groupId) ?? null, [groups, groupId]);
   const teacherName = teacherId.startsWith("g:") ? teacherId.slice(2) : (teachers.find((x) => String(x.id) === teacherId)?.name ?? "");
   const totalNum = Math.min(999, Math.trunc(Number(total) || 0));
@@ -284,41 +331,45 @@ export default function ExamEntryV2({
     setMode(next);
     setGroupId("");
     setCourseAuto(false);
-    setRoster([]);
+    setExtras([]);
+    setQuery("");
+    setFilter("all");
+    setEnteredSnap(new Set());
     setTried(false);
     resetResults();
   }
 
   function changeMode(next: EntryMode) {
     if (ed || next === mode) return;
-    const entered = Object.values(correct).some((v) => v !== "") || addedIds.length > 0 || roster.length > 0;
+    const entered = Object.values(correct).some((v) => v !== "") || addedIds.length > 0;
     if (entered) setAskMode(next);
     else applyMode(next);
   }
 
-  /** Guruhsiz ro'yxatga (bori — o'z qatoriga); qidiruvdan tanlansa fokus uning natija maydoniga. */
-  function addToRoster(pupil: Pupil, isNew = false) {
-    setRoster((list) => (list.some((x) => x.id === pupil.id) ? list : [...list, pupil]));
+  /**
+   * Guruhsiz ro'yxatga atayin qo'shish (yangi karta, bazadan topilgan) — ro'yxat boshiga, qidiruv va
+   * filtr tozalanadi; bazadan qo'shilsa fokus uning natija maydoniga.
+   */
+  function addExtra(pupil: Pupil, isNew = false) {
+    setExtras((list) => [pupil, ...list.filter((x) => x.id !== pupil.id)]);
     if (isNew) setAddedIds((ids) => (ids.includes(pupil.id) ? ids : [...ids, pupil.id]));
     setPicked(pupil.id);
+    setQuery("");
+    setFilter("all");
+    virt.scrollToTop();
     // Yangi o'quvchi oynasi hali ochiq bo'lishi mumkin («yana qo'shish») — fokus uning ostiga ketmasin.
-    if (isNew) return;
-    const el = inputs.current.get(pupil.id);
-    if (el) {
-      el.focus();
-      el.select();
-    } else focusAfter.current = pupil.id;
+    if (!isNew) focusAfter.current = pupil.id;
   }
 
-  function removeFromRoster(id: number) {
-    setRoster((list) => list.filter((x) => x.id !== id));
-    setCorrect((m) => {
-      const next = { ...m };
-      delete next[id];
-      return next;
-    });
-    setAddedIds((ids) => ids.filter((x) => x !== id));
-    setPicked((cur) => (cur === id ? null : cur));
+  function changeQuery(v: string) {
+    setQuery(v);
+    virt.scrollToTop();
+  }
+
+  function changeFilter(f: RosterFilter) {
+    if (f === "entered") setEnteredSnap(new Set(Object.keys(correct).filter((k) => correct[Number(k)] !== "").map(Number)));
+    setFilter(f);
+    virt.scrollToTop();
   }
 
   // Qo'shilgan qator chizilgach — natija maydoniga fokus (har chizishdan keyin tekshiriladi, arzon).
@@ -393,7 +444,6 @@ export default function ExamEntryV2({
             month: groupExamMonth(ed),
             teacher: ed.teacher,
             course: ed.course,
-            roster: ed.students.map((s) => s.pupilId).join(","),
           }
         : null,
     [ed],
@@ -405,11 +455,9 @@ export default function ExamEntryV2({
         total !== initial.total ||
         date !== initial.date ||
         month !== initial.month ||
-        (groupless
-          ? course !== initial.course || roster.map((x) => x.id).join(",") !== initial.roster
-          : norm(teacherName) !== norm(initial.teacher)) ||
+        (groupless ? course !== initial.course : norm(teacherName) !== norm(initial.teacher)) ||
         addedIds.length > 0
-      : Object.values(correct).some((v) => v !== "") || addedIds.length > 0 || roster.length > 0);
+      : Object.values(correct).some((v) => v !== "") || addedIds.length > 0);
 
   // Saqlanmagan natija bor — sahifani yopish/yangilashdan oldin brauzer so'raydi.
   useEffect(() => {
@@ -435,23 +483,50 @@ export default function ExamEntryV2({
   // O'ng karta taqqoslashi — arxivdagisiz va tahrirlanayotganining eski natijasisiz.
   const sideExams = useMemo(() => liveExams(exams).filter((r) => r.id !== ed?.id), [exams, ed]);
 
+  /** `i` — ko'rinib turgan ro'yxatdagi o'rin (guruhsizda — filtrlangan ro'yxat; qator hali chizilmagan bo'lishi mumkin). */
   function focusRowAt(i: number) {
-    const p = students[i];
+    const p = (groupless ? visible : students)[i];
     if (!p) return;
+    if (groupless) virt.scrollToIndex(i);
     const el = inputs.current.get(p.id);
-    el?.focus();
-    el?.select();
+    if (el) {
+      el.focus();
+      el.select();
+    } else focusAfter.current = p.id;
+  }
+
+  function focusSearch() {
+    searchRef.current?.focus();
+    searchRef.current?.select();
   }
 
   function onInputKey(e: KeyboardEvent<HTMLInputElement>, i: number) {
+    const count = groupless ? visible.length : students.length;
+    // Qidiruv bilan kiritilmoqda — Enter keyingi ism uchun qidiruvga qaytaradi (matni belgilangan).
+    if (e.key === "Enter" && groupless && query.trim()) {
+      e.preventDefault();
+      focusSearch();
+      return;
+    }
     if (e.key === "Enter" || e.key === "ArrowDown") {
       e.preventDefault();
-      if (i + 1 < students.length) focusRowAt(i + 1);
-      else if (groupless) searchRef.current?.focus();
+      if (i + 1 < count) focusRowAt(i + 1);
+      else if (groupless) focusSearch();
       else (e.currentTarget as HTMLInputElement).blur();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      focusRowAt(i - 1);
+      if (i > 0) focusRowAt(i - 1);
+      else if (groupless) focusSearch();
+    }
+  }
+
+  function onSearchKey(e: KeyboardEvent<HTMLInputElement>) {
+    if ((e.key === "Enter" || e.key === "ArrowDown") && visible.length > 0) {
+      e.preventDefault();
+      focusRowAt(0);
+    } else if (e.key === "Escape" && query) {
+      e.preventDefault();
+      changeQuery("");
     }
   }
 
@@ -472,9 +547,6 @@ export default function ExamEntryV2({
     const over = rows.filter((r) => r.raw !== "" && Number(r.raw) > totalNum);
     if (over.length) return showError(t("{n} ta o'quvchining natijasi savollar sonidan ko'p — tuzating", { n: over.length }));
     if (filled.length === 0) return showError(t("Kamida bitta o'quvchining natijasini kiriting"));
-    // Guruhsizda har qo'shilgan o'quvchi — atayin qo'shilgan: natijasiz qolsa jimgina tushib qolmasin.
-    const blank = groupless ? rows.filter((r) => r.raw === "").length : 0;
-    if (blank) return showError(t("{n} ta o'quvchining natijasi yozilmagan — yozing yoki ro'yxatdan olib tashlang", { n: blank }));
     setSaving(true);
     try {
       const res = await fetch(ed ? `/api/imtihon/group/${ed.id}` : "/api/imtihon/group", {
@@ -523,10 +595,12 @@ export default function ExamEntryV2({
   // ── Eksport va Excel'dan yuklash ──
   function exportCsv() {
     const base = groupless ? `${course || "fan"}_guruhsiz` : group ? `${group.course || "guruh"}_${group.name || group.id}` : "";
-    if (!base || !students.length) return;
+    // Guruhsizda — faqat natijasi yozilganlar (butun filial ro'yxati emas).
+    const list = groupless ? rows.filter((r) => r.raw !== "") : rows;
+    if (!base || !list.length) return;
     const head = ["№", "O'quvchi", "To'g'ri javob", "Savollar", "O'zlashtirish %"];
     const out: unknown[][] = [head];
-    rows.forEach((r, i) => out.push([i + 1, pupilFullName(r.p), r.raw, totalNum || "", r.pct ?? ""]));
+    list.forEach((r, i) => out.push([i + 1, pupilFullName(r.p), r.raw, totalNum || "", r.pct ?? ""]));
     const safe = base.replace(/[\\/:*?"<>|\s]+/g, "_");
     downloadCsv(out, `Natija_${safe}_${date}.csv`);
   }
@@ -545,7 +619,7 @@ export default function ExamEntryV2({
       showError(t(e instanceof Error ? e.message : "Fayl o'qilmadi"));
       return;
     }
-    // Guruhsizda — butun filial bazasi (id/ism/telefon, keshdan) + ro'yxatdagilar.
+    // Guruhsizda — butun filial bazasi (id/ism/telefon, keshdan; arxivdagilar ham) + ro'yxatdagilar.
     let pool: Pupil[] = students;
     if (groupless) {
       try {
@@ -564,17 +638,28 @@ export default function ExamEntryV2({
       showError(t("Faylda o'quvchi ismi va to'g'ri javoblar ustuni topilmadi"));
       return;
     }
-    const res = matchResultRows(table, cols, pool, { total: totalNum, strict: groupless });
+    // Ismdoshlar orasida faoli (ro'yxatdagisi) arxivdagidan oldin.
+    const res = matchResultRows(table, cols, pool, { total: totalNum, strict: groupless, prefer: groupless ? rosterIdSet : undefined });
     if (!res.hits.length) {
       showError(groupless ? t("Fayldagi ismlar bazadagi o'quvchilarga mos kelmadi") : t("Fayldagi ismlar guruh o'quvchilariga mos kelmadi"));
       return;
     }
     setCorrect((m) => ({ ...m, ...Object.fromEntries(res.hits.map((h) => [h.pupil.id, String(h.correct)])) }));
     if (groupless) {
-      setRoster((list) => {
-        const have = new Set(list.map((x) => x.id));
-        return [...list, ...res.hits.map((h) => h.pupil).filter((x) => !have.has(x.id))];
-      });
+      // Faol bo'lmagani — ro'yxat boshiga; keyin «Kiritilgan» filtri: yuklangani (avvalgilari bilan) ko'rinsin.
+      const outsideHits = res.hits.map((h) => h.pupil).filter((x) => !rosterIdSet.has(x.id));
+      if (outsideHits.length) setExtras((list) => [...outsideHits, ...list.filter((x) => !outsideHits.some((y) => y.id === x.id))]);
+      setEnteredSnap(
+        new Set([
+          ...Object.keys(correct)
+            .filter((k) => correct[Number(k)] !== "")
+            .map(Number),
+          ...res.hits.map((h) => h.pupil.id),
+        ]),
+      );
+      setFilter("entered");
+      setQuery("");
+      virt.scrollToTop();
       const detail = [
         res.missing.length ? t("Bazada topilmadi: {names}", { names: namesPreview(res.missing) }) : "",
         res.ambiguous.length ? t("Bir xil ismli bir nechta o'quvchi — qidiruv bilan qo'shing: {names}", { names: namesPreview(res.ambiguous) }) : "",
@@ -607,6 +692,170 @@ export default function ExamEntryV2({
     };
   })();
 
+  // ── Jadval qatori (guruh rejimi va guruhsiz ro'yxat uchun bitta) ──
+  // Guruhsizda qator balandligi BIR XIL (60px: ism + ikkinchi qator — telefon, guruh yoki «guruhsiz»,
+  // «bu oyda bor») — uzun ro'yxat faqat ko'rinib turgan qatorlarni chizadi (useVirtualRows), birinchisi
+  // o'lchanadi (`measure`).
+  const renderRow = (p: Pupil, i: number, measure = false) => {
+    const raw = correct[p.id] ?? "";
+    const pct = pctOf(p);
+    const focused = focusRow === p.id;
+    const highlight = focused || (focusRow === null && picked === p.id);
+    const over = raw !== "" && totalNum > 0 && Number(raw) > totalNum;
+    const name = pupilFullName(p);
+    const before = groupless ? prior.get(p.id) : undefined;
+    const isNew = addedIds.includes(p.id);
+    // Guruhsiz: faollar ro'yxatida yo'q — bazadan (arxivdagi, muzlatilgan) yoki sarhisobda bo'lib endi faol emas.
+    const inactive = groupless && !isNew && active.list !== null && !baseIds.has(p.id);
+    const glabels = groupless ? groupsOf.get(p.id) : undefined;
+    return (
+      <tr
+        key={p.id}
+        ref={measure ? virt.measureRow : undefined}
+        onClick={() => setPicked(p.id)}
+        className={`cursor-pointer border-b border-v2-border ${groupless ? "h-[60px]" : "last:border-b-0"} ${highlight ? ROW_TINT.brand : ROW_TINT.hover}`}
+      >
+        <td className="py-2.5 pl-4 pr-2 text-v2-small tabular-nums text-v2-text-2">{i + 1}</td>
+        {groupless ? (
+          <td className="px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-semibold text-v2-text" title={name}>
+                {name || "—"}
+              </span>
+              {isNew && <span className="shrink-0 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("Yangi")}</span>}
+              {inactive && <span className="shrink-0 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("faol emas")}</span>}
+            </div>
+            <div className="mt-0.5 flex min-w-0 items-center gap-x-2 overflow-hidden whitespace-nowrap text-v2-caption">
+              {before && (
+                <span
+                  title={t("Shu oy va fan bo'yicha boshqa sarhisobda natijasi bor — ikkalasi saqlansa, reyting va botda keyingisi hisoblanadi.")}
+                  className="min-w-0 max-w-[60%] truncate rounded-v2-sm bg-v2-warning-bg px-1.5 py-px text-v2-text"
+                >
+                  {t("bu oyda bor: {where} · {pct}%", { where: examGroupTitle(before.exam, t), pct: before.pct })}
+                </span>
+              )}
+              {p.phone && <span className="shrink-0 tabular-nums text-v2-text-3">{studentPhoneLabel(p.phone)}</span>}
+              {glabels?.length ? (
+                <span className="min-w-0 truncate text-v2-text-2" title={glabels.join(", ")}>
+                  {glabels[0]}
+                  {glabels.length > 1 ? ` +${glabels.length - 1}` : ""}
+                </span>
+              ) : (
+                <span className="shrink-0 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-text-2">{t("guruhsiz")}</span>
+              )}
+            </div>
+          </td>
+        ) : (
+          <td className="px-3 py-2.5">
+            <span className="font-semibold text-v2-text">{name}</span>
+            {isNew && <span className="ml-2 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("Yangi")}</span>}
+            {extraIds.has(p.id) && <span className="ml-2 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("guruhda emas")}</span>}
+          </td>
+        )}
+        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-[104px]">
+            <input
+              ref={(el) => {
+                if (el) inputs.current.set(p.id, el);
+                else inputs.current.delete(p.id);
+              }}
+              value={raw}
+              onChange={(e) => mark(p.id, e.target.value)}
+              onFocus={() => setFocusRow(p.id)}
+              onBlur={() => setFocusRow((cur) => (cur === p.id ? null : cur))}
+              onKeyDown={(e) => onInputKey(e, i)}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="–"
+              aria-label={t("{name} — to'g'ri javoblar", { name })}
+              title={totalNum > 0 ? t("0 dan {totalNum} gacha", { totalNum }) : t("Avval savollar sonini kiriting")}
+              className={fieldCls(over ? "error" : "default", "pr-12 font-semibold tabular-nums", "sm")}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-v2-small tabular-nums text-v2-text-3">/ {totalNum || "—"}</span>
+          </div>
+        </td>
+        <td className="px-3 py-2.5">
+          {pct !== null ? (
+            <div className="flex items-center gap-3">
+              <ScoreBar pct={pct} />
+              <span className={`text-v2-small font-semibold tabular-nums ${examBand(pct) === "low" ? "text-v2-warning" : "text-v2-text"}`}>{pct}%</span>
+              {examBand(pct) === "low" && <span className="text-v2-caption font-normal text-v2-warning">{t("past")}</span>}
+            </div>
+          ) : over ? (
+            <span className="text-v2-caption font-normal text-v2-danger">{t("savollar sonidan ko'p")}</span>
+          ) : raw !== "" && totalNum <= 0 ? (
+            <span className="text-v2-caption font-normal text-v2-text-3">{t("savollar soni kiritilmagan")}</span>
+          ) : (
+            <span className="text-v2-caption font-normal text-v2-text-3">{t("kiritilmagan")}</span>
+          )}
+        </td>
+        <td className="py-2.5 pl-2 pr-4 text-right">
+          {focused ? (
+            <span className="inline-flex items-center gap-1.5 text-v2-caption font-normal text-v2-text-3">
+              <kbd className="rounded-v2-sm border border-v2-border bg-v2-surface px-1.5 py-px font-sans text-[11px] text-v2-text-2">Enter</kbd>
+              {groupless && query.trim() ? t("qidiruvga") : t("keyingisi")}
+            </span>
+          ) : pct !== null ? (
+            <Check className="ml-auto size-4 text-v2-success" strokeWidth={2} aria-label={t("Kiritildi")} />
+          ) : null}
+        </td>
+      </tr>
+    );
+  };
+
+  // Guruhsiz ro'yxatda hech kim chiqmadi: qidiruv bo'lsa — «Hammasi» taklifi yoki butun bazadan qidiruv
+  // (arxivdagi, muzlatilgan) va «Yangi o'quvchi»; aks holda filtr bo'yicha izoh.
+  const searchQ = query.trim();
+  const emptyGroupless = searchQ ? (
+    <div className="mx-auto max-w-lg text-center">
+      <div className="text-v2-body font-semibold text-v2-text">{t("«{q}» ro'yxatda topilmadi", { q: searchQ })}</div>
+      {allMatches > 0 ? (
+        <button type="button" onClick={() => changeFilter("all")} className={`${smallBtn} mt-3`}>
+          {t("«Hammasi»da {n} ta bor — ko'rsatish", { n: allMatches })}
+        </button>
+      ) : outside.loading ? (
+        <Loader2 className="mx-auto mt-3 size-4 animate-spin text-v2-text-3" aria-label={t("Qidirilmoqda")} />
+      ) : outsideRows.length > 0 ? (
+        <>
+          <p className="mt-1 text-v2-small text-v2-text-2">{t("Bazada bor, lekin faol emas — qo'shsangiz ro'yxat boshiga chiqadi:")}</p>
+          <ul className="mt-3 divide-y divide-v2-border overflow-hidden rounded-v2-md border border-v2-border text-left">
+            {outsideRows.map((row) => (
+              <li key={row.id} className="flex items-center gap-3 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-v2-text">{row.name}</div>
+                  <div className="truncate text-v2-caption text-v2-text-3">
+                    {[row.phone ? studentPhoneLabel(row.phone) : "", row.status ? t(row.status) : ""].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+                <button type="button" onClick={() => addExtra(pupilOfRow(row))} className={smallBtn}>
+                  <Plus className="size-4" strokeWidth={1.75} aria-hidden />
+                  {t("Qo'shish")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="mt-1 text-v2-small text-v2-text-2">{t("Bazada ham topilmadi — yangi o'quvchi bo'lsa, karta oching.")}</p>
+      )}
+      {allMatches === 0 && !outside.loading && (
+        <button type="button" onClick={() => setNewOpen(true)} className={`${smallBtn} mt-3`}>
+          <Plus className="size-4" strokeWidth={1.75} aria-hidden />
+          {t("Yangi o'quvchi")}
+        </button>
+      )}
+    </div>
+  ) : (
+    <div className="text-center">
+      <div className="text-v2-body font-semibold text-v2-text">
+        {filter === "entered" ? t("Hali natija yozilmagan") : filter === "groupless" ? t("Guruhsiz o'quvchi yo'q") : t("Filialda faol o'quvchi yo'q")}
+      </div>
+      <p className="mx-auto mt-1 max-w-md text-v2-small text-v2-text-2">
+        {filter === "all" ? t("«Yangi o'quvchi» bilan karta oching yoki Excel'dan yuklang.") : t("«Hammasi» filtrida — filialning barcha faol o'quvchilari.")}
+      </p>
+    </div>
+  );
+
   const dateObj = dateOfIso(date);
   const label = (text: string, err: boolean, extra?: ReactNode) => (
     <div className={`mb-1.5 flex h-5 items-center gap-1.5 text-v2-small ${err ? "text-v2-danger" : "text-v2-text-2"}`}>
@@ -621,7 +870,12 @@ export default function ExamEntryV2({
         tab="sarhisob"
         crumbs={[{ label: t("Sarhisob"), onClick: requestLeave }, { label: ed ? t("Natijani tahrirlash") : t("Natija kiritish") }]}
         actions={
-          <button type="button" onClick={exportCsv} disabled={!students.length} className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}>
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={groupless ? filled.length === 0 : !students.length}
+            className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
+          >
             <Download className="size-4" strokeWidth={1.75} aria-hidden />
             {t("Eksport")}
           </button>
@@ -642,7 +896,7 @@ export default function ExamEntryV2({
         />
         {groupless && (
           <p className="min-w-0 flex-1 text-v2-small text-v2-text-2">
-            {t("O'quvchi qidirib qo'shiladi va guruhga qo'shilmaydi. Natija markaz reytingiga tushadi, tanga berilmaydi.")}
+            {t("Filialning barcha faol o'quvchilari chiqadi — natija yozilganlari saqlanadi, hech kim guruhga qo'shilmaydi. Natija markaz reytingiga tushadi, tanga berilmaydi.")}
           </p>
         )}
       </div>
@@ -774,7 +1028,7 @@ export default function ExamEntryV2({
                 <div className="min-w-0 flex-1">
                   <span className="text-v2-body font-semibold text-v2-text">{studentsLoading ? t("O'quvchilar") : t("{n} ta o'quvchi", { n: students.length })}</span>{" "}
                   <span className="text-v2-small text-v2-text-2">
-                    {groupless ? t("qidirib qo'shiladi — guruhga qo'shilmaydi") : ed ? t("bo'sh qoldirilgani sarhisobdan chiqadi") : t("guruhdan avtomatik olindi")}
+                    {groupless ? t("filialning faol o'quvchilari — natija yozilmagani saqlanmaydi") : ed ? t("bo'sh qoldirilgani sarhisobdan chiqadi") : t("guruhdan avtomatik olindi")}
                   </span>
                 </div>
                 <button type="button" onClick={() => setNewOpen(true)} disabled={!groupless && !group} className={smallBtn}>
@@ -800,20 +1054,49 @@ export default function ExamEntryV2({
               </div>
 
               {groupless && (
-                <div className="px-4 pb-3">
-                  <StudentSearchField
-                    inputRef={searchRef}
-                    clearOnPick
-                    onPick={(row) => addToRoster(pupilOfRow(row))}
-                    placeholder={t("O'quvchini ism yoki telefon bo'yicha qidiring…")}
-                    trailing={(row) =>
-                      rosterIds.has(row.id) ? (
-                        <span className="text-v2-text-3">{t("ro'yxatda")}</span>
-                      ) : prior.has(row.id) ? (
-                        <span className="text-v2-warning">{t("bu oyda bor")}</span>
-                      ) : null
-                    }
-                  />
+                <div className="flex flex-col gap-2 px-4 pb-3 min-[48rem]:flex-row min-[48rem]:items-center">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-v2-text-3" strokeWidth={1.75} aria-hidden />
+                    <input
+                      ref={searchRef}
+                      value={query}
+                      onChange={(e) => changeQuery(e.target.value)}
+                      onKeyDown={onSearchKey}
+                      placeholder={t("O'quvchini ism yoki telefon bo'yicha qidiring…")}
+                      aria-label={t("O'quvchini qidirish")}
+                      autoComplete="off"
+                      spellCheck={false}
+                      className={fieldCls("default", "pl-9 pr-9", "sm")}
+                    />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          changeQuery("");
+                          searchRef.current?.focus();
+                        }}
+                        title={t("Tozalash")}
+                        aria-label={t("Qidiruvni tozalash")}
+                        className="absolute right-1 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-v2-md text-v2-text-3 transition-colors hover:bg-v2-surface-2 hover:text-v2-text focus-visible:shadow-v2-focus focus-visible:outline-none"
+                      >
+                        <X className="size-4" strokeWidth={1.75} aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                  <div role="group" aria-label={t("Ro'yxat filtri")} className="flex flex-wrap gap-1.5">
+                    <Chip on={filter === "all"} onClick={() => changeFilter("all")}>
+                      {t("Hammasi")}
+                      <span className="tabular-nums opacity-70">{roster.length}</span>
+                    </Chip>
+                    <Chip on={filter === "groupless"} onClick={() => changeFilter("groupless")} title={t("Hech bir guruhga joylanmagan o'quvchilar")}>
+                      {t("Guruhsiz")}
+                      <span className="tabular-nums opacity-70">{grouplessCount}</span>
+                    </Chip>
+                    <Chip on={filter === "entered"} onClick={() => changeFilter("entered")} title={t("Natijasi yozilganlar")}>
+                      {t("Kiritilgan")}
+                      <span className="tabular-nums opacity-70">{filled.length}</span>
+                    </Chip>
+                  </div>
                 </div>
               )}
 
@@ -831,28 +1114,28 @@ export default function ExamEntryV2({
               )}
 
               {/* `relative` — sarlavhadagi yashirin (sr-only, absolute) yozuv shu o'ram ichida kesilsin:
-                  aks holda telefonda butun sahifa yonga suriladi (sarlavha kataklari sticky emas). */}
-              <div className="relative overflow-x-auto">
-                <table className={`w-full border-collapse text-v2-body ${groupless ? "min-w-[760px]" : "min-w-[600px]"}`}>
-                  <thead>
+                  aks holda telefonda butun sahifa yonga suriladi (sarlavha kataklari sticky emas).
+                  Guruhsizda — o'z aylantiriladigan qutisi: sarlavha qotadi, faqat ko'rinib turgan qatorlar chiziladi. */}
+              <div
+                ref={groupless ? virt.setBox : undefined}
+                onScroll={groupless ? virt.onScroll : undefined}
+                className={`relative overflow-x-auto ${groupless ? "max-h-[min(68vh,720px)] overflow-y-auto overscroll-contain" : ""}`}
+              >
+                <table className={`w-full border-collapse text-v2-body ${groupless ? "virt-tbl min-w-[720px] table-fixed" : "min-w-[600px]"}`}>
+                  <thead ref={groupless ? virt.measureHead : undefined} className={groupless ? "sticky top-0 z-[1]" : undefined}>
                     <tr className="bg-v2-surface-2 text-left text-v2-small text-v2-text-2 shadow-[inset_0_-1px_0_var(--v2-border),inset_0_1px_0_var(--v2-border)]">
-                      <th className="w-12 py-2.5 pl-4 pr-2 font-medium">№</th>
+                      <th className={`${groupless ? "w-16" : "w-12"} py-2.5 pl-4 pr-2 font-medium`}>№</th>
                       <th className="px-3 py-2.5 font-medium">{t("O'quvchi")}</th>
                       <th className="w-[140px] px-3 py-2.5 font-semibold text-v2-text">{t("To'g'ri javob")}</th>
                       <th className="w-[230px] px-3 py-2.5 font-medium">{t("O'zlashtirish")}</th>
                       <th className="w-[120px] py-2.5 pl-2 pr-4">
                         <span className="sr-only">{t("Holat")}</span>
                       </th>
-                      {groupless && (
-                        <th className="w-12 py-2.5 pr-3">
-                          <span className="sr-only">{t("Olib tashlash")}</span>
-                        </th>
-                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {studentsLoading &&
-                      Array.from({ length: 4 }, (_, i) => (
+                      Array.from({ length: groupless ? 6 : 4 }, (_, i) => (
                         <tr key={`sk${i}`} className="border-b border-v2-border" aria-hidden>
                           <td className="py-3.5 pl-4 pr-2">
                             <div className="h-3 w-4 rounded bg-v2-skeleton" />
@@ -869,135 +1152,65 @@ export default function ExamEntryV2({
                           <td />
                         </tr>
                       ))}
-                    {!studentsLoading && students.length === 0 && (
-                      <tr>
-                        <td colSpan={groupless ? 6 : 5} className="px-4 py-8 text-center">
-                          {groupless ? (
-                            <>
-                              <div className="text-v2-body font-semibold text-v2-text">{t("Ro'yxat hozircha bo'sh")}</div>
-                              <p className="mx-auto mt-1 max-w-md text-v2-small text-v2-text-2">
-                                {t("Yuqoridagi qidiruvdan o'quvchini tanlang; bazada bo'lmasa — «Yangi o'quvchi». Excel'dan ham yuklasa bo'ladi.")}
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <div className="text-v2-body font-semibold text-v2-text">{t("Guruhda o'quvchi yo'q")}</div>
-                              <p className="mt-1 text-v2-small text-v2-text-2">{t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}</p>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    )}
                     {!studentsLoading &&
-                      rows.map((r, i) => {
-                        const focused = focusRow === r.p.id;
-                        const highlight = focused || (focusRow === null && picked === r.p.id);
-                        const over = r.raw !== "" && totalNum > 0 && Number(r.raw) > totalNum;
-                        const name = pupilFullName(r.p);
-                        const before = groupless ? prior.get(r.p.id) : undefined;
-                        return (
-                          <tr
-                            key={r.p.id}
-                            onClick={() => setPicked(r.p.id)}
-                            className={`cursor-pointer border-b border-v2-border last:border-b-0 ${highlight ? ROW_TINT.brand : ROW_TINT.hover}`}
-                          >
-                            <td className="py-2.5 pl-4 pr-2 text-v2-small tabular-nums text-v2-text-2">{i + 1}</td>
-                            <td className="px-3 py-2.5">
-                              <span className="font-semibold text-v2-text">{name}</span>
-                              {addedIds.includes(r.p.id) && (
-                                <span className="ml-2 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("Yangi")}</span>
-                              )}
-                              {extraIds.has(r.p.id) && (
-                                <span className="ml-2 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("guruhda emas")}</span>
-                              )}
-                              {/* Guruhsiz: ikkinchi qator — telefon va «bu oyda bor» (tor ekranda bo'linmasin). */}
-                              {(r.p.phone || before) && groupless && (
-                                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-v2-caption">
-                                  {r.p.phone && <span className="whitespace-nowrap tabular-nums text-v2-text-3">{studentPhoneLabel(r.p.phone)}</span>}
-                                  {before && (
-                                    <span
-                                      title={t("Shu oy va fan bo'yicha boshqa sarhisobda natijasi bor — ikkalasi saqlansa, reyting va botda keyingisi hisoblanadi.")}
-                                      className="whitespace-nowrap rounded-v2-sm bg-v2-warning-bg px-1.5 py-px text-v2-text"
-                                    >
-                                      {t("bu oyda bor: {where} · {pct}%", { where: examGroupTitle(before.exam, t), pct: before.pct })}
-                                    </span>
-                                  )}
-                                </span>
-                              )}
+                      (groupless ? (
+                        active.error && active.list === null ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center">
+                              <div className="text-v2-body font-semibold text-v2-text">{t("O'quvchilar yuklanmadi")}</div>
+                              <button type="button" onClick={active.retry} className={`${smallBtn} mt-3`}>
+                                <RotateCw className="size-4" strokeWidth={1.75} aria-hidden />
+                                {t("Qayta urinish")}
+                              </button>
                             </td>
-                            <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                              <div className="relative w-[104px]">
-                                <input
-                                  ref={(el) => {
-                                    if (el) inputs.current.set(r.p.id, el);
-                                    else inputs.current.delete(r.p.id);
-                                  }}
-                                  value={r.raw}
-                                  onChange={(e) => mark(r.p.id, e.target.value)}
-                                  onFocus={() => setFocusRow(r.p.id)}
-                                  onBlur={() => setFocusRow((cur) => (cur === r.p.id ? null : cur))}
-                                  onKeyDown={(e) => onInputKey(e, i)}
-                                  inputMode="numeric"
-                                  autoComplete="off"
-                                  placeholder="–"
-                                  aria-label={t("{name} — to'g'ri javoblar", { name })}
-                                  title={totalNum > 0 ? t("0 dan {totalNum} gacha", { totalNum }) : t("Avval savollar sonini kiriting")}
-                                  className={fieldCls(over ? "error" : "default", "pr-12 font-semibold tabular-nums", "sm")}
-                                />
-                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-v2-small tabular-nums text-v2-text-3">/ {totalNum || "—"}</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              {r.pct !== null ? (
-                                <div className="flex items-center gap-3">
-                                  <ScoreBar pct={r.pct} />
-                                  <span className={`text-v2-small font-semibold tabular-nums ${examBand(r.pct) === "low" ? "text-v2-warning" : "text-v2-text"}`}>{r.pct}%</span>
-                                  {examBand(r.pct) === "low" && <span className="text-v2-caption font-normal text-v2-warning">{t("past")}</span>}
-                                </div>
-                              ) : over ? (
-                                <span className="text-v2-caption font-normal text-v2-danger">{t("savollar sonidan ko'p")}</span>
-                              ) : r.raw !== "" && totalNum <= 0 ? (
-                                <span className="text-v2-caption font-normal text-v2-text-3">{t("savollar soni kiritilmagan")}</span>
-                              ) : (
-                                <span className="text-v2-caption font-normal text-v2-text-3">{t("kiritilmagan")}</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 pl-2 pr-4 text-right">
-                              {focused ? (
-                                <span className="inline-flex items-center gap-1.5 text-v2-caption font-normal text-v2-text-3">
-                                  <kbd className="rounded-v2-sm border border-v2-border bg-v2-surface px-1.5 py-px font-sans text-[11px] text-v2-text-2">Enter</kbd>
-                                  {t("keyingisi")}
-                                </span>
-                              ) : r.pct !== null ? (
-                                <Check className="ml-auto size-4 text-v2-success" strokeWidth={2} aria-label={t("Kiritildi")} />
-                              ) : null}
-                            </td>
-                            {groupless && (
-                              <td className="py-2 pr-3 text-right" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={() => removeFromRoster(r.p.id)}
-                                  title={t("Ro'yxatdan olib tashlash")}
-                                  aria-label={t("{name} — ro'yxatdan olib tashlash", { name })}
-                                  className="inline-flex size-8 items-center justify-center rounded-v2-md text-v2-text-3 transition-colors hover:bg-v2-surface-2 hover:text-v2-danger focus-visible:outline-none focus-visible:shadow-v2-focus"
-                                >
-                                  <X className="size-4" strokeWidth={1.75} aria-hidden />
-                                </button>
-                              </td>
-                            )}
                           </tr>
-                        );
-                      })}
+                        ) : visible.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8">
+                              {emptyGroupless}
+                            </td>
+                          </tr>
+                        ) : (
+                          <>
+                            {virt.padTop > 0 && (
+                              <tr aria-hidden>
+                                <td colSpan={5} className="p-0" style={{ height: virt.padTop }} />
+                              </tr>
+                            )}
+                            {visible.slice(virt.first, virt.last).map((p, k) => renderRow(p, virt.first + k, k === 0))}
+                            {virt.padBottom > 0 && (
+                              <tr aria-hidden>
+                                <td colSpan={5} className="p-0" style={{ height: virt.padBottom }} />
+                              </tr>
+                            )}
+                          </>
+                        )
+                      ) : students.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center">
+                            <div className="text-v2-body font-semibold text-v2-text">{t("Guruhda o'quvchi yo'q")}</div>
+                            <p className="mt-1 text-v2-small text-v2-text-2">{t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        students.map((p, i) => renderRow(p, i))
+                      ))}
                   </tbody>
                 </table>
               </div>
 
               <div className="flex flex-col gap-3 border-t border-v2-border bg-v2-surface-2 px-4 py-3 min-[40rem]:flex-row min-[40rem]:items-center">
                 <div className="min-w-0 flex-1 text-v2-small text-v2-text-2">
-                  <span className="font-semibold tabular-nums text-v2-text">
-                    {filled.length} / {students.length}
-                  </span>{" "}
-                  {t("kiritildi")}
+                  {groupless ? (
+                    <span className="font-semibold text-v2-text">{t("{n} ta natija kiritildi", { n: filled.length })}</span>
+                  ) : (
+                    <>
+                      <span className="font-semibold tabular-nums text-v2-text">
+                        {filled.length} / {students.length}
+                      </span>{" "}
+                      {t("kiritildi")}
+                    </>
+                  )}
                   <span className="mx-2 text-v2-text-3" aria-hidden>
                     •
                   </span>
@@ -1029,7 +1242,7 @@ export default function ExamEntryV2({
         />
       </div>
 
-      {newOpen && groupless && <NewStudentDrawerV2 groups={groups} onClose={() => setNewOpen(false)} onSaved={(pupil) => addToRoster(pupil, true)} />}
+      {newOpen && groupless && <NewStudentDrawerV2 groups={groups} onClose={() => setNewOpen(false)} onSaved={(pupil) => addExtra(pupil, true)} />}
 
       {newOpen && !groupless && group && (
         <NewStudentDrawerV2

@@ -1,6 +1,7 @@
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import type { StudentRow } from "@/lib/studentsData";
+import { searchPhoneDigits } from "@/lib/phoneSearch";
 import { intOf, normHeader } from "./importUtils";
 
 // IMTIHON → NATIJA KIRITISH: O'QUVCHILAR RO'YXATI YORDAMCHILARI — eski (GroupExamDrawer) va yangi
@@ -8,8 +9,8 @@ import { intOf, normHeader } from "./importUtils";
 //
 // GURUHSIZ RO'YXAT (01.11.2026, foydalanuvchi: «hali hammani guruhga joylamaganmiz … Markaz bo'yicha
 // 1 ta ro'yxat qilish kerak … qaysi guruhda o'qiysiz demasin»; qoidalari lib/imtihon.ts da): ro'yxat
-// guruhdan emas, qo'lda yig'iladi — o'quvchi ism/telefon bo'yicha qidirib tanlanadi, bazada yo'q
-// bo'lsa karta ochiladi, Excel'dan yuklansa — butun filial bazasidan moslanadi.
+// guruhdan emas — filialning barcha faol o'quvchilari (pastdagi «Guruhsiz ro'yxat» bo'limi), bazada
+// yo'q bo'lsa karta ochiladi, Excel'dan yuklansa — butun filial bazasidan moslanadi.
 
 /** Qidiruv natijasi → jadval qatori (jadval `Pupil` bilan ishlaydi; kerakligi — id, ism, telefon). */
 export function pupilOfRow(s: Pick<StudentRow, "id" | "name" | "phone">): Pupil {
@@ -107,7 +108,12 @@ const phone9 = (s: unknown) => String(s ?? "").replace(/\D/g, "").slice(-9);
  * ustuni bo'lsa bir xil ismlilar telefon bilan ajratiladi (ism mos kelmasa telefonning o'zi bilan
  * ham topiladi), baribir bir nechta qolsa — `ambiguous` (taxmin bilan yozilmaydi).
  */
-export function matchResultRows(table: string[][], cols: ResultColumns, pool: Pupil[], opts: { total: number; strict: boolean }): ImportMatch {
+export function matchResultRows(
+  table: string[][],
+  cols: ResultColumns,
+  pool: Pupil[],
+  opts: { total: number; strict: boolean; /** Ismdoshlar orasida bittasi shu to'plamda bo'lsa — o'sha (faol o'quvchi arxivdagidan oldin). */ prefer?: ReadonlySet<number> },
+): ImportMatch {
   const byName = new Map<string, Pupil[]>();
   const byPhone = new Map<string, Pupil[]>();
   const push = (m: Map<string, Pupil[]>, key: string, p: Pupil) => {
@@ -142,6 +148,10 @@ export function matchResultRows(table: string[][], cols: ResultColumns, pool: Pu
         if (same.length) list = same;
         else if (!list.length) list = byPhone.get(d) ?? [];
       }
+      if (list.length > 1 && opts.prefer) {
+        const pref = list.filter((x) => opts.prefer!.has(x.id));
+        if (pref.length === 1) list = pref;
+      }
       if (list.length === 1) p = list[0];
     } else {
       p = list[list.length - 1];
@@ -161,4 +171,105 @@ export function matchResultRows(table: string[][], cols: ResultColumns, pool: Pu
 /** Xabar uchun: birinchi uchta ism, qolgani «…». */
 export function namesPreview(list: string[]): string {
   return list.slice(0, 3).join(", ") + (list.length > 3 ? "…" : "");
+}
+
+/* ---------------- Guruhsiz ro'yxat: filialning barcha faol o'quvchilari ---------------- */
+//
+// 01.11.2026 (kechqurun), foydalanuvchi: «guruhsiz ro'yxat deyilgan yerda "ro'yxat bo'sh" chiqyapti,
+// uni o'rniga markazdagi barcha o'quvchilar ro'yxati chiqsin, guruhsiz o'quvchilar chiqsin». Ro'yxat
+// endi qo'lda yig'ilmaydi — filialning (hovuzi bilan) BARCHA faol o'quvchilari chiqadi, natija
+// yozilmagani saqlanmaydi. Ustiga atayin qo'shilganlar (yangi karta, arxivdagi, Excel'dan,
+// tahrirdagi sarhisobda bo'lib endi faol bo'lmagan) — ro'yxat boshida.
+
+/** Ro'yxat filtri: hammasi, guruhga joylanmaganlar, natijasi yozilganlar. */
+export type RosterFilter = "all" | "groupless" | "entered";
+
+type GroupLike = { id: number; name?: string; course?: string; status?: string; studentIds?: readonly (number | string)[] };
+
+/** pupilId → guruh yorliqlari («Matematika · 7-A»); arxivdagi guruh hisob emas. */
+export function groupsByPupil(groups: readonly GroupLike[]): Map<number, string[]> {
+  const out = new Map<number, string[]>();
+  for (const g of groups) {
+    if (g.status === "archive") continue;
+    const label = [g.course?.trim(), g.name?.trim()].filter(Boolean).join(" · ") || `#${g.id}`;
+    for (const raw of g.studentIds ?? []) {
+      const id = Number(raw);
+      if (!Number.isFinite(id)) continue;
+      const list = out.get(id);
+      if (!list) out.set(id, [label]);
+      else if (!list.includes(label)) list.push(label);
+    }
+  }
+  return out;
+}
+
+const nameCollator = new Intl.Collator("uz", { sensitivity: "base", numeric: true });
+
+/** Ism bo'yicha (alifbo; ismsiz — oxirida); bir o'quvchi bir marta. */
+export function sortByName(list: readonly Pupil[]): Pupil[] {
+  const seen = new Set<number>();
+  const rows: { p: Pupil; name: string }[] = [];
+  for (const p of list) {
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    rows.push({ p, name: pupilFullName(p) });
+  }
+  rows.sort((a, b) => Number(!a.name) - Number(!b.name) || nameCollator.compare(a.name, b.name) || a.p.id - b.p.id);
+  return rows.map((r) => r.p);
+}
+
+/**
+ * Jadval tartibi: atayin qo'shilganlar (qo'shilish tartibida) boshida, keyin faollar alifbo bo'yicha.
+ * Qo'shilgan o'quvchi faollar ro'yxatida ham bo'lsa — o'sha (jonli) yozuvi: tahrirdagi sarhisobning
+ * eski ismi/telefoni emas, hozirgisi ko'rinadi (server ham saqlashda ismni bazadan oladi).
+ */
+export function centerRoster(sortedBase: readonly Pupil[], extras: readonly Pupil[]): Pupil[] {
+  if (!extras.length) return [...sortedBase];
+  const ids = new Set(extras.map((p) => p.id));
+  const live = new Map<number, Pupil>();
+  for (const p of sortedBase) if (ids.has(p.id)) live.set(p.id, p);
+  return [...extras.map((p) => live.get(p.id) ?? p), ...sortedBase.filter((p) => !ids.has(p.id))];
+}
+
+/** Qidiruv kaliti — lib/examRanking.ts dagi qoida (tutuq belgilari bir xil, katta-kichik harf farqsiz). */
+export const foldSearch = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[ʻʼ’‘`´]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+
+export interface RosterEntry {
+  p: Pupil;
+  /** foldSearch(ism) */
+  key: string;
+  /** Telefon raqamlari (faqat raqam). */
+  digits: string;
+}
+
+/** Filtrlash uchun indeks — har harf bosilganda 5 000 ismni qayta katlamaslik uchun bir marta. */
+export function rosterIndex(list: readonly Pupil[]): RosterEntry[] {
+  return list.map((p) => ({ p, key: foldSearch(pupilFullName(p)), digits: String(p.phone ?? "").replace(/\D/g, "") }));
+}
+
+/**
+ * Qidiruv va filtr. Ism — so'zlar istalgan tartibda («Aliyev Vali» ham «Vali Aliyev» ni topadi,
+ * har so'z ism ichida bo'lsa bas); 3+ raqam — telefon ham. «entered» — tanlangan paytdagi natijali
+ * o'quvchilar (`entered`): natijasi o'chirilsa ham qator ko'z oldidan qochib ketmaydi.
+ */
+export function filterRoster(
+  index: readonly RosterEntry[],
+  o: { query: string; filter: RosterFilter; groupsOf: ReadonlyMap<number, string[]>; entered: ReadonlySet<number> },
+): Pupil[] {
+  const q = foldSearch(o.query);
+  const words = q ? q.split(" ") : [];
+  const qDigits = searchPhoneDigits(o.query);
+  const out: Pupil[] = [];
+  for (const e of index) {
+    if (o.filter === "groupless" && o.groupsOf.has(e.p.id)) continue;
+    if (o.filter === "entered" && !o.entered.has(e.p.id)) continue;
+    if (words.length && !words.every((w) => e.key.includes(w)) && !(qDigits !== null && e.digits.includes(qDigits))) continue;
+    out.push(e.p);
+  }
+  return out;
 }

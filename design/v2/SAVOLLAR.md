@@ -1333,7 +1333,8 @@ ism familiyasi, to'g'ri javoblar soni, foizi, qaysi fanligi chiqib tursa bo'ldi�
 o'quvchiga «karta ham ochilsin», «ikkala versiyada»; rasmi yo'q)
 «Natija qo'shish»ning tepasida «Guruh bo'yicha | Guruhsiz ro'yxat» (ikkala versiyada; tahrirda qulf — sarhisob
 qaysi usulda kiritilgan bo'lsa shunda qoladi). Guruhsizda faqat fan, oy, sana, savollar soni — ustoz va guruh yo'q.
-O'quvchi ism yoki telefon bo'yicha butun filial bazasidan qidirib qo'shiladi (bir xil ismlilar telefoni bilan
+[O'sha kuni kechqurun o'zgardi — 241-band: ro'yxatda filialning barcha faol o'quvchilari.] O'quvchi ism yoki
+telefon bo'yicha butun filial bazasidan qidirib qo'shiladi (bir xil ismlilar telefoni bilan
 ajraladi); tanlangach kursor uning natija maydoniga o'tadi, Enter — keyingi qator, oxirgisida — yana qidiruv.
 Bazada yo'q bo'lsa «Yangi o'quvchi» — karta ochiladi (O'quvchilar bo'limiga, GURUHSIZ: to'lov, qarz, davomatga
 ta'sir yo'q; yangi versiyadagi oynada ixtiyoriy «Guruh» maydoni qoladi). Har qo'shilgan o'quvchiga natija shart —
@@ -1347,6 +1348,19 @@ tangalari va nishonlar BERILMAYDI; guruh havolasi yo'q; «Guruhlar» soniga kirm
 *Savol:* guruhsiz natijaga ham tanga berilsinmi? O'quvchilar guruhga joylangach eski guruhsiz sarhisoblarni guruhga
 ko'chirish kerakmi? *Taxmin:* tanga yo'q (guruh–oy yopilishiga bog'liq qoida); ko'chirish shart emas — reyting va bot
 o'quvchi bo'yicha ishlaydi.
+
+**241. Guruhsiz ro'yxat — filialning barcha faol o'quvchilari** — hal qilindi (01.11.2026 kechqurun, «guruhsiz
+ro'yxat deyilgan yerda "ro'yxat bo'sh" chiqyapti, uni o'rniga markazdagi barcha o'quvchilar ro'yxati chiqsin
+guruhsiz o'quvchilar chiqsin»)
+240-banddagi «qidirib qo'shiladi» o'rniga ro'yxatda filialning (hovuzi bilan) BARCHA faol o'quvchilari, alifbo
+bo'yicha; har qatorda telefon va guruhi (bir nechta bo'lsa «+N») yoki «guruhsiz». Tepada qidiruv (ism — so'zlar
+istalgan tartibda, telefon — 3+ raqam) va filtr «Hammasi | Guruhsiz | Kiritilgan» (sonlari bilan). Natija
+yozilgani saqlanadi, bo'shi — yo'q (× va «natija shart» olib tashlandi). Faollar orasida topilmasa butun bazadan
+(arxivdagi, muzlatilgan) qidiruv — «Qo'shish» bilan ro'yxat boshiga («faol emas» belgisi); bazada ham yo'q bo'lsa
+«Yangi o'quvchi». Enter: qidiruv bor — qidiruvga qaytadi (keyingi ism), yo'q — keyingi qator; ↑/↓ ham. Tahrirda
+sukut filtr «Kiritilgan». ~5 000 qator — faqat ko'rinib turganlari chiziladi. Ikkala versiyada.
+*Taxmin:* «Guruhsiz» — arxivdagi bo'lmagan hech bir guruhga biriktirilmaganlar; ro'yxatda faqat «Aktiv» holatdagilar
+(muzlatilgan va arxivdagilar — qidiruv orqali qo'shiladi).
 
 ## Reja
 

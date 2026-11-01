@@ -10467,24 +10467,27 @@ a.kpi-card:hover {
      sahifalar tegilmaydi;
    • Lidlar (.ld-tbl) va Topshiriqlar (.stk-tbl) — o'z animatsiyasi bor
      (chiqish + joy almashish, hooks/useAnimatedRows.ts), chetda;
+   • uzun ro'yxat (.virt-tbl, components/imtihon/useCenterRoster.ts) — faqat
+     ko'rinib turgan qatorlar chiziladi, aylantirganda qatorlar DOM'ga qo'shilib
+     turadi: har biri «suzib chiqsa» ro'yxat miltillaydi — chetda;
    • zinapoya birinchi 12 qatorda; 40-qatordan keyingilar animatsiyasiz —
      katta ro'yxatda yuzlab animatsiya birdan boshlanmasin (ular baribir
      ekrandan pastda). */
 @media screen and (prefers-reduced-motion: no-preference) {
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(-n + 40) {
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(-n + 40) {
     animation: app-row-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(2) { animation-delay: 22ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(3) { animation-delay: 44ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(4) { animation-delay: 66ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(5) { animation-delay: 88ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(6) { animation-delay: 110ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(7) { animation-delay: 132ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(8) { animation-delay: 154ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(9) { animation-delay: 176ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(10) { animation-delay: 198ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(11) { animation-delay: 220ms; }
-  main table:not(.ld-tbl):not(.stk-tbl) > tbody > tr:nth-child(n + 12):nth-child(-n + 40) { animation-delay: 242ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(2) { animation-delay: 22ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(3) { animation-delay: 44ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(4) { animation-delay: 66ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(5) { animation-delay: 88ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(6) { animation-delay: 110ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(7) { animation-delay: 132ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(8) { animation-delay: 154ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(9) { animation-delay: 176ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(10) { animation-delay: 198ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(11) { animation-delay: 220ms; }
+  main table:not(.ld-tbl):not(.stk-tbl):not(.virt-tbl) > tbody > tr:nth-child(n + 12):nth-child(-n + 40) { animation-delay: 242ms; }
 }
 @keyframes app-row-in {
   from { opacity: 0; transform: translateY(10px); }
