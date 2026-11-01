@@ -6517,5 +6517,9 @@
   "Qidiruvni tozalash": "Clear search",
   "Yuklab olindi — {n} ta natija (Excel'da ochiladi)": "Downloaded — {n} results (opens in Excel)",
   "Barcha bosqichlar": "All stages",
-  "Barcha ustozlar": "All teachers"
+  "Barcha ustozlar": "All teachers",
+  "Ism to'g'ri yozilganini tekshiring.": "Check that the name is spelled correctly.",
+  "Havola noto'g'ri yoki eskirgan. Administratordan reyting havolasini qayta so'rang.": "The link is invalid or outdated. Ask the administrator for the ranking link again.",
+  "Markaz reytingining ochiq havolasi — oy va fan bilan": "Public link to the center ranking — with the month and subject",
+  "Oylik imtihon: markaz bo'yicha o'rinlar, eng yaxshi uchlik va har bir o'quvchining natijasi.": "Monthly exam: center-wide places, the top three and every student's result."
 }

@@ -6,7 +6,7 @@ import { groupLabel, type Group } from "@/lib/groups";
 import { uzStamp } from "@/lib/uzTime";
 import { onExamSaved } from "@/lib/gamification/exams";
 import { buildExamStudents, mirrorKeysOf, syncMonthlyMirror } from "@/lib/groupExamsServer";
-import { withLinkKey } from "@/lib/groupResultsLink";
+import { centerResultsKey, withLinkKey } from "@/lib/groupResultsLink";
 import { groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "@/lib/imtihon";
 
 // Imtihon → Sarhisob — "Natija qo'shish" paneli backend'i (MongoDB `group_exams`).
@@ -34,7 +34,9 @@ export async function GET() {
   // mijoz doim to'ldirilgan holda olsin. `linkKey` — «Havolani nusxalash» (guruh natijalari
   // sahifasi /natijalar/<kalit>, lib/groupResultsLink.ts) uchun, bazada yo'q.
   const exams = rows.map((r) => withLinkKey({ ...r, month: groupExamMonth(r) }));
-  return NextResponse.json({ ok: true, exams });
+  // `centerKey` — «Markaz reytingi» → «Ulashish» (01.11.2026): shu filialning ochiq reyting
+  // havolasi /natijalar/markaz/<kalit> (lib/groupResultsLink.ts), bazada yo'q.
+  return NextResponse.json({ ok: true, exams, centerKey: centerResultsKey(scope.branchId) });
 }
 
 export async function POST(req: Request) {

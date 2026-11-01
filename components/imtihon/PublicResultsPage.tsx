@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, GraduationCap, Link2, Moon, RotateCw, SearchX, Sun } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
@@ -9,11 +9,14 @@ import V2Select from "@/components/v2/ui/V2Select";
 import { primaryBtn, secondaryIcon } from "@/components/v2/ui/buttons";
 import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
-import { ScoreBar, examBand } from "@/components/v2/imtihon/examBits";
+import { ScoreBar } from "@/components/v2/imtihon/examBits";
 import { CENTER_LOGO, CENTER_NAME } from "@/lib/center";
 import { LANGS, type Lang } from "@/lib/i18n";
 import { LANGS as LANG_LABELS } from "@/lib/navbar";
 import type { PublicExam, PublicExamStudent, PublicGroupResults } from "@/lib/imtihon";
+import type { PublicCenterRanking as CenterData } from "@/lib/examRanking";
+import PublicCenterRanking from "./PublicCenterRanking";
+import { EmptyCard, Pct } from "./publicBits";
 
 // OCHIQ IMTIHON NATIJALARI — BITTA GURUH (01.11.2026). Kirishsiz sahifa: o'quvchi guruhi
 // uchun yuborilgan havolani (/natijalar/<kalit>, Sarhisob'dagi «Havolani nusxalash») ochib
@@ -26,12 +29,20 @@ import type { PublicExam, PublicExamStudent, PublicGroupResults } from "@/lib/im
 // (havolani shu holicha ulashsa bo'ladi). Telefon uchun (Telegram'dan ochiladi): jadval
 // tor ekranga sig'adi — telefon ism ostida, ustun keng ekranda.
 //
-// `view`: "results" — guruh; "nolink" — kalitsiz /natijalar (avvalgi umumiy havola ham shu
-// yerga tushadi); "badlink" — imzo mos emas yoki guruh yo'q; "error" — baza yiqildi.
+// `view`: "results" — guruh; "center" — markaz reytingi (/natijalar/markaz/<kalit>, 01.11.2026 —
+// PublicCenterRanking); "nolink" — kalitsiz /natijalar (avvalgi umumiy havola ham shu yerga
+// tushadi); "badlink" — imzo mos emas yoki guruh/filial yo'q (`kind` — qaysi havola); "error" —
+// baza yiqildi.
 
 const MONTH_RE = /^(\d{4})-(\d{2})$/;
 
-type Props = { view: "results"; data: PublicGroupResults; month: string | null } | { view: "nolink" | "badlink" | "error" };
+type LinkKind = "group" | "center";
+
+type Props =
+  | { view: "results"; data: PublicGroupResults; month: string | null }
+  | { view: "center"; data: CenterData; course: string }
+  | { view: "badlink"; kind?: LinkKind }
+  | { view: "nolink" | "error" };
 
 function dateOfIso(iso: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
@@ -52,21 +63,6 @@ function RankBadge({ rank }: { rank: number }) {
     >
       {rank}
     </span>
-  );
-}
-
-function Pct({ pct, className = "" }: { pct: number; className?: string }) {
-  return <span className={`font-semibold tabular-nums ${examBand(pct) === "low" ? "text-v2-warning" : "text-v2-text"} ${className}`}>{pct}%</span>;
-}
-
-function EmptyCard({ icon, title, text, children }: { icon: ReactNode; title: string; text?: string; children?: ReactNode }) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-v2-lg border border-v2-border bg-v2-surface px-6 py-10 text-center shadow-v2-sm">
-      <span className="flex size-10 items-center justify-center rounded-v2-md bg-v2-surface-2 text-v2-text-3">{icon}</span>
-      <div className="text-v2-section text-v2-text">{title}</div>
-      {text && <p className="max-w-sm text-v2-small text-v2-text-2">{text}</p>}
-      {children}
-    </div>
   );
 }
 
@@ -126,20 +122,26 @@ export default function PublicResultsPage(props: Props) {
     <div data-ui="v2" className="min-h-dvh bg-v2-bg font-v2 text-v2-text">
       <div className="mx-auto flex w-full max-w-[880px] flex-col gap-4 px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
         <TopBar />
-        {props.view === "results" ? <GroupResults data={props.data} initialMonth={props.month} /> : <Notice view={props.view} />}
+        {props.view === "results" ? (
+          <GroupResults data={props.data} initialMonth={props.month} />
+        ) : props.view === "center" ? (
+          <PublicCenterRanking data={props.data} initialCourse={props.course} />
+        ) : (
+          <Notice view={props.view} kind={props.view === "badlink" ? props.kind : undefined} />
+        )}
       </div>
     </div>
   );
 }
 
-/** Guruh ko'rinmaydigan holatlar: kalitsiz manzil, noto'g'ri havola, baza yiqildi. */
-function Notice({ view }: { view: "nolink" | "badlink" | "error" }) {
+/** Natija ko'rinmaydigan holatlar: kalitsiz manzil, noto'g'ri havola, baza yiqildi. */
+function Notice({ view, kind = "group" }: { view: "nolink" | "badlink" | "error"; kind?: LinkKind }) {
   const { t } = useT();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
     <>
-      <h1 className="text-v2-page text-v2-text">{t("Imtihon natijalari")}</h1>
+      <h1 className="text-v2-page text-v2-text">{kind === "center" ? t("Markaz reytingi") : t("Imtihon natijalari")}</h1>
       {view === "error" ? (
         <EmptyCard icon={<RotateCw className="size-5" strokeWidth={1.75} aria-hidden />} title={t("Natijalarni yuklab bo'lmadi")} text={t("Internet aloqasini tekshirib, qayta urinib ko'ring.")}>
           <button type="button" onClick={() => startTransition(() => router.refresh())} disabled={pending} className={`${primaryBtn} mt-2 disabled:opacity-60`}>
@@ -150,7 +152,11 @@ function Notice({ view }: { view: "nolink" | "badlink" | "error" }) {
         <EmptyCard
           icon={<SearchX className="size-5" strokeWidth={1.75} aria-hidden />}
           title={t("Havola topilmadi")}
-          text={t("Havola noto'g'ri yoki eskirgan. O'qituvchingizdan guruh havolasini qayta so'rang.")}
+          text={
+            kind === "center"
+              ? t("Havola noto'g'ri yoki eskirgan. Administratordan reyting havolasini qayta so'rang.")
+              : t("Havola noto'g'ri yoki eskirgan. O'qituvchingizdan guruh havolasini qayta so'rang.")
+          }
         />
       ) : (
         <EmptyCard

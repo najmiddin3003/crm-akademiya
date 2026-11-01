@@ -1302,8 +1302,22 @@ to'g'ri javob, natija; 50/100/200 dan sahifalab). Filtrlar: oy, fan, bosqich, us
 moslashadi, yonida soni) — o'rin filtr ichida qayta hisoblanadi (masalan faqat Ingliz tili uchligi); ism yoki
 telefon qidiruvi o'rinni o'zgartirmaydi. Qator yoki ism bosilsa — shu guruh sarhisobi. «Eksport» reyting
 ko'rinishida — reyting CSV (filtr va qidiruv bo'yicha); «Arxiv» tugmasi bu ko'rinishda yo'q. Telefon ustuni
-yo'q — reyting surati tarqatilishi mumkin. Faqat CRM ichida. *Savol:* o'quvchilarga ham markaz reytingining
-ochiq havolasi kerakmi (236 kabi)? *Taxmin:* hozircha yo'q — kerak bo'lsa /natijalar ga «markaz» varianti.
+yo'q — reyting surati tarqatilishi mumkin. *Savol:* o'quvchilarga ham markaz reytingining ochiq havolasi
+kerakmi (236 kabi)? — HAL QILINDI (01.11, «reytingni ulashish ishlasin»): ha, 239-band.
+
+**239. Markaz reytingini ulashish — ochiq havola** — taxmin (01.11.2026, «reytingni ulashish ishlasin, markaz
+boyicha reytingni ulashish»; rasmi yo'q)
+«Markaz reytingi» ko'rinishida «Ulashish» tugmasi (yangi versiyada sarlavhada «Eksport» yonida, eskisida
+«Excelga chiqarish» yonida) havolani nusxalaydi va xabarda ko'rsatadi: `/natijalar/markaz/<filial>-<imzo>?oy=…&fan=…`.
+Havolaga faqat oy va fan o'tadi (bosqich, ustoz, guruh va qidiruv — yo'q). Oyda natija bo'lmasa tugma o'chiq.
+Kalit filial bo'yicha imzolanadi (guruh havolasi kabi — raqamni o'zgartirib boshqa filialni ochib bo'lmaydi;
+Chortoq 1+2 — bitta hovuz, bitta reyting). Ochiq sahifa kirishsiz: sarlavha va filial nomi, oy tanlovi
+(natijasi bor oylar), fan tanlovi, ism bo'yicha qidiruv, to'rt ko'rsatkich, 1–3-o'rinlar kartochkasi (bosilmaydi)
+va jadval (o'rin, o'quvchi, fan, guruh · bosqich, to'g'ri javob, natija; 100 tadan «Yana ko'rsatish»). O'rin
+qoidasi CRM bilan bitta (lib/examRanking.ts). Telefon, ustoz va ichki id'lar sahifaga umuman yuborilmaydi;
+arxivdagi sarhisoblar kirmaydi. Fan tanlansa manzil ham yangilanadi (shu holicha ulashsa o'sha fan ochiladi).
+*Savol:* ochiq sahifada ustoz ustuni kerakmi? Barcha filiallar birga reyting kerakmi? *Taxmin:* yo'q — ustoz
+CRM ichida qoladi, filiallar alohida (CRM'dagi reyting ham shunday).
 
 ## Reja
 

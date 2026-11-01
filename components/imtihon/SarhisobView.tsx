@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Archive, ArrowLeft, FilePlus, Search, Share2, Trophy } from "lucide-react";
+import { Archive, ArrowLeft, FilePlus, Link2, Search, Share2, Trophy } from "lucide-react";
 import Select from "@/components/ui/Select";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -12,7 +12,7 @@ import { downloadCsv } from "./importUtils";
 import TierBadge from "./TierBadge";
 import GroupExamDrawer from "./GroupExamDrawer";
 import SarhisobDetailDrawer, { fmtExamDate, pupilAvgPct } from "./SarhisobDetailDrawer";
-import { sarhisobCsvRows, upsertExam, useCopyGroupLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
+import { sarhisobCsvRows, upsertExam, useCopyCenterLink, useCopyGroupLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
 import { useCenterRanking } from "./useCenterRanking";
 import CenterRankingView from "./CenterRankingView";
 import { rankingCsvRows } from "@/lib/examRanking";
@@ -60,8 +60,9 @@ export default function SarhisobView() {
   const { showSuccess } = useToast();
 
   // Ro'yxat, oy nomi va CSV — umumiy yadro (sarhisobCore.ts; yangi versiya ham shundan).
-  const { exams, setExams, loading } = useGroupExams();
+  const { exams, setExams, loading, centerKey } = useGroupExams();
   const copyGroupLink = useCopyGroupLink();
+  const copyCenterLink = useCopyCenterLink();
   const { busyId, setArchived, remove } = useExamActions(setExams);
   // `null` — foydalanuvchi hali tanlamagan: eng oxirgi sarhisob oyi
   // (bo'lmasa joriy oy) ko'rsatiladi.
@@ -207,6 +208,19 @@ export default function SarhisobView() {
           </button>
         )}
         <div className="flex-1" />
+        {/* Markaz reytingining ochiq havolasi — shu oy va fan bilan (yangi versiyadagi «Ulashish» bilan bir xil). */}
+        {rankOn && (
+          <button
+            type="button"
+            onClick={() => void copyCenterLink(centerKey, fm, fCourse)}
+            disabled={loading || rk.pool.length === 0}
+            title={t("Markaz reytingining ochiq havolasi — oy va fan bilan")}
+            className={outlineBtn}
+          >
+            <Link2 className="w-4 h-4" />
+            <span>{t("Ulashish")}</span>
+          </button>
+        )}
         <button
           onClick={() => (rankOn ? exportRanking() : exportCsv(rows, archiveView ? "arxiv" : fm))}
           disabled={rankOn ? rk.visible.length === 0 : rows.length === 0}

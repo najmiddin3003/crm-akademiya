@@ -1,6 +1,9 @@
 import type { Db } from "mongodb";
+import { branchInCondition } from "@/lib/branchScope";
+import { branchPool } from "@/lib/branchPools";
+import { publicRankRows, rankPool, type PublicCenterRanking } from "@/lib/examRanking";
 import { groupLabel, type Group } from "@/lib/groups";
-import { publicExamOf, type GroupExam, type PublicGroupResults } from "@/lib/imtihon";
+import { groupExamMonth, publicExamOf, type GroupExam, type PublicGroupResults } from "@/lib/imtihon";
 
 // OCHIQ NATIJALAR — BITTA GURUH (01.11.2026, foydalanuvchi: «har bir guruh uchun alohida url
 // link yaratsin ... har bir guruh alohida chiqsin va table ko'rinishida tartibli chiqsin»).
@@ -31,4 +34,34 @@ export async function loadGroupResults(db: Db, groupId: number): Promise<PublicG
   const group = await db.collection<Group>("groups").findOne({ id: groupId }, { projection: { _id: 0, id: 1, name: 1, course: 1, level: 1 } });
   if (!group) return null;
   return { course: group.course ?? "", groupName: group.name ?? "", groupLabel: groupLabel(group), level: group.level ?? "", exams: [] };
+}
+
+// OCHIQ MARKAZ REYTINGI (01.11.2026, foydalanuvchi: «markaz bo'yicha reytingni ulashish») —
+// /natijalar/markaz/<kalit> sahifasining ma'lumoti. Qamrov CRM'dagi Sarhisob bilan bir xil:
+// shu filial (hovuzda — butun hovuz, `branchCondition` qoidasi), arxivdagi sarhisoblarsiz.
+// Faqat BITTA OY yuklanadi (filialda oyiga ~100 sarhisob); oylar ro'yxati — sana/oy maydonidan.
+// Reyting qoidalari — lib/examRanking.ts (CRM bilan bitta); telefon va ustoz brauzerga bormaydi.
+
+const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+export async function loadCenterRanking(db: Db, branchId: number, asked: string | null): Promise<PublicCenterRanking | null> {
+  const branch = await db.collection("branches").findOne<{ name?: string }>({ id: branchId }, { projection: { _id: 0, name: 1 } });
+  if (!branch) return null;
+  const scope = { $and: [{ archived: { $ne: true } }, branchInCondition(branchPool(branchId))] };
+  const col = db.collection("group_exams");
+
+  const heads = await col.find<Pick<GroupExam, "date" | "month">>(scope, { projection: { _id: 0, date: 1, month: 1 } }).toArray();
+  const months = [...new Set(heads.map(groupExamMonth))].filter((m) => MONTH_KEY.test(m)).sort().reverse();
+  const month = asked && months.includes(asked) ? asked : (months[0] ?? null);
+  const branchName = String(branch.name ?? "");
+  if (!month) return { branchName, months, month: null, rows: [] };
+
+  // `month` 21.09.2026 gacha yozilmagan — o'shandagilar sanadan (groupExamMonth bilan bir xil).
+  const exams = await col
+    .find<GroupExam>(
+      { $and: [scope, { $or: [{ month }, { month: { $in: [null, ""] }, date: { $regex: `^${month}-` } }] }] },
+      { projection: { _id: 0, createdBy: 0, createdAt: 0, updatedBy: 0, updatedAt: 0 } },
+    )
+    .toArray();
+  return { branchName, months, month, rows: publicRankRows(rankPool(exams, month)) };
 }

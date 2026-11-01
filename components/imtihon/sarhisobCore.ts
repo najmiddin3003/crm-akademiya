@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { useT, type TFn } from "@/components/shared/Language";
+import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import { fmtExamDate } from "./SarhisobDetailDrawer";
@@ -15,6 +15,8 @@ import { fmtExamDate } from "./SarhisobDetailDrawer";
 export function useGroupExams() {
   const [exams, setExams] = useState<GroupExam[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Markaz reytingi havolasining kaliti (joriy filial) — «Ulashish» uchun oldindan. */
+  const [centerKey, setCenterKey] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -23,6 +25,7 @@ export function useGroupExams() {
       .then((d) => {
         if (cancelled || !d.ok) return;
         setExams(d.exams as GroupExam[]);
+        setCenterKey(typeof d.centerKey === "string" ? d.centerKey : "");
       })
       .catch(() => {})
       .finally(() => {
@@ -33,7 +36,7 @@ export function useGroupExams() {
     };
   }, []);
 
-  return { exams, setExams, loading };
+  return { exams, setExams, loading, centerKey };
 }
 
 /** Saqlangan yoki tahrirlangan sarhisob ro'yxatga: bori almashadi, yangisi boshiga qo'shiladi. */
@@ -106,6 +109,19 @@ export function groupResultsUrl(linkKey: string, month: string): string {
   return `${window.location.origin}/natijalar/${encodeURIComponent(linkKey)}${q}`;
 }
 
+/**
+ * MARKAZ REYTINGI HAVOLASI (01.11.2026, «markaz bo'yicha reytingni ulashish»):
+ * /natijalar/markaz/<kalit>?oy=<oy>[&fan=<fan>]. Kalit — joriy filialniki (API javobidagi
+ * `centerKey`); sahifada shu filialning oylik reytingi, oy va fan tanlovi bilan.
+ */
+export function centerResultsUrl(centerKey: string, month: string, course: string): string {
+  const q = new URLSearchParams();
+  if (/^\d{4}-\d{2}$/.test(month)) q.set("oy", month);
+  if (course) q.set("fan", course);
+  const s = q.toString();
+  return `${window.location.origin}/natijalar/markaz/${encodeURIComponent(centerKey)}${s ? `?${s}` : ""}`;
+}
+
 /** Matnni nusxalaydi: Clipboard API, bo'lmasa (eski brauzer, ruxsat yo'q) — vaqtinchalik maydon orqali. */
 export async function copyText(text: string): Promise<boolean> {
   try {
@@ -156,10 +172,29 @@ export function useCopyGroupLink() {
   );
 }
 
-/** Guruh nomi: «7» → «7-guruh», qolgani o'z nomi bilan (bo'sh bo'lsa — to'liq yorliq). */
-export function examGroupTitle(r: Pick<GroupExam, "groupName" | "groupLabel">, t: TFn): string {
-  return /^\d+$/.test(r.groupName) ? t("{n}-guruh", { n: r.groupName }) : r.groupName || r.groupLabel;
+/**
+ * «Ulashish» (Sarhisob → «Markaz reytingi»): reyting havolasini — tanlangan oy va fan bilan —
+ * nusxalaydi va xabarda ko'rsatadi (guruh havolasi kabi: kalit oldindan, bosishda so'rov yo'q).
+ */
+export function useCopyCenterLink() {
+  const { t } = useT();
+  const { showSuccess, showError } = useToast();
+  return useCallback(
+    async (centerKey: string, month: string, course: string) => {
+      if (!centerKey) {
+        showError(t("Havolani olib bo'lmadi — sahifani yangilang"));
+        return;
+      }
+      const link = centerResultsUrl(centerKey, month, course);
+      if (await copyText(link)) showSuccess(t("Havola nusxalandi: {link}", { link }));
+      else showError(t("Havolani nusxalab bo'lmadi — qo'lda ko'chiring: {link}", { link }));
+    },
+    [t, showSuccess, showError],
+  );
 }
+
+/** Guruh nomi: «7» → «7-guruh» — qoidasi lib/examRanking.ts da (ochiq reyting sahifasi ham shundan). */
+export { examGroupTitle } from "@/lib/examRanking";
 
 /** "2026-10" → "Oktabr 2026" (tanlangan tilda). */
 export function useMonthLabel() {

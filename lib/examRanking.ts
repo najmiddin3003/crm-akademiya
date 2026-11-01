@@ -56,6 +56,14 @@ export const RANK_FACETS: RankFacetKey[] = ["course", "level", "teacher", "group
 /** «Yaxshi natija» chegarasi — yangi versiyadagi `examBand` ning yuqori bandi bilan bir xil. */
 export const RANK_HIGH_PCT = 80;
 
+/**
+ * Guruh nomi: «7» → «7-guruh» (`t` — joriy til), qolgani o'z nomi bilan (bo'sh bo'lsa — to'liq
+ * yorliq). CRM va ochiq sahifa uchun bitta (components/imtihon/sarhisobCore ham shuni beradi).
+ */
+export function examGroupTitle(r: { groupName: string; groupLabel: string }, t: (key: string, params?: { n: string }) => string): string {
+  return /^\d+$/.test(r.groupName) ? t("{n}-guruh", { n: r.groupName }) : r.groupName || r.groupLabel;
+}
+
 /** O'quvchi kaliti: `pupils.id`, bo'lmasa (eski yozuv) — ism. */
 export function rankPupilKey(r: Pick<RankRow, "pupilId" | "name">): string {
   return r.pupilId > 0 ? `p${r.pupilId}` : `n${r.name.trim().toLowerCase()}`;
@@ -194,4 +202,88 @@ export function facetCounts(pool: RankRow[], f: RankFacets): Record<RankFacetKey
 export function rankingCsvRows(rows: RankRow[]): unknown[][] {
   const head = ["O'rin", "O'quvchi", "Fan", "Guruh", "Bosqich", "Ustoz", "Savollar", "To'g'ri javob", "O'zlashtirish %"];
   return [head, ...rows.map((r) => [r.rank, r.name, r.course, r.groupLabel, r.level, r.teacher, r.total, r.correct, r.pct])];
+}
+
+/* ============================================================
+   OCHIQ MARKAZ REYTINGI — /natijalar/markaz/<kalit> (01.11.2026, foydalanuvchi: «markaz
+   bo'yicha reytingni ulashish»). Hisob serverda shu qoidalar bilan (`rankPool`), brauzerga
+   faqat ko'rinadigan maydonlar boradi: TELEFON, USTOZ va haqiqiy id'lar YO'Q. O'quvchi, guruh
+   va sarhisob — shu javob ichidagi tartib raqamlari (ko'rsatkichlar sanog'i va tenglar
+   tartibi CRM'dagidek chiqsin; sarhisob raqami id tartibida beriladi).
+   ============================================================ */
+
+export interface PublicRankRow {
+  /** O'quvchining shu javobdagi raqami (bir o'quvchi ikki fanda — bitta raqam). */
+  pupil: number;
+  /** Guruhning shu javobdagi raqami. */
+  group: number;
+  /** Sarhisobning shu javobdagi raqami — id o'sish tartibida. */
+  exam: number;
+  name: string;
+  course: string;
+  groupName: string;
+  groupLabel: string;
+  level: string;
+  total: number;
+  correct: number;
+  pct: number;
+}
+
+/** Ochiq reyting sahifasining ma'lumoti (lib/publicResults.ts → loadCenterRanking). */
+export interface PublicCenterRanking {
+  /** Filial nomi (hovuzdagi ikki filialning nomi bir xil). */
+  branchName: string;
+  /** Natijasi bor oylar — yangisi birinchi. */
+  months: string[];
+  /** Ko'rsatilayotgan oy; natija umuman yo'q — `null`. */
+  month: string | null;
+  /** Shu oyning natijalari — takrorsiz (`rankPool`), o'rinsiz. */
+  rows: PublicRankRow[];
+}
+
+/** `rankPool` natijasi → ochiq qatorlar (telefon, ustoz va id'lar olib tashlanadi). */
+export function publicRankRows(pool: RankRow[]): PublicRankRow[] {
+  const examNo = new Map([...new Set(pool.map((r) => r.examId))].sort((a, b) => a - b).map((id, i) => [id, i + 1] as const));
+  const pupilNo = new Map<string, number>();
+  const groupNo = new Map<number, number>();
+  const numberOf = <K>(map: Map<K, number>, key: K): number => {
+    const known = map.get(key);
+    if (known !== undefined) return known;
+    map.set(key, map.size + 1);
+    return map.size;
+  };
+  return pool.map((r) => ({
+    pupil: numberOf(pupilNo, rankPupilKey(r)),
+    group: numberOf(groupNo, r.groupId),
+    exam: examNo.get(r.examId) ?? 0,
+    name: r.name,
+    course: r.course,
+    groupName: r.groupName,
+    groupLabel: r.groupLabel,
+    level: r.level,
+    total: r.total,
+    correct: r.correct,
+    pct: r.pct,
+  }));
+}
+
+/** Ochiq qator → `RankRow` (sahifa shu faylning `rankRows`, `podiumOf`, `rankStats` idan foydalanadi). */
+export function rankRowOfPublic(r: PublicRankRow, i: number): RankRow {
+  return {
+    key: String(i),
+    examId: r.exam,
+    pupilId: r.pupil,
+    name: r.name,
+    phone: "",
+    course: r.course,
+    teacher: "",
+    groupId: r.group,
+    groupName: r.groupName,
+    groupLabel: r.groupLabel,
+    level: r.level,
+    total: r.total,
+    correct: r.correct,
+    pct: r.pct,
+    rank: 0,
+  };
 }

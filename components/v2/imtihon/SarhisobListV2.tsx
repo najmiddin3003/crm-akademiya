@@ -13,7 +13,7 @@ import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { downloadCsv } from "@/components/imtihon/importUtils";
 import { pupilAvgPct } from "@/components/imtihon/SarhisobDetailDrawer";
-import { examGroupTitle, sarhisobCsvRows, useCopyGroupLink, useExamActions, useMonthLabel } from "@/components/imtihon/sarhisobCore";
+import { examGroupTitle, sarhisobCsvRows, useCopyCenterLink, useCopyGroupLink, useExamActions, useMonthLabel } from "@/components/imtihon/sarhisobCore";
 import { useCenterRanking } from "@/components/imtihon/useCenterRanking";
 import { rankingCsvRows } from "@/lib/examRanking";
 import { uzDateIso } from "@/lib/uzTime";
@@ -50,6 +50,7 @@ export default function SarhisobListV2({
   exams,
   setExams,
   loading,
+  centerKey,
   initialMonth,
   initialView,
   onAdd,
@@ -58,6 +59,8 @@ export default function SarhisobListV2({
   exams: GroupExam[];
   setExams: Dispatch<SetStateAction<GroupExam[]>>;
   loading: boolean;
+  /** Markaz reytingi ochiq havolasining kaliti (joriy filial) — «Ulashish». */
+  centerKey: string;
   /** Manzildagi `oy=` (natija saqlangach shu oyga qaytiladi). */
   initialMonth: string | null;
   /** Manzildagi `reyting=1` — markaz reytingi. */
@@ -71,6 +74,7 @@ export default function SarhisobListV2({
   const { showSuccess } = useToast();
   const monthLabel = useMonthLabel();
   const copyGroupLink = useCopyGroupLink();
+  const copyCenterLink = useCopyCenterLink();
   const { busyId, setArchived, remove } = useExamActions(setExams);
   const [fMonth, setFMonth] = useState<string | null>(initialMonth);
   const [fCourse, setFCourse] = useState("");
@@ -187,6 +191,20 @@ export default function SarhisobListV2({
         tab="sarhisob"
         actions={
           <>
+            {/* Reytingning ochiq havolasi — shu oy va fan bilan (bosqich, ustoz, guruh va qidiruv o'tmaydi;
+                ochgan odam fanni o'zi almashtira oladi). Oyda natija bo'lmasa — o'chiq. */}
+            {rankOn && (
+              <button
+                type="button"
+                onClick={() => void copyCenterLink(centerKey, fm, fCourse)}
+                disabled={loading || rk.pool.length === 0}
+                title={t("Markaz reytingining ochiq havolasi — oy va fan bilan")}
+                className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                <Link2 className="size-4" strokeWidth={1.75} aria-hidden />
+                {t("Ulashish")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => (rankOn ? exportRanking() : exportCsv(rows, archiveView ? "arxiv" : fm))}
