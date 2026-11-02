@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isValidPhone, issueCode, resetMessage, sendSms, normalizePhone } from "@/lib/invite";
+import { isValidPhone, issueCode, sendResetSms, normalizePhone } from "@/lib/invite";
 import { logSms } from "@/lib/smsLog";
 
 // POST /api/auth/forgot-password  { phone }
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   if (user && user.status === "active") {
     const code = await issueCode(phone, "reset");
     if (code.ok && code.code) {
-      const sms = await sendSms(phone, resetMessage(code.code));
+      const sms = await sendResetSms(phone, code.code);
       // Jurnalga yoziladi; matn saqlanmaydi (tiklash kodi).
       await logSms(db, {
         recipientName: String(user.fullName ?? ""), phone, text: "",

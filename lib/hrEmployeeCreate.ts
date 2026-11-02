@@ -11,7 +11,7 @@ import {
 // Qo'shimcha maydonlar tipi vaqtincha komponentlar yonida turadi — sabab
 // components/employees/employeeExtras.ts izohida. `import type` — kompilyatsiyada yo'qoladi.
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
-import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
+import { isValidPhone, issueCode, generateToken, sendActivationSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
 import { toUz } from "@/lib/uzTime";
 import { resolveCenterRole } from "@/lib/roles";
 import { branchIdsErrorText, branchNameMap, pruneAssignments, resolvePayrollBranch, validateBranchIds } from "@/lib/employeeBranches";
@@ -192,7 +192,7 @@ export async function createHrEmployee(db: Db, scope: BranchScope, body: CreateE
   let smsSent = false;
   let smsSimulated = false;
   if (code.ok && code.code) {
-    const sms = await sendSms(phone, activationMessage(token, code.code));
+    const sms = await sendActivationSms(phone, token, code.code);
     smsSent = sms.ok;
     smsSimulated = Boolean(sms.simulated);
     if (!sms.ok) {

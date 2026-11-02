@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/adminOnly";
-import { activationMessage, generateToken, INVITE_TTL_MS, issueCode, normalizePhone, sendSms } from "@/lib/invite";
+import { generateToken, INVITE_TTL_MS, issueCode, normalizePhone, sendActivationSms } from "@/lib/invite";
 import { APPROVAL_FIELD, type AdminApproval } from "@/lib/adminApproval";
 import { logSms } from "@/lib/smsLog";
 
@@ -146,7 +146,7 @@ export async function POST(req: Request) {
       // ilgari bu bayroq faqat saqlanardi va hech narsaga ta'sir qilmasdi.
       await db.collection("hr_employees").updateOne({ id }, { $set: { twoFactor } });
 
-      const sms = await sendSms(phone, activationMessage(token, code.code));
+      const sms = await sendActivationSms(phone, token, code.code);
       // `secret: true` — matnda bir martalik token va kod bor, ular
       // jurnalga YOZILMAYDI (app/api/hr-employees dagi bilan bir xil).
       await logSms(db, {

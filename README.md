@@ -3316,3 +3316,25 @@ Egasi (02.11): «hozircha akademiyadagi shablonda ketaversin».
   idan). O'z shabloni tasdiqlangach qator `/root/center.env` dan olib tashlanadi va
   `new-center-env.sh` + `pm2 reload crm --update-env`.
 - Akademiya'da o'rnatilmagan — matn avvalgidek.
+
+### Zaxira Eskiz akkaunti — o'z shabloni tasdiqlanganda o'zi o'tadi
+
+Egasi (02.11): «agar o'zimni akkauntimdagi sms shablon matni tasdiqlansa shundan foydalanadigan
+qilib qo'y». Temuriylar shabloni egasining O'Z Eskiz akkauntida moderatsiyada, Akademiya'niki boshqa
+akkauntda — qachon tasdiqlanishini kutib qo'lda almashtirmaslik uchun:
+
+- `lib/eskiz.ts` — ikki akkaunt: asosiy (`ESKIZ_EMAIL/ESKIZ_PASSWORD/ESKIZ_FROM`) va ixtiyoriy
+  zaxira (`ESKIZ_FALLBACK_EMAIL/ESKIZ_FALLBACK_PASSWORD/ESKIZ_FALLBACK_FROM`), tokenlari alohida.
+  `sendSms(phone, message, account = "main")`.
+- `lib/invite.ts` — `sendActivationSms` / `sendResetSms` (5 ta chaqiruv joyi shularga o'tdi):
+  avval asosiy akkauntdan markazning o'z nomi bilan; Eskiz uni ANIQ rad etsa (400 — shablon
+  tasdiqlanmagan; 401/403; login o'tmadi) va zaxira sozlangan bo'lsa — zaxira akkauntdan
+  `SMS_FALLBACK_CENTER_SHORT` (masalan `Akademiya`) nomli matn bilan. Tarmoq xatosi va 5xx da
+  zaxiraga O'TILMAYDI — SMS ketgan bo'lishi mumkin, odamga ikkita bormasin.
+- O'z shabloni tasdiqlangan zahoti birinchi urinish o'tadi — hech narsa almashtirilmaydi.
+  Zaxiradan ketganda `out.log` da `[sms] asosiy akkaunt rad etdi (…) — zaxira akkauntdan ketdi`,
+  ikkalasi ham rad etsa `err.log` da `[sms] asosiy va zaxira akkaunt ham rad etdi`.
+- Boshqa SMS'lar (qo'lda yuborish, to'lov SMS'i) faqat asosiy akkauntdan — ularning matni
+  ixtiyoriy, zaxira akkauntda mos shablon yo'q.
+- Sinov: soxta `fetch` bilan 10 holat (hozirgi, o'tish, o'z akkaunt tasdiqsiz/tasdiqlangan,
+  parol xato, tarmoq, 502, ikkalasi rad, zaxirasiz, Eskiz'siz) — kutilgandek.

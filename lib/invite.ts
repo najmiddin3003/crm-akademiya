@@ -2,7 +2,7 @@ import { CENTER_SHORT } from "@/lib/center";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ensureIndexes } from "./mongodb";
-import { sendSms, normalizePhone } from "./eskiz";
+import { sendSms, normalizePhone, eskizConfigured, type SendSmsResult } from "./eskiz";
 import { encryptSecret } from "./crypto";
 
 export type Purpose = "activate" | "reset";
@@ -163,14 +163,71 @@ function smsCenterShort(): string {
   return (process.env.SMS_CENTER_SHORT || "").trim() || CENTER_SHORT;
 }
 
-/** Taklif SMS matni (havola + kod). */
-export function activationMessage(token: string, code: string): string {
-  const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || PUBLIC_SITE_URL;
-  return `CRM-${smsCenterShort()} tizimida hisobingizni faollashtirish uchun havola: ${base}/activate?t=${token} yoki tasdiqlash kodi: ${code}`;
+/**
+ * Zaxira Eskiz akkauntidan ketadigan matndagi nom — o'sha akkauntda tasdiqlangan
+ * shablondagi nom (`SMS_FALLBACK_CENTER_SHORT`, masalan `Akademiya`); bo'sh — asosiy nom.
+ */
+function smsFallbackCenterShort(): string {
+  return (process.env.SMS_FALLBACK_CENTER_SHORT || "").trim() || smsCenterShort();
 }
 
-export function resetMessage(code: string): string {
-  return `CRM-${smsCenterShort()} tizimida parolni tiklash uchun tasdiqlash kodi: ${code}. Kod 10 daqiqa amal qiladi. Uni hech kimga bermang.`;
+/** Taklif SMS matni (havola + kod). */
+export function activationMessage(token: string, code: string, centerShort: string = smsCenterShort()): string {
+  const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || PUBLIC_SITE_URL;
+  return `CRM-${centerShort} tizimida hisobingizni faollashtirish uchun havola: ${base}/activate?t=${token} yoki tasdiqlash kodi: ${code}`;
+}
+
+export function resetMessage(code: string, centerShort: string = smsCenterShort()): string {
+  return `CRM-${centerShort} tizimida parolni tiklash uchun tasdiqlash kodi: ${code}. Kod 10 daqiqa amal qiladi. Uni hech kimga bermang.`;
+}
+
+/**
+ * SMS ANIQ ketmagan: Eskiz rad etdi (400 — matn shabloni tasdiqlanmagan, «Этот смс текст еще не
+ * прошёл модерацию»; 401/403 — kirish) yoki login o'tmadi. Tarmoq xatosi va 5xx bu yerga KIRMAYDI:
+ * SMS ketgan bo'lishi mumkin — ikkinchi akkauntdan qayta yuborib, odamga ikki SMS bormasin.
+ */
+function rejectedBeforeSending(r: SendSmsResult): boolean {
+  if (r.ok) return false;
+  if (r.status === 400 || r.status === 401 || r.status === 403) return true;
+  return typeof r.error === "string" && r.error.startsWith("Eskiz login xato");
+}
+
+/** Jurnal uchun qisqa sabab: Eskiz javobidagi `message` (uzun token/kodga o'xshash qatorlar yashiriladi). */
+function rejectReason(r: SendSmsResult): string {
+  const raw = r.raw as { message?: unknown } | null | undefined;
+  const text = typeof raw?.message === "string" ? raw.message : (r.error ?? "");
+  return text.replace(/[A-Za-z0-9_-]{16,}/g, "***").slice(0, 120);
+}
+
+/**
+ * Markaz nomli SMS (taklif, parol tiklash). Avval asosiy akkauntdan markazning o'z nomi bilan;
+ * Eskiz uni rad etsa va zaxira akkaunt sozlangan bo'lsa — zaxira akkauntdan, uning tasdiqlangan
+ * shablonidagi nom bilan. Shu bilan markazning o'z shabloni tasdiqlangan ZAHOTI SMS o'z matniga
+ * o'tadi — hech narsani qayta sozlash shart emas (02.11.2026, Temuriylar: o'z shabloni egasining
+ * akkauntida moderatsiyada edi, oraliqda Akademiya akkauntidagi tasdiqlangan shablon ishlatildi).
+ */
+async function sendCenterSms(phone: string, build: (centerShort: string) => string): Promise<SendSmsResult> {
+  const first = await sendSms(phone, build(smsCenterShort()));
+  if (!rejectedBeforeSending(first) || !eskizConfigured("fallback")) return first;
+  const second = await sendSms(phone, build(smsFallbackCenterShort()), "fallback");
+  if (second.ok) {
+    console.log(`[sms] asosiy akkaunt rad etdi (${first.status ?? "-"}: ${rejectReason(first)}) — zaxira akkauntdan ketdi`);
+    return { ...second, fallback: true };
+  }
+  console.error(
+    `[sms] asosiy va zaxira akkaunt ham rad etdi: ${first.status ?? "-"} ${rejectReason(first)} | ${second.status ?? "-"} ${rejectReason(second)}`,
+  );
+  return { ...second, error: `asosiy: ${first.error ?? "-"}; zaxira: ${second.error ?? "-"}` };
+}
+
+/** Taklif SMS'ini yuborish (asosiy akkaunt → rad etilsa zaxira). */
+export function sendActivationSms(phone: string, token: string, code: string): Promise<SendSmsResult> {
+  return sendCenterSms(phone, (centerShort) => activationMessage(token, code, centerShort));
+}
+
+/** Parol tiklash SMS'ini yuborish (asosiy akkaunt → rad etilsa zaxira). */
+export function sendResetSms(phone: string, code: string): Promise<SendSmsResult> {
+  return sendCenterSms(phone, (centerShort) => resetMessage(code, centerShort));
 }
 
 export { sendSms, normalizePhone };

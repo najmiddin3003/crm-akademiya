@@ -4,8 +4,7 @@ import {
   isValidPhone,
   issueCode,
   generateToken,
-  activationMessage,
-  sendSms,
+  sendActivationSms,
   normalizePhone,
   INVITE_TTL_MS,
 } from "@/lib/invite";
@@ -104,7 +103,7 @@ export async function POST(req: Request) {
   let smsSent = false;
   let smsSimulated = false;
   if (code.ok && code.code) {
-    const sms = await sendSms(phone, activationMessage(token, code.code));
+    const sms = await sendActivationSms(phone, token, code.code);
     smsSent = sms.ok;
     smsSimulated = Boolean(sms.simulated);
     // Jurnalga yoziladi; matn saqlanmaydi (bir martalik token/kod).

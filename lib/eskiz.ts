@@ -4,26 +4,41 @@
 // 2) POST /api/message/sms/send (mobile_phone, message, from)
 //
 // Token xotirada keshlanadi; 401 kelsa qayta login qilamiz.
+//
+// Ikki akkaunt (02.11.2026): asosiy — ESKIZ_EMAIL / ESKIZ_PASSWORD / ESKIZ_FROM; ixtiyoriy
+// zaxira — ESKIZ_FALLBACK_EMAIL / ESKIZ_FALLBACK_PASSWORD / ESKIZ_FALLBACK_FROM. Zaxiraga faqat
+// markaz nomli SMS'lar o'tadi (lib/invite.ts → sendCenterSms), asosiy akkaunt rad etganda.
 
 const BASE = "https://notify.eskiz.uz/api";
 
-let cachedToken: string | null = null;
-let cachedAt = 0;
-const TOKEN_TTL = 25 * 24 * 60 * 60 * 1000; // ~25 kun
+/** Qaysi Eskiz akkaunti. */
+export type EskizAccount = "main" | "fallback";
 
-function creds() {
-  const email = process.env.ESKIZ_EMAIL;
-  const password = process.env.ESKIZ_PASSWORD;
-  return { email, password };
+const TOKEN_TTL = 25 * 24 * 60 * 60 * 1000; // ~25 kun
+// Har akkauntning tokeni alohida: biriniki ikkinchisiga yaramaydi.
+const tokens: Record<EskizAccount, { token: string | null; at: number }> = {
+  main: { token: null, at: 0 },
+  fallback: { token: null, at: 0 },
+};
+
+function creds(account: EskizAccount) {
+  if (account === "fallback") {
+    return {
+      email: process.env.ESKIZ_FALLBACK_EMAIL,
+      password: process.env.ESKIZ_FALLBACK_PASSWORD,
+      from: process.env.ESKIZ_FALLBACK_FROM,
+    };
+  }
+  return { email: process.env.ESKIZ_EMAIL, password: process.env.ESKIZ_PASSWORD, from: process.env.ESKIZ_FROM };
 }
 
-export function eskizConfigured(): boolean {
-  const { email, password } = creds();
+export function eskizConfigured(account: EskizAccount = "main"): boolean {
+  const { email, password } = creds(account);
   return Boolean(email && password);
 }
 
-async function login(): Promise<string> {
-  const { email, password } = creds();
+async function login(account: EskizAccount): Promise<string> {
+  const { email, password } = creds(account);
   if (!email || !password) throw new Error("ESKIZ_EMAIL / ESKIZ_PASSWORD o'rnatilmagan");
 
   const body = new URLSearchParams({ email, password });
@@ -37,14 +52,14 @@ async function login(): Promise<string> {
   if (!res.ok || !token) {
     throw new Error(`Eskiz login xato: ${res.status} ${JSON.stringify(json)}`);
   }
-  cachedToken = token;
-  cachedAt = Date.now();
+  tokens[account] = { token, at: Date.now() };
   return token;
 }
 
-async function getToken(): Promise<string> {
-  if (cachedToken && Date.now() - cachedAt < TOKEN_TTL) return cachedToken;
-  return login();
+async function getToken(account: EskizAccount): Promise<string> {
+  const c = tokens[account];
+  if (c.token && Date.now() - c.at < TOKEN_TTL) return c.token;
+  return login(account);
 }
 
 // O'zbek raqamini Eskiz kutgan formatga keltiramiz: 998901234567 (12 xona).
@@ -62,19 +77,23 @@ export interface SendSmsResult {
   status?: number;
   raw?: unknown;
   error?: string;
+  /** Asosiy akkaunt rad etib, SMS zaxira akkauntdan ketgan (lib/invite.ts sendCenterSms). */
+  fallback?: boolean;
 }
 
 // SMS yuborish. Credential yo'q bo'lsa dev rejimida real yubormay, matnni
 // konsolga chiqaramiz (simulated=true) — oqim baribir ishlaydi.
-export async function sendSms(phone: string, message: string): Promise<SendSmsResult> {
+// `account` — qaysi akkauntdan (sukut: asosiy); zaxira faqat sendCenterSms'dan chaqiriladi.
+export async function sendSms(phone: string, message: string, account: EskizAccount = "main"): Promise<SendSmsResult> {
   const to = normalizePhone(phone);
 
-  if (!eskizConfigured()) {
+  if (!eskizConfigured(account)) {
+    if (account === "fallback") return { ok: false, error: "Zaxira Eskiz akkaunti sozlanmagan" };
     console.warn(`\n[eskiz:SIMULATED] -> +${to}\n${message}\n`);
     return { ok: true, simulated: true };
   }
 
-  const from = process.env.ESKIZ_FROM || "4546";
+  const from = creds(account).from || "4546";
   const send = async (token: string) => {
     const body = new URLSearchParams({ mobile_phone: to, message, from });
     return fetch(`${BASE}/message/sms/send`, {
@@ -88,12 +107,12 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
   };
 
   try {
-    let token = await getToken();
+    let token = await getToken(account);
     let res = await send(token);
     if (res.status === 401) {
       // Token eskirgan — qayta login qilib bir marta urinib ko'ramiz.
-      cachedToken = null;
-      token = await login();
+      tokens[account].token = null;
+      token = await login(account);
       res = await send(token);
     }
     const raw = await res.json().catch(() => ({}));

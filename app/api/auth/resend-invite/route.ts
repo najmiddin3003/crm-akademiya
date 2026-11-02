@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { issueCode, generateToken, activationMessage, sendSms, INVITE_TTL_MS } from "@/lib/invite";
+import { issueCode, generateToken, sendActivationSms, INVITE_TTL_MS } from "@/lib/invite";
 import { logSms } from "@/lib/smsLog";
 
 // POST /api/auth/resend-invite  { employee_id }  yoki  { phone }
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     { $set: { invite: { token, expiresAt: new Date(Date.now() + INVITE_TTL_MS) } } }
   );
 
-  const sms = await sendSms(phone, activationMessage(token, code.code!));
+  const sms = await sendActivationSms(phone, token, code.code!);
   // Jurnalga yoziladi; matn saqlanmaydi (bir martalik token/kod).
   await logSms(db, {
     recipientName: String(user.fullName ?? ""), phone, text: "",
