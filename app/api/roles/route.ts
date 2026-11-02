@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { sanitizePermissions } from "@/lib/permissions";
 import { ensureRoles, nextRoleId, type Role } from "@/lib/roles";
+import { getCurrentUser } from "@/lib/auth";
+import { checkRoleGrant, grantorAccess } from "@/lib/permissionGrant";
 
 // Boshqaruv → Rollar backend'i (MongoDB `roles`).
 //
@@ -42,6 +44,11 @@ export async function POST(req: Request) {
       ? []
       : sanitizePermissions(body.permissions),
   };
+  // «O'ZIDA BORINI BERADI» (lib/permissionGrant.ts): admin bo'lmagan xodim yangi rolga faqat
+  // o'zida bor bo'limlarni qo'ya oladi. Bu route Xodimlar bo'limiga ham ochiq (xodim oynasi rollar
+  // ro'yxatini shundan o'qiydi) — usiz hamma bo'limli rol yaratib, uni o'ziga berib bo'lardi.
+  const grant = checkRoleGrant(grantorAccess(await getCurrentUser()), [], role.permissions ?? []);
+  if (!grant.ok) return NextResponse.json({ ok: false, error: grant.error }, { status: grant.status });
   await db.collection("roles").insertOne({ ...role });
   return NextResponse.json({ ok: true, role });
 }

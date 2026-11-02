@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import type { BranchScope } from "@/lib/branchScope";
 import { createHrEmployee, type CreateEmployeeBody } from "@/lib/hrEmployeeCreate";
 import { cvFromRow, type CvApplication } from "@/lib/managementCv";
+import type { Access } from "@/lib/permissionGrant";
 import { uzDateIso } from "@/lib/uzTime";
 
 // «ISHGA QABUL (CV) → ISHGA OLISH» (25.10.2026, 13-qism) — rasm «Ishga olish oynasi»:
@@ -18,7 +19,15 @@ export type HireCvResult =
   | { ok: true; application: CvApplication; employee: { id: number; name: string }; smsSent: boolean; smsSimulated: boolean }
   | { ok: false; error: string; status: number };
 
-export async function hireCv(db: Db, scope: BranchScope, cvId: number, body: Record<string, unknown>, statusBy: string): Promise<HireCvResult> {
+/** `grantor` — so'rov egasi bera oladigan bo'limlar (lib/permissionGrant.ts), createHrEmployee'ga. */
+export async function hireCv(
+  db: Db,
+  scope: BranchScope,
+  cvId: number,
+  body: Record<string, unknown>,
+  statusBy: string,
+  grantor: Access,
+): Promise<HireCvResult> {
   const bad = (error: string, status = 400): HireCvResult => ({ ok: false, error, status });
 
   const startDate = String(body.startDate ?? "").trim();
@@ -58,7 +67,7 @@ export async function hireCv(db: Db, scope: BranchScope, cvId: number, body: Rec
     ...(DATE_RE.test(cv.birth || "") ? { birthDate: cv.birth } : {}),
     comment: `Ishga qabul (CV): ariza ${cv.ref || `#${cv.id}`}`,
   };
-  const r = await createHrEmployee(db, scope, empBody);
+  const r = await createHrEmployee(db, scope, empBody, grantor);
   if (!r.ok) return bad(r.error, r.status);
 
   const set = {

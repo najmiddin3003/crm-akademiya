@@ -84,7 +84,20 @@ export async function resolvePermissions(db: Db, user: UserForPermissions): Prom
     { projection: { turi: 1, permissions: 1, centerRoleId: 1 } },
   );
   if (!emp) return null;
+  return employeePermissions(db, { turi: emp.turi, permissions: emp.permissions, centerRoleId: emp.centerRoleId });
+}
 
+/**
+ * XODIM YOZUVIDAN bo'lim ruxsatlari — admin bypass'siz (u `users.role` da, xodimda emas).
+ *
+ * `resolvePermissions` va ruxsat berish qoidasi (lib/permissionGrant.ts — o'zgarishdan
+ * OLDINGI va KEYINGI holatni solishtiradi) bitta zanjirdan o'qisin: biri o'zgarib,
+ * ikkinchisi eski qoidada qolib ketmasin.
+ */
+export async function employeePermissions(
+  db: Db,
+  emp: { turi?: unknown; permissions?: unknown; centerRoleId?: unknown },
+): Promise<string[] | null> {
   // Xodim kesimidagi istisno — lavozimdan USTUN.
   if (Array.isArray(emp.permissions)) return readPermissions(emp.permissions);
 

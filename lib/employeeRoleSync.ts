@@ -65,6 +65,20 @@ async function linkedAccounts(db: Db, empId: number, phone: unknown) {
 }
 
 /**
+ * Xodim yozuvi so'rov egasining O'ZINIKIMI — `linkedAccounts` bilan bir xil bog'lanish.
+ * Ruxsat berish qoidasi (lib/permissionGrant.ts) o'ziga bo'lim ochishni shu bilan aniqlaydi.
+ */
+export async function isOwnRecord(
+  db: Db,
+  me: Pick<CurrentUser, "id" | "hrEmployeeId">,
+  empId: number,
+  phone: unknown,
+): Promise<boolean> {
+  if (me.hrEmployeeId === empId) return true;
+  return (await linkedAccounts(db, empId, phone)).some((a) => String(a._id) === me.id);
+}
+
+/**
  * Lavozim o'zgarishini hisob roli nuqtai nazaridan tekshiradi.
  *
  * `admin` — so'rov egasi, agar u admin bo'lsa (`requireAdmin()` natijasi), aks holda

@@ -49,6 +49,9 @@ const PROJECTION = {
   percent: 1,
   // Rollar sahifasi xodimga alohida ruxsat qo'yilganini ko'rsatadi.
   permissions: 1,
+  // Rollar sahifasi alohida ruxsat oynasini xodimning HAQIQIY ro'yxati bilan to'ldiradi
+  // (Rollar'dagi rol bo'lsa — o'sha rol); rol — shaxs ma'lumoti, pul yoki filial emas.
+  centerRoleId: 1,
   birthDate: 1,
   photoUrl: 1,
 } as const;

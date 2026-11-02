@@ -15,6 +15,8 @@ import { isValidPhone, issueCode, generateToken, sendActivationSms, normalizePho
 import { toUz } from "@/lib/uzTime";
 import { resolveCenterRole } from "@/lib/roles";
 import { accountRoleOf, ADMIN_ROLE } from "@/lib/employeeRoleSync";
+import { checkEmployeeGrant, type Access } from "@/lib/permissionGrant";
+import { employeePermissions } from "@/lib/rolePermissions";
 import { branchIdsErrorText, branchNameMap, pruneAssignments, resolvePayrollBranch, validateBranchIds } from "@/lib/employeeBranches";
 import { logSms } from "@/lib/smsLog";
 
@@ -63,7 +65,16 @@ export type CreateEmployeeResult =
   | { ok: true; employee: HrEmployee & HrEmployeeExtra; smsSent: boolean; smsSimulated: boolean }
   | { ok: false; error: string; status: number };
 
-export async function createHrEmployee(db: Db, scope: BranchScope, body: CreateEmployeeBody): Promise<CreateEmployeeResult> {
+/**
+ * `grantor` — so'rov egasi bera oladigan bo'limlar (lib/permissionGrant.ts → grantorAccess):
+ * yangi xodimning lavozimi «cheklovsiz» natija bersa, faqat admin yoki cheklovsiz xodim yaratadi.
+ */
+export async function createHrEmployee(
+  db: Db,
+  scope: BranchScope,
+  body: CreateEmployeeBody,
+  grantor: Access,
+): Promise<CreateEmployeeResult> {
   const name = (body.name || "").trim();
   if (!name) return { ok: false, error: "Ism va familiyani kiriting", status: 400 };
   if (!isValidPhone(body.phone)) return { ok: false, error: "Telefon raqami noto'g'ri", status: 400 };
@@ -77,6 +88,13 @@ export async function createHrEmployee(db: Db, scope: BranchScope, body: CreateE
   // Tahrir yo'lidagi qoida bilan bir xil (lib/employeeRoleSync.ts).
   if (roleChoice.turi === ADMIN_ROLE && !scope.isAdmin) {
     return { ok: false, error: "Administrator lavozimini faqat administrator berishi yoki olishi mumkin", status: 403 };
+  }
+  // «O'ZIDA BORINI BERADI» (lib/permissionGrant.ts): lavozim/rol berish avvalgidek, faqat
+  // bo'sh lavozim yoki ro'yxatsiz rol (barcha bo'lim ochiladi) — admin yoki cheklovsiz xodim.
+  if (grantor !== null) {
+    const after = await employeePermissions(db, { turi: roleChoice.turi, centerRoleId: roleChoice.centerRoleId });
+    const grant = checkEmployeeGrant(grantor, { self: false, personal: false, before: [], after });
+    if (!grant.ok) return { ok: false, error: grant.error, status: grant.status };
   }
 
   const col = db.collection("hr_employees");

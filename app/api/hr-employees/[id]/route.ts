@@ -21,8 +21,17 @@ import {
 import { getBranchScope } from "@/lib/branchScope";
 import { resolveCenterRole, STAFF_TURI } from "@/lib/roles";
 import { syncEmployeeRename } from "@/lib/employeeRename";
-import { requireAdmin } from "@/lib/adminOnly";
-import { applyLavozimChange, checkLavozimChange, lavozimChanged, type LavozimCheck } from "@/lib/employeeRoleSync";
+import { getCurrentUser } from "@/lib/auth";
+import {
+  ADMIN_ROLE,
+  applyLavozimChange,
+  checkLavozimChange,
+  isOwnRecord,
+  lavozimChanged,
+  type LavozimCheck,
+} from "@/lib/employeeRoleSync";
+import { employeePermissions } from "@/lib/rolePermissions";
+import { checkEmployeeGrant, grantorAccess } from "@/lib/permissionGrant";
 import { deleteFaceData } from "@/lib/staffFace";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
@@ -353,9 +362,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
+  // Lavozim, rol yoki alohida ruxsat HAQIQATAN o'zgaryaptimi — tahrir oynasi lavozim va rolni
+  // har safar qayta yuboradi, oddiy tahrir (ism, telefon) bazaga ortiqcha bormasin.
+  const accessChanged =
+    payrollChanges.includes("permissions") ||
+    payrollChanges.includes("turi") ||
+    payrollChanges.includes("centerRoleId") ||
+    "centerRoleId" in unset;
+  const me = accessChanged ? await getCurrentUser() : null;
+
   // LAVOZIM O'ZGARDI — hisob roli (`users.role`, admin huquqi shundan) ham ergashadi
-  // (lib/employeeRoleSync.ts). Tekshiruv hech narsa yozilmasdan oldin; tahrir oynasi
-  // lavozimni har safar qayta yuboradi, shuning uchun faqat HAQIQIY o'zgarishda.
+  // (lib/employeeRoleSync.ts). Tekshiruv hech narsa yozilmasdan oldin.
   let lavozim: Extract<LavozimCheck, { ok: true }> | null = null;
   if (lavozimChanged(current.turi, set.turi)) {
     const check = await checkLavozimChange(db, {
@@ -363,10 +380,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       phone: current.phone,
       fromTuri: current.turi,
       toTuri: set.turi,
-      admin: await requireAdmin(),
+      admin: me?.role === ADMIN_ROLE ? me : null,
     });
     if (!check.ok) return NextResponse.json({ ok: false, error: check.error }, { status: check.status });
     lavozim = check;
+  }
+
+  // «O'ZIDA BORINI BERADI» (lib/permissionGrant.ts): o'ziga yangi bo'lim ochib bo'lmaydi,
+  // boshqaga alohida ruxsat — faqat o'zida bor bo'limlar, «cheklovsiz» natija — yo'q.
+  // Admin va cheklovsiz xodimga tegmaydi (ular uchun bazaga ham bormaydi).
+  const grantor = grantorAccess(me);
+  if (accessChanged && grantor !== null) {
+    const next = {
+      turi: "turi" in set ? set.turi : current.turi,
+      centerRoleId: "centerRoleId" in unset ? null : "centerRoleId" in set ? set.centerRoleId : current.centerRoleId,
+      permissions: "permissions" in set ? set.permissions : current.permissions,
+    };
+    const [before, after] = await Promise.all([employeePermissions(db, current), employeePermissions(db, next)]);
+    const grant = checkEmployeeGrant(grantor, {
+      self: me !== null && (await isOwnRecord(db, me, empId, current.phone)),
+      personal: payrollChanges.includes("permissions"),
+      before,
+      after,
+    });
+    if (!grant.ok) return NextResponse.json({ ok: false, error: grant.error }, { status: grant.status });
   }
 
   if (newPhone !== null) {

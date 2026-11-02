@@ -5,6 +5,7 @@ import { isValidPhone, normalizePhone } from "@/lib/invite";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
 import { getBranchScope } from "@/lib/branchScope";
+import { ADMIN_ROLE } from "@/lib/employeeRoleSync";
 
 // POST /api/hr-employees/import — bir nechta xodimni bir so'rovda qo'shadi.
 //
@@ -93,6 +94,13 @@ export async function POST(req: Request) {
       skipped.push({ row: i + 1, reason: "Ism bo'sh" });
       continue;
     }
+    // «Administrator» — faqat admin beradi (lib/employeeRoleSync.ts): importda hisob yaratilmaydi,
+    // lekin keyingi taklif (/vaqtinchalik) shu lavozimdan admin hisob ochardi.
+    const turi = ROLE_BY_LABEL[str(r.turi).toLowerCase()] ?? "";
+    if (turi === ADMIN_ROLE && !scope.isAdmin) {
+      skipped.push({ row: i + 1, reason: `${name}: Administrator lavozimini faqat administrator berishi yoki olishi mumkin` });
+      continue;
+    }
 
     // Telefon ixtiyoriy, lekin kiritilgan bo'lsa — haqiqiy va yagona.
     let phone = "";
@@ -118,7 +126,7 @@ export async function POST(req: Request) {
       // ro'yxatidan kelib chiqadi, faylga yozilgani esa eskirgan nusxa.
       aktivOq: 0,
       groups: 0,
-      turi: ROLE_BY_LABEL[str(r.turi).toLowerCase()] ?? "",
+      turi,
       // FILIAL — import qilingan xodim JORIY filialga tushadi.
       //
       // NIMA NOTO'G'RI EDI: bu yerda `branchIds` UMUMAN yozilmasdi. Endi

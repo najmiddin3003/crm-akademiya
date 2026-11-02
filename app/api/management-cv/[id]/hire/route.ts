@@ -5,6 +5,7 @@ import { currentAuthorName } from "@/lib/currentEmployee";
 import { hireCv } from "@/lib/cvHire";
 import { ensureIndexes } from "@/lib/mongodb";
 import { isPathAllowed } from "@/lib/permissions";
+import { grantorAccess } from "@/lib/permissionGrant";
 
 // POST /api/management-cv/:id/hire — «Ishga olish» oynasi (yangi ko'rinish, 25.10.2026, 13-qism).
 // Mantiq — lib/cvHire.ts (xodim «Xodim qo'shish» yo'lidan yaratiladi). Xodim yaratish — Xodimlar
@@ -32,7 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   if (!body || typeof body !== "object") return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
 
-  const r = await hireCv(await ensureIndexes(), scope, cvId, body, await currentAuthorName());
+  const r = await hireCv(await ensureIndexes(), scope, cvId, body, await currentAuthorName(), grantorAccess(me));
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: r.status });
   return NextResponse.json(r);
 }

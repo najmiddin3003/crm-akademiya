@@ -6579,5 +6579,11 @@
   "«Hammasi» filtrida — filialning barcha faol o'quvchilari.": "The \"All\" filter shows every active student of the branch.",
   "Administrator lavozimini faqat administrator berishi yoki olishi mumkin": "Only an administrator can grant or remove the Administrator position",
   "O'zingizni administratorlikdan chiqara olmaysiz — buni boshqa administrator qilsin": "You cannot remove your own administrator rights — ask another administrator to do it",
-  "Bu markazdagi oxirgi faol administrator — avval boshqa xodimni administrator qiling": "This is the center's last active administrator — make another employee an administrator first"
+  "Bu markazdagi oxirgi faol administrator — avval boshqa xodimni administrator qiling": "This is the center's last active administrator — make another employee an administrator first",
+  "O'zingizga yangi bo'lim ocha olmaysiz — buni admin qilsin": "You cannot open new sections for yourself — ask an administrator",
+  "Lavozimsiz yoki cheklovsiz rolli xodim barcha bo'limlarni ko'radi — boshqa lavozim tanlang yoki buni admin qilsin": "An employee without a position or with an unrestricted role sees every section — choose another position or ask an administrator",
+  "O'zingizda yo'q bo'limni bera olmaysiz: {sections}": "You cannot grant sections you do not have: {sections}",
+  "Hamma bo'lim belgilangan rol cheklovsiz bo'ladi — buni admin qilsin": "A role with every section ticked becomes unrestricted — ask an administrator",
+  "Rolga o'zingizda yo'q bo'limni qo'sha olmaysiz: {sections}": "You cannot add sections you do not have to a role: {sections}",
+  "{name}: Administrator lavozimini faqat administrator berishi yoki olishi mumkin": "{name}: only an administrator can grant or remove the Administrator position"
 }

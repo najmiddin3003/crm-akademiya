@@ -149,16 +149,25 @@ export default function RolesPage() {
     [employees],
   );
 
-  const roleNameOf = (turi: string) => roles.find((r) => r.key === turi)?.name ?? (turi || "—");
+  /** Xodimning roli: Rollar'da qo'lda qo'shilgan rol bo'lsa — o'sha (`centerRoleId`), aks holda lavozim. */
+  const roleOfEmployee = (e: HrEmployee) =>
+    e.centerRoleId !== null && e.centerRoleId !== undefined
+      ? roles.find((r) => r.id === e.centerRoleId)
+      : roles.find((r) => r.key === e.turi);
+  const roleNameOf = (e: HrEmployee) => roleOfEmployee(e)?.name ?? (e.turi || "—");
 
   /**
-   * Xodim uchun galochkalarni oldindan to'ldirish.
-   * Istisnosi bo'lsa — o'sha; bo'lmasa lavozim ro'yxati; lavozim ham
-   * cheklovsiz bo'lsa — hammasi belgilangan holat.
+   * Xodim uchun galochkalarni oldindan to'ldirish — server zanjiri bilan bir xil
+   * (lib/rolePermissions.ts → employeePermissions). Istisnosi bo'lsa — o'sha; bo'lmasa
+   * rol ro'yxati (Rollar'dagi rol topilmasa — hech narsa); rol ham cheklovsiz bo'lsa —
+   * hammasi belgilangan holat. Ilgari Rollar'dagi roldagi xodimda HAMMASI belgilanib
+   * chiqardi: o'zgartirmay saqlash ham unga yangi bo'limlar berib yuborardi (02.11.2026 dan
+   * admin bo'lmagan xodimga bu rad etiladi — lib/permissionGrant.ts).
    */
   function effectivePermsOf(e: HrEmployee): string[] {
     if (Array.isArray(e.permissions)) return [...e.permissions];
-    const role = roles.find((r) => r.key === e.turi);
+    const role = roleOfEmployee(e);
+    if (!role && e.centerRoleId !== null && e.centerRoleId !== undefined) return [];
     return role && Array.isArray(role.permissions) ? [...role.permissions] : [...ALL_PERMISSION_PATHS];
   }
 
@@ -442,7 +451,7 @@ export default function RolesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="text-[13.5px] font-medium truncate">{e.name}</div>
                     <div className="text-[11.5px] text-muted-foreground truncate">
-                      {roleNameOf(e.turi)} Â· {e.phone}
+                      {roleNameOf(e)} · {e.phone}
                     </div>
                   </div>
                   {Array.isArray(e.permissions) ? (
@@ -490,7 +499,7 @@ export default function RolesPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-[17px] font-semibold truncate">{empTarget.name} — alohida ruxsat</h3>
                     <p className="mt-0.5 text-[12px] text-muted-foreground">
-                      Lavozimi: {roleNameOf(empTarget.turi)}.{" "}
+                      Lavozimi: {roleNameOf(empTarget)}.{" "}
                       {Array.isArray(empTarget.permissions)
                         ? t("Hozir alohida ro'yxat amal qilmoqda.")
                         : t("Hozir lavozim ro'yxati amal qilmoqda — saqlasangiz istisno yaratiladi.")}

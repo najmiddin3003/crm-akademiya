@@ -8,6 +8,8 @@ import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 import { getBranchScope } from "@/lib/branchScope";
 import { scopedEmployeeFilter } from "@/lib/employeeBranches";
 import { createHrEmployee, type CreateEmployeeBody } from "@/lib/hrEmployeeCreate";
+import { getCurrentUser } from "@/lib/auth";
+import { grantorAccess } from "@/lib/permissionGrant";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
 // Demo seed YO'Q — xodimlar faqat qo'shilganda (yoki scripts/seed-test-*
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
   }
   const db = await ensureIndexes();
-  const r = await createHrEmployee(db, scope, body);
+  const r = await createHrEmployee(db, scope, body, grantorAccess(await getCurrentUser()));
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: r.status });
   return NextResponse.json({ ok: true, employee: r.employee, smsSent: r.smsSent, smsSimulated: r.smsSimulated });
 }

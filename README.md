@@ -3229,6 +3229,20 @@ qo'shilgan rol uchun tanlov — «Faqat ruxsat bersin».
   admin tekshiruvi darhol, /api/* bo'lim keshi ko'pi bilan 10 s. Sinov:
   `node --experimental-transform-types --no-warnings scripts/_verify-lavozim-role.mjs`
   (soxta baza, 15 holat).
+- **Bo'lim ruxsatini «o'zida borini beradi» qoidasi (2026-11-02,
+  `lib/permissionGrant.ts`).** Ilgari Xodimlar/Rollar bo'limi ochiq har kim
+  o'ziga istalgan bo'limni ochib olardi (alohida ruxsat, bo'sh lavozim yoki
+  Rollar'dagi rol orqali). Endi admin va cheklovsiz xodimdan boshqa xodimlar uchun:
+  o'ziga yangi bo'lim ocha olmaydi (toraytirish mumkin); boshqa xodimning alohida
+  ruxsatiga va rol ro'yxatiga faqat o'zida bor bo'limlarni qo'sha oladi; lavozim/rol
+  berish avvalgidek; «cheklovsiz» natija (bo'sh/noma'lum lavozim, ro'yxatsiz rol) —
+  faqat admin. Majburlanadigan joylar: PATCH `/api/hr-employees/:id`, xodim qo'shish
+  (`lib/hrEmployeeCreate.ts`, CV'dan ishga olish ham), POST/PATCH `/api/roles`,
+  importda «Administrator» qatori. Rollar sahifasidagi alohida ruxsat oynasi endi
+  Rollar'dagi roldagi xodimni o'z rol ro'yxati bilan ochadi: ilgari hamma bo'lim
+  belgilanib chiqardi va o'zgartirmay saqlash ham xodimga yangi bo'limlar berardi.
+  Sinov: `node --experimental-transform-types --no-warnings scripts/_verify-permission-grant.mjs`
+  (soxta baza, 31 holat).
 
 ## AI yordamchi — adminga ogohlantirishlar (2026-10-12)
 

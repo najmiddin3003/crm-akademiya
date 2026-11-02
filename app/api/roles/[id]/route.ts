@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { sanitizePermissions } from "@/lib/permissions";
+import { readPermissions, sanitizePermissions } from "@/lib/permissions";
 import { ensureRoles, isRoleKey, type Role } from "@/lib/roles";
+import { getCurrentUser } from "@/lib/auth";
+import { checkRoleGrant, grantorAccess } from "@/lib/permissionGrant";
 
 /** Mijozga ko'rsatiladigan xabar (messages/en.json da kalit). */
 const ROLE_IN_USE = "Bu rol xodimlarga berilgan — avval ularning vazifasini o'zgartiring";
@@ -27,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const db = await ensureIndexes();
   await ensureRoles(db);
 
-  const existing = await db.collection("roles").findOne({ id: roleId }, { projection: { key: 1 } });
+  const existing = await db.collection("roles").findOne({ id: roleId }, { projection: { key: 1, permissions: 1 } });
   if (!existing) {
     return NextResponse.json({ ok: false, error: "Rol topilmadi" }, { status: 404 });
   }
@@ -44,6 +46,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // aynan shu bo'limlar (noma'lum kalitlar tashlanadi).
   if (body.permissions !== undefined) {
     set.permissions = body.permissions === null ? null : sanitizePermissions(body.permissions);
+    // «O'ZIDA BORINI BERADI» (lib/permissionGrant.ts): admin bo'lmagan xodim rolga faqat o'zida
+    // bor bo'limlarni qo'sha oladi — aks holda o'z rolini kengaytirib olardi. Olib tashlash erkin.
+    const grant = checkRoleGrant(
+      grantorAccess(await getCurrentUser()),
+      readPermissions(existing.permissions),
+      set.permissions as string[] | null,
+    );
+    if (!grant.ok) return NextResponse.json({ ok: false, error: grant.error }, { status: grant.status });
   }
   if (Object.keys(set).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
