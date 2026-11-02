@@ -65,6 +65,13 @@ const CONSTANT_SOURCES = [
   { file: "constants/managementCv.js", re: /\bCV_ANY_BRANCH = "([^"]+)"/g },
   { file: "constants/navbar.js", re: /\bname:\s*"([^"]+)"/g, skip: true },
   { file: "constants/helpTopics.js", re: /\btitle:\s*"([^"]+)"/g },
+  // Yangi versiya yuqori paneli: «+ Yangi» bandlari (`t(it.label)`, `t(it.hint)`) va Yordam menyusidagi tugmalar (`t(s.label)`).
+  { file: "components/v2/shell/CreateMenuV2.tsx", re: /\b(?:label|hint):\s*"([^"]+)"/g },
+  { file: "components/v2/shell/HelpMenuV2.tsx", re: /\blabel:\s*"([^"]+)"/g },
+  // Ctrl K oynasi chiplari (`t(c.label)`) va «… topilmadi» ro'yxatidagi birlik nomlar (`t(c.one)`).
+  { file: "components/v2/shell/CommandPaletteV2.tsx", re: /\b(?:label|one):\s*"([^"]+)"/g },
+  // Yangi versiya e'lonlari (bildirishnomalar → «E'lonlar») — sarlavha, matn va havola yorlig'i `t()` bilan.
+  { file: "lib/announcementsV2.ts", re: /\b(?:title|body|label):\s*"([^"]+)"/g },
   { file: "constants/notifications.js", re: /\b(?:payment|order|task):\s*"([^"]+)"/g },
   { file: "components/shared/Navbar.tsx", re: /\blabel:\s*"([^"]+)"/g },
   { file: "components/ui/DateRangePicker.tsx", re: /\blabel:\s*"([^"]+)"/g },

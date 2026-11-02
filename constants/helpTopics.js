@@ -20,3 +20,7 @@ export const HELP_TOPICS = [
   { title: "#Tizimga_kirish #Login_parol_orqali_kirish", url: "" },
   { title: "O'quv markaz rahbarlari Edutizimni qanday kuzatib borishi kerak?", url: "" },
 ];
+
+// Yordam menyusidagi «Texnik yordamga yozish» manzili (Telegram yoki sayt).
+// Bo'sh bo'lsa band ko'rinmaydi (design/v2/SAVOLLAR.md — 21-qism).
+export const SUPPORT_URL = "";

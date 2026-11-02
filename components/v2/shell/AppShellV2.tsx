@@ -105,6 +105,7 @@ export default function AppShellV2({
                       user={user}
                       permissions={permissions}
                       isAdmin={isAdmin}
+                      features={features}
                       sidebarCollapsed={collapsed}
                       onExpandSidebar={() => setCollapsed(false)}
                       onOpenMenu={() => setDrawerOpen(true)}

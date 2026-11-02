@@ -1362,6 +1362,72 @@ sukut filtr «Kiritilgan». ~5 000 qator — faqat ko'rinib turganlari chiziladi
 *Taxmin:* «Guruhsiz» — arxivdagi bo'lmagan hech bir guruhga biriktirilmaganlar; ro'yxatda faqat «Aktiv» holatdagilar
 (muzlatilgan va arxivdagilar — qidiruv orqali qo'shiladi).
 
+### 21-qism — Yuqori panel (02.11.2026)
+
+**242. «+ Yangi» — raqamlar va N tugmasi** — taxmin (02.11.2026, 21-qism rasmlari)
+Rasmdagidek ikki bo'lim: «Ko'p ishlatiladi» (Lid, O'quvchi, To'lov qabul qilish, Kassa amali, Topshiriq — ruxsatga
+qarab) va «Rahbar uchun» (Guruh, Xodim, Bonus yoki jarima — faqat admin). Bandlar ketma-ket raqamlanadi: ruxsati
+yo'q band chiqmaydi va raqamlar siljiydi (adminda 1–8, rasmdagidek). N — menyuni ochadi, ochiq turganda 1–8 — bandni
+tanlaydi; yozish maydonida va biror oyna ochiq turganda ishlamaydi; klaviatura kirillda bo'lsa ham ishlaydi.
+Pastdagi «Rolingiz: …» — lavozim (profildagi ism ostidagi bilan bir xil).
+*Taxmin:* «Bonus yoki jarima» hozircha o'z sahifasini ochadi (forma shu joyda emas); Guruh va Xodim — o'z sahifasida
+forma ochiq holda.
+
+**243. Yordam menyusi — videolar va texnik yordam** — ochiq
+Rasmda «Shu sahifa bo'yicha» video kartasi, videolar ro'yxati va «Texnik yordamga yozish» bor. Videolarning havolasi
+yo'q (constants/helpTopics.js — hammasida bo'sh), texnik yordam manzili ham noma'lum.
+*Savol:* videolar qayerda (YouTube, Telegram kanal)? Texnik yordam — Telegram akkaunt, guruh yoki telefon?
+*Taxmin:* hozircha ro'yxat bosilmaydi, ostida «Videolar tez orada qo'shiladi»; «Texnik yordamga yozish» manzil
+berilguncha ko'rinmaydi (constants/helpTopics.js → SUPPORT_URL). «Yangiliklar» — bildirishnomalarning «E'lonlar»
+varag'ini ochadi; pastda tugmalar: Qidiruv Ctrl K, Yangi N, «Yangi»da tanlash 1–8, Yopish Esc.
+
+**244. Profil menyusi — rasmdan farqlar** — taxmin
+Rasmdagidek: ism, «lavozim · N ta filial» (bitta filial bo'lsa — uning nomi; Chortoq 1+2 bitta sanaladi), «Mening
+profilim», «Parol va xavfsizlik», «Ko'rinish» (Til — ichki ro'yxat, Tema — quyosh/oy), «Chiqish». Rasmda yo'q, lekin
+QOLDI: «Eski versiyaga qaytish» (almashtirgich boshqa joyda yo'q — 27-band) va «Qulflash» (bor imkoniyat). «Aktiv
+qurilmalar» menyudan olindi — u «Parol va xavfsizlik» sahifasida bor.
+*Savol:* «Eski versiyaga qaytish» va «Qulflash» menyuda qolsinmi?
+
+**245. Ctrl K qidiruv — qamrov va bo'limlar** — taxmin
+Rasmdagidek oyna: chiplar (Hammasi, O'quvchilar, Lidlar, Guruhlar, Xodimlar, To'lovlar, Sahifalar), bo'sh so'rovda
+«Oxirgi qidiruvlar» va tezkor amallar, natijalar bo'lim bo'yicha (har birida 5 tagacha), pastda klaviatura. Har bo'lim
+o'z sahifasining ruxsati va filial qamrovi bilan qidiriladi (ruxsat yo'q bo'lim umuman so'ralmaydi); parol, xesh, token
+qaytmaydi. Ism so'z boshidan, keyin ichidan; apostrof e'tiborsiz; kirillcha yozilsa lotinga o'giriladi; rus
+klaviaturasida terilgan matn ham tushuniladi.
+*Savol:* rasmda «barcha filiallar» — boshqa filial yozuvlari ham chiqsinmi?
+*Taxmin:* faqat JORIY filial (hovuzi bilan) — boshqa filial yozuvi u yerda ochilmaydi, «barcha filiallar» rejimi yo'q
+(chiqishi uchun ochilganda filialni almashtirish kerak bo'ladi). Boshqa filialdan faqat o'zining lidlari, filial
+belgisi bilan.
+Qolgan taxminlar: «— oylik va avans» → /finance-payroll (xodimni oldindan tanlay olmaydi); «Qarzdorlarga SMS» →
+Qarzdorlar hisoboti (ommaviy SMS yo'q, har qarzdorda alohida tugma; faqat SMS ruxsati borga); to'lovlardan faqat
+o'quvchi to'lovlari (bekor qilingani «Bekor qilingan» belgisi bilan); «Oxirgi qidiruvlar» — matn emas, OCHILGAN
+yozuvlar, shu brauzerda 6 ta, har xodimga alohida, ruxsat yo'qolsa yoki filial almashsa yashiriladi; sonlar «5+» —
+bazadagi jami emas; lid «N daqiqa/soat/kun kutmoqda» — faqat «yangi» holatdagilarga; Esc oynani yopadi, × matnni tozalaydi.
+
+**246. Bildirishnomalar — «Muhim», «Menga», «E'lonlar»** — taxmin
+Varaqlar: Hammasi / Menga / E'lonlar. «Muhim» — tarixdan emas, topshiriqlarning HOZIRGI holatidan: muddati o'tgan
+topshiriqlarim, eski uslubdagi kechikkanlar va men bergan, tasdig'imni kutayotganlar; 4 tagacha, keyin «Yana N ta»;
+topshiriq hal bo'lsa qator o'zi yo'qoladi va Bugun/Kecha ostida takrorlanmaydi. «Menga» = Muhim + men ijrochi
+bo'lgan topshiriq hodisalari + o'zim bergan topshiriqlar bo'yicha rahbar hodisalari; to'lov va lidlar markaz bo'yicha —
+kirmaydi. Varaq raqami = Muhim + panel ochilgandagi o'qilmaganlar (nol ko'rinmaydi); qo'ng'iroq nishoni avvalgidek
+faqat o'qilmaganlar — varaq raqami nishondan katta bo'lishi mumkin. Yordam → «Yangiliklar» E'lonlar varag'ini ochadi,
+bildirishnomalarni o'qilgan qilmaydi; «Hammasi o'qildi» ikkalasini birga o'qilgan qiladi. «Bildirishnoma
+sozlamalari» havolasi yo'q (bunday sozlama hali yo'q). E'lonlar — 31.10–02.11 dagi 6 ta haqiqiy reliz (ikkala
+markazda), Face ID «yoqilgan bo'lsa» deb yozilgan; video yo'q.
+*Savol:* «Menga» uchun server har bildirishnomaga «menga tegishli» belgisini qo'shsinmi (hozir topshiriq sarlavhasidan
+aniqlanadi — lib/staffTasksServer.ts dagi matnlar nusxasi)?
+
+**247. Tug'ilgan kunlar oynasi** — taxmin
+Bugun / Ertaga / Shu hafta (yaqin 7 kun, Toshkent taqvimi; 29-fevral kabisa bo'lmagan yilda 28-fevralga tushadi).
+Ma'lumot Tug'ilgan kunlar sahifasi bilan bitta: o'quvchilar joriy filialdan (barcha holatlar, arxivdagilar ham),
+xodimlar butun jamoadan (arxivdagilarsiz); oyna birinchi ochilganda yuklanadi. «Tabriklash» — O'quvchilar
+ro'yxatidagi SMS oynasi (shablon, ota-onaga ham); faqat BUGUNGI O'QUVCHIDA va SMS yuborish ruxsati borlarda.
+«Tug'ilgan sana kiritilmagan» ogohlantirishi qoldi (son), «Ro'yxat» tugmasi yo'q — bunday ro'yxat yo'q. Pastda rasmdagi
+SMS shabloni o'rniga «Barcha tug'ilgan kunlar» → /birthdays: «Tug'ilgan kun tabrigi» shabloni yo'q; Sozlamalar → Avto
+sms dagi «Tug'ilgan kunida» yozuvi bor, lekin uni hech narsa yubormaydi.
+*Savol:* xodimni tabriklash nima qilsin (SMS oynasi o'quvchi uchun — ota-onaga yuborishni taklif qiladi)? Arxivdagi
+o'quvchilar bu oynada va sahifada ko'rinsinmi? Avtomatik tabrik SMS'i kerakmi?
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

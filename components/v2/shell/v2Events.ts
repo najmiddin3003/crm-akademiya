@@ -23,6 +23,18 @@ export function onPupilCreated(cb: (pupil: Pupil, groupId: number | null) => voi
   return () => window.removeEventListener(PUPIL_CREATED, h);
 }
 
+const OPEN_ANNOUNCEMENTS = "v2:open-announcements";
+
+/** Yordam menyusidagi «Yangiliklar» → bildirishnomalar oynasining «E'lonlar» varag'i ochilsin. */
+export function emitOpenAnnouncements(): void {
+  window.dispatchEvent(new Event(OPEN_ANNOUNCEMENTS));
+}
+
+export function onOpenAnnouncements(cb: () => void): () => void {
+  window.addEventListener(OPEN_ANNOUNCEMENTS, cb);
+  return () => window.removeEventListener(OPEN_ANNOUNCEMENTS, cb);
+}
+
 /** Kassada pul harakati bo'ldi (to'lov, kirim, chiqim, ko'chirma). */
 export function emitMoneyChanged(): void {
   window.dispatchEvent(new Event(MONEY_CHANGED));
