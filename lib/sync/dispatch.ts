@@ -221,13 +221,16 @@ export async function flushPending(
       const entry = rest as unknown as TransactionEntry;
       const prepared = await prepare(entry, task.kind, ctx);
 
+      // GOOGLE SHEETS — faqat ulangan bo'lsa. Jadvali yo'q markazda bu qadam
+      // O'TKAZIB YUBORILADI va Telegram'ni TO'SMAYDI (02.11.2026, Temuriylar:
+      // ilgari shu yerda xato otilardi va to'lov guruhga umuman chiqmasdi).
+      // Yo'qotish yo'q: jadval keyinroq ulansa, solishtirish
+      // (lib/sync/reconcile.ts) bazani etalon deb yetishmagan qatorlarni qo'shadi.
       if (!outcome.sheetDone) {
         if (isSheetsReady(cfg, task.kind)) {
           await writeSheet(cfg, session, task.kind, task.entryId, prepared.cells);
-          outcome.sheetDone = true;
-        } else {
-          throw new Error(`Google Sheets sozlanmagan (${task.kind})`);
         }
+        outcome.sheetDone = true;
       }
 
       if (!outcome.telegramDone) {

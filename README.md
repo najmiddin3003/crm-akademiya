@@ -1432,6 +1432,14 @@ izi bor to'lovlar (umumiy topikda turganlar), `--all` — ilova orqali
 kiritilgan hammasi, `--since YYYY-MM-DD`; quruq rejim sukut, `--send`
 yuboradi. Bekor qilingan yozuv "BEKOR QILINDI" ko'rinishida ketadi.
 
+**Jadvalsiz markaz (2026-11-02).** Google Sheets ulanmagan serverda
+(`GOOGLE_*`/`SHEET_ID_*` yo'q — masalan Temuriylar) jadval qadami o'tkazib
+yuboriladi va Telegram'ni TO'SMAYDI (`lib/sync/dispatch.ts`). Ilgari navbat
+"Google Sheets sozlanmagan (payment)" deb yiqilardi va to'lov guruhga umuman
+chiqmasdi. Jadval ULANGAN bo'lsa-yu Google vaqtincha javob bermasa — avvalgidek:
+xato, qayta urinish, guruhga jadvaldan keyin. Jadval keyinroq ulansa, o'tkazib
+yuborilgan qatorlarni kunlik solishtirish (`lib/sync/reconcile.ts`) qo'shadi.
+
 ### Yangi lid → Telegram "Lidlar" topigi (2026-09-07)
 
 Bu oqim yuqoridagi ikkitasidan **alohida** turadi (`lib/leadNotify.ts`):
