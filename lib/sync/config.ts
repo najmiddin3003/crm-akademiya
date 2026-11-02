@@ -1,4 +1,5 @@
 import type { SyncKind } from "@/lib/sync/types";
+import { MUTED_REASON, outboundMuted } from "@/lib/outboundGuard";
 
 // Sinxronizatsiya sozlamalari — hammasi muhit o'zgaruvchilaridan (.env.local
 // lokalda, Vercel > Environment Variables serverda). Kalitlar KODGA
@@ -193,10 +194,18 @@ export function loadSyncConfig(): SyncConfig {
   };
 }
 
-/** Google Sheets tomoni ishlashga tayyormi. */
+/**
+ * Google Sheets tomoni ishlashga tayyormi. Sinov saytida (Vercel, `SHEETS_SEND`
+ * — lib/outboundGuard.ts) kalitlar turgan bo'lsa ham YO'Q: jadval qadami jim
+ * o'tkazib yuboriladi (dispatch), solishtirish va oylik varag'i yurmaydi.
+ */
 export function isSheetsReady(cfg: SyncConfig, kind: SyncKind): boolean {
   return Boolean(
-    cfg.enabled && cfg.google.clientEmail && cfg.google.privateKey && cfg.targets[kind].spreadsheetId,
+    cfg.enabled &&
+      cfg.google.clientEmail &&
+      cfg.google.privateKey &&
+      cfg.targets[kind].spreadsheetId &&
+      !outboundMuted("sheets"),
   );
 }
 
@@ -214,6 +223,8 @@ export function isTelegramReady(cfg: SyncConfig, kind: SyncKind): boolean {
 export function syncConfigIssues(cfg: SyncConfig): string[] {
   const issues: string[] = [];
   if (!cfg.enabled) issues.push("SYNC_ENABLED=false — sinxronizatsiya o'chirilgan");
+  if (outboundMuted("sheets")) issues.push(MUTED_REASON.sheets);
+  if (outboundMuted("telegram")) issues.push(MUTED_REASON.telegram);
   if (!cfg.google.clientEmail) issues.push("GOOGLE_SERVICE_ACCOUNT_EMAIL to'ldirilmagan");
   if (!cfg.google.privateKey) issues.push("GOOGLE_PRIVATE_KEY to'ldirilmagan");
   if (!cfg.telegramToken) issues.push("TELEGRAM_BOT_TOKEN to'ldirilmagan");

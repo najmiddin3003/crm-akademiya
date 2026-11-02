@@ -8,6 +8,11 @@
 // Ikki akkaunt (02.11.2026): asosiy — ESKIZ_EMAIL / ESKIZ_PASSWORD / ESKIZ_FROM; ixtiyoriy
 // zaxira — ESKIZ_FALLBACK_EMAIL / ESKIZ_FALLBACK_PASSWORD / ESKIZ_FALLBACK_FROM. Zaxiraga faqat
 // markaz nomli SMS'lar o'tadi (lib/invite.ts → sendCenterSms), asosiy akkaunt rad etganda.
+//
+// SINOV SAYTI QOROVULI (02.11.2026): Vercel'da (`VERCEL=1`) SMS KETMAYDI — kalitlar turgan
+// bo'lsa ham sendSms taqlid qiladi (`simulated`). Qaytarish: SMS_SEND=on. Qoida lib/outboundGuard.ts.
+
+import { outboundMuted } from "@/lib/outboundGuard";
 
 const BASE = "https://notify.eskiz.uz/api";
 
@@ -86,6 +91,14 @@ export interface SendSmsResult {
 // `account` — qaysi akkauntdan (sukut: asosiy); zaxira faqat sendCenterSms'dan chaqiriladi.
 export async function sendSms(phone: string, message: string, account: EskizAccount = "main"): Promise<SendSmsResult> {
   const to = normalizePhone(phone);
+
+  // Sinov sayti: haqiqiy telefonlar Atlas nusxasida turibdi — tarmoqqa (login ham) chiqilmaydi.
+  // Zaxira akkaunt ham shu yerdan o'tadi, shuning uchun u ham jim (sendCenterSms birinchi
+  // javobni `ok` deb oladi va zaxiraga o'tmaydi).
+  if (outboundMuted("sms")) {
+    console.warn(`\n[eskiz:SINOV] -> +${to} (SMS_SEND o'chiq, yuborilmadi)\n${message}\n`);
+    return { ok: true, simulated: true };
+  }
 
   if (!eskizConfigured(account)) {
     if (account === "fallback") return { ok: false, error: "Zaxira Eskiz akkaunti sozlanmagan" };

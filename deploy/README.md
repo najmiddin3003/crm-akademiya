@@ -210,6 +210,15 @@ qilish mumkin — undan oldin orqaga qaytish yo'li ochiq turadi (13-band).
 > kelgan (eskirgan DNS) → DNS yo'riqnomali sahifa, `/api/*` → 503.
 > Vercel'ga qaytish kerak bo'lsa (13-band) u yerda `APP_MOVED_TO=off`
 > qo'yiladi. Domenlarni Vercel'dan uzish va Pause — baribir tavsiya.
+>
+> **02.11.2026 dan sinov domeni:** `v2-ui` shoxining preview'i
+> (`crm-akademiya-git-v2-ui-….vercel.app`, Vercel SSO ortida) ilovani
+> ko'rsatadi — `APP_MOVED_TO=off` FAQAT Preview + FAQAT `v2-ui` uchun
+> qo'yilgan, Production'da yo'q (qo'riqchi `tizimli24.uz` uchun turibdi).
+> Preview Atlas ko'zgusida ishlaydi (kechagi prod, sinov yozuvlari kechki
+> ko'zgu bilan o'chadi), loyihada esa haqiqiy kalitlar turibdi — shu bois
+> Vercel'da SMS, Google jadval va Telegram'ga YOZISH kodda o'chiq
+> (`lib/outboundGuard.ts`; sinov: `scripts/_verify-outbound-guard.mjs`).
 
 ## 12. Keyingi yangilanishlar
 
@@ -231,9 +240,12 @@ yangi nusxa bilan almashtirib turadi.
   `APP_MOVED_TO=off` qo'yib redeploy qiling (11-banddagi qo'riqchi, aks
   holda Vercel faqat "ko'chdi" sahifasini ko'rsatadi) va u Atlas'ga
   qarashini unutmang — Atlas'da kechagi holat (zaxira ko'zgusi) turadi.
-  `TELEGRAM_SEND=on` ham qo'ying: Vercel'da botlar sukut bo'yicha HECH
-  KIMGA yozmaydi (sinov sayti qorovuli, lib/telegramApi.ts, 17.10.2026) —
-  qo'yilmasa to'lov xabarlari, kassa boti va o'quvchilar boti jim qoladi.
+  `TELEGRAM_SEND=on`, `SMS_SEND=on` va `SHEETS_SEND=on` ham qo'ying
+  (Production uchun): Vercel'da sukut bo'yicha botlar HECH KIMGA yozmaydi,
+  SMS ketmaydi, Google jadvalga qator tushmaydi (sinov sayti qorovuli,
+  lib/outboundGuard.ts: Telegram 17.10.2026 dan, SMS va jadval 02.11.2026
+  dan) — qo'yilmasa to'lov xabarlari, kassa boti, o'quvchilar boti, taklif
+  va parol SMS'lari, to'lovlar jadvali jim qoladi.
 
 ## Kuzatuv
 

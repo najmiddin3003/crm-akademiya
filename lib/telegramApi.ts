@@ -15,6 +15,8 @@
 // faylning ustidagi yupqa qobiq — uning tashqi imzosi o'zgarmadi, ya'ni
 // sinxronizatsiya moduli avvalgidek ishlayveradi.
 
+import { MUTED_REASON, outboundMuted } from "@/lib/outboundGuard";
+
 const API = "https://api.telegram.org";
 
 // ── SINOV SAYTI QOROVULI (17.10.2026) ──────────────────────────────────
@@ -39,15 +41,16 @@ const API = "https://api.telegram.org";
 //   TELEGRAM_SEND=on  — Vercel'da ham yozadi (Vercel'ga orqaga qaytish,
 //                       deploy/README.md 13-band);
 //   TELEGRAM_SEND=off — istalgan joyda o'chiradi (masalan lokal sinov).
+//
+// 02.11.2026 dan bu qoida SMS va Google jadvalga ham tatbiq qilingan — bitta
+// manba lib/outboundGuard.ts (o'sha kuni `crm-akademiya` loyihasining v2-ui
+// preview'i ham sinov sayti bo'ldi: APP_MOVED_TO=off faqat Preview + v2-ui).
 
-const MUTED = "sinov sayti — Telegram'ga yozish o'chiq (TELEGRAM_SEND)";
+const MUTED = MUTED_REASON.telegram;
 
 /** Telegram'ga YOZISH o'chiqmi (o'qish — `get*` — baribir ishlaydi). */
 export function telegramMuted(): boolean {
-  const flag = (process.env.TELEGRAM_SEND || "").trim().toLowerCase();
-  if (flag === "on") return false;
-  if (flag === "off") return true;
-  return process.env.VERCEL === "1";
+  return outboundMuted("telegram");
 }
 
 /**

@@ -1,6 +1,7 @@
 import { createSign } from "node:crypto";
 import { describePrivateKey } from "@/lib/sync/config";
 import type { SyncConfig } from "@/lib/sync/config";
+import { MUTED_REASON, outboundMuted } from "@/lib/outboundGuard";
 
 // Google Sheets API v4 bilan ishlash — `googleapis` paketisiz.
 //
@@ -115,6 +116,9 @@ async function sheetsFetch(
   init: RequestInit = {},
   attempt = 0,
 ): Promise<Record<string, unknown>> {
+  // Sinov sayti (lib/outboundGuard.ts): Google'ga umuman chiqilmaydi — token so'rovi ham,
+  // o'qish ham. isSheetsReady allaqachon to'sadi; bu — undan o'tib ketgan yangi yo'l uchun.
+  if (outboundMuted("sheets")) throw new Error(MUTED_REASON.sheets);
   const token = await getAccessToken(cfg);
   const res = await fetch(url, {
     ...init,

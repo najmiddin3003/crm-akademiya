@@ -3370,3 +3370,24 @@ akkauntda — qachon tasdiqlanishini kutib qo'lda almashtirmaslik uchun:
   ixtiyoriy, zaxira akkauntda mos shablon yo'q.
 - Sinov: soxta `fetch` bilan 10 holat (hozirgi, o'tish, o'z akkaunt tasdiqsiz/tasdiqlangan,
   parol xato, tarmoq, 502, ikkalasi rad, zaxirasiz, Eskiz'siz) — kutilgandek.
+
+## Sinov domeni: `v2-ui` preview ilovani ko'rsatadi (2026-11-02)
+
+Ish tartibi (CLAUDE.md): har chiqarish avval sinov domenida — `v2-ui` → Vercel preview — ko'riladi,
+egasi tasdiqlagach `main` → prod. Lekin preview ochilmasdi: proxy.ts dagi qo'riqchi (deploy/README.md
+11-band, 14.09 hodisasi) Vercel'dagi har so'rovni `tizimli24.uz` ga 308 qilardi. Egasining tanlovi:
+«Qorovul + sozlama», baza — Atlas'dagi nusxa (yangi baza ochilmaydi).
+
+- **Sozlama:** `crm-akademiya` loyihasida `APP_MOVED_TO=off` — FAQAT Preview va FAQAT `v2-ui`
+  shoxi uchun. Production'da yo'q: `tizimli24.uz` hali shu loyihaga ulangan, qo'riqchi turadi.
+- **Qorovul (`lib/outboundGuard.ts`):** preview Atlas ko'zgusida (kechagi prod — haqiqiy o'quvchi,
+  xodim va telefonlar) ishlaydi, loyihada esa haqiqiy kalitlar bor. Shu bois Vercel'da (`VERCEL=1`)
+  tashqariga YOZISH o'chiq: Telegram (17.10 dan, `callTelegram`), SMS (`sendSms` taqlid qiladi —
+  `simulated`, oqim to'xtamaydi; zaxira akkaunt ham), Google jadval (`isSheetsReady` — qadam jim
+  o'tkazib yuboriladi; `sheetsFetch` — Google'ga umuman chiqilmaydi). Sinxronizatsiya sahifasi
+  sababini ko'rsatadi. Kanal bo'yicha qaytarish: `TELEGRAM_SEND` / `SMS_SEND` / `SHEETS_SEND` =
+  `on` (Vercel'ga to'liq qaytish — deploy/README.md 13-band), `off` — istalgan joyda o'chiradi.
+- Tegilmagan: Cloudinary (faqat yuklash, o'chirish yo'q), OpenAI (MohirAI va jins aniqlash —
+  odamga hech narsa yubormaydi, lekin preview'dagi so'rov haqiqiy kalitdan sarflanadi).
+- Sinov: `node --experimental-transform-types --no-warnings scripts/_verify-outbound-guard.mjs`
+  (soxta `fetch`, 40 holat; 8 mutatsiya ushlanadi).
