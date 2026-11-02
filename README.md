@@ -3219,6 +3219,16 @@ qo'shilgan rol uchun tanlov — «Faqat ruxsat bersin».
   lid mas'uli …). Ro'yxat/profil/eksportda rol nomi (`useRoleNames`),
   filtrda «Boshqa rol», Oylik filtrida «Boshqa xodimlar».
 - Xodimga berilgan rolni o'chirish — 409 (`DELETE /api/roles/:id`).
+- **Lavozim o'zgarsa — hisob roli ham (2026-11-02, `lib/employeeRoleSync.ts`).**
+  Ilgari `users.role` faqat hisob yaratilganda yozilardi: Temuriylar'da admin
+  «Moderator» qilinganda ham admin bo'lib qoldi. Endi PATCH
+  `/api/hr-employees/:id` va `/api/temp-staff/:id` lavozim HAQIQATAN o'zgarsa
+  bog'langan hisob(lar) rolini ham yozadi (ism/telefon tahriri rolga tegmaydi).
+  «Administrator»ni berish va olish — faqat admin (yangi xodim qo'shishda ham,
+  403); o'zini chiqarish va oxirgi faol adminni chiqarish — 409. Sahifalar va
+  admin tekshiruvi darhol, /api/* bo'lim keshi ko'pi bilan 10 s. Sinov:
+  `node --experimental-transform-types --no-warnings scripts/_verify-lavozim-role.mjs`
+  (soxta baza, 15 holat).
 
 ## AI yordamchi — adminga ogohlantirishlar (2026-10-12)
 

@@ -6576,5 +6576,8 @@
   "Filialda faol o'quvchi yo'q": "No active students in the branch",
   "«Yangi o'quvchi» bilan karta oching yoki Excel'dan yuklang.": "Open a card with \"New student\" or upload from Excel.",
   "Yangi o'quvchi bo'lsa — «Yangi o'quvchi» bilan karta oching.": "For a new student, open a card with \"New student\".",
-  "«Hammasi» filtrida — filialning barcha faol o'quvchilari.": "The \"All\" filter shows every active student of the branch."
+  "«Hammasi» filtrida — filialning barcha faol o'quvchilari.": "The \"All\" filter shows every active student of the branch.",
+  "Administrator lavozimini faqat administrator berishi yoki olishi mumkin": "Only an administrator can grant or remove the Administrator position",
+  "O'zingizni administratorlikdan chiqara olmaysiz — buni boshqa administrator qilsin": "You cannot remove your own administrator rights — ask another administrator to do it",
+  "Bu markazdagi oxirgi faol administrator — avval boshqa xodimni administrator qiling": "This is the center's last active administrator — make another employee an administrator first"
 }

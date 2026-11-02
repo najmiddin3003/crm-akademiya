@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/adminOnly";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import { APPROVAL_FIELD } from "@/lib/adminApproval";
 import { syncEmployeeRename } from "@/lib/employeeRename";
+import { applyLavozimChange, checkLavozimChange, lavozimChanged } from "@/lib/employeeRoleSync";
 
 // "Vaqtinchalik tugma" sahifasining bitta xodim ustidagi amallari.
 // Ikkalasi ham FILIAL QAMROVISIZ ishlaydi (sabab: ../route.ts izohi).
@@ -27,7 +28,8 @@ async function findEmployee(id: number) {
 // a'zoligi, ish haqi, soliq va ruxsatlar — Boshqaruv → Xodimlar sahifasida,
 // u yerda ular bir-biriga bog'liq qoidalar bilan tekshiriladi.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin())) {
+  const me = await requireAdmin();
+  if (!me) {
     return NextResponse.json({ ok: false, error: "Bu sahifa faqat admin uchun" }, { status: 403 });
   }
   const { id } = await params;
@@ -104,6 +106,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (Object.keys(set).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
+  }
+
+  // VAZIFA O'ZGARDI — hisob roli (`users.role`, admin huquqi shundan) ham ergashadi
+  // (lib/employeeRoleSync.ts): tekshiruv va rol xodim yozuvidan OLDIN, rad etilsa hech
+  // narsa o'zgarmaydi. Tahrir oynasi vazifani har safar yuboradi — faqat haqiqiy o'zgarishda.
+  if (lavozimChanged(row.turi, set.turi)) {
+    const check = await checkLavozimChange(db, { empId, phone: row.phone, fromTuri: row.turi, toTuri: set.turi, admin: me });
+    if (!check.ok) return NextResponse.json({ ok: false, error: check.error }, { status: check.status });
+    await applyLavozimChange(db, check);
   }
 
   await db.collection("hr_employees").updateOne({ id: empId }, { $set: set });

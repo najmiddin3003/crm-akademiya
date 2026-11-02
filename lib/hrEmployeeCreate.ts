@@ -14,6 +14,7 @@ import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 import { isValidPhone, issueCode, generateToken, sendActivationSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
 import { toUz } from "@/lib/uzTime";
 import { resolveCenterRole } from "@/lib/roles";
+import { accountRoleOf, ADMIN_ROLE } from "@/lib/employeeRoleSync";
 import { branchIdsErrorText, branchNameMap, pruneAssignments, resolvePayrollBranch, validateBranchIds } from "@/lib/employeeBranches";
 import { logSms } from "@/lib/smsLog";
 
@@ -71,6 +72,12 @@ export async function createHrEmployee(db: Db, scope: BranchScope, body: CreateE
   // «O'quv markazidagi vazifasi» — Rollar'dagi rol yoki lavozim (lib/roles.ts).
   const roleChoice = await resolveCenterRole(db, body);
   if (!roleChoice.ok) return { ok: false, error: roleChoice.error, status: 400 };
+  // ADMINISTRATOR — faqat admin yaratadi: hisob roli shu lavozimdan yoziladi (pastda),
+  // ya'ni Xodimlar bo'limiga kira oladigan har kim yangi admin hisob ochib olardi.
+  // Tahrir yo'lidagi qoida bilan bir xil (lib/employeeRoleSync.ts).
+  if (roleChoice.turi === ADMIN_ROLE && !scope.isAdmin) {
+    return { ok: false, error: "Administrator lavozimini faqat administrator berishi yoki olishi mumkin", status: 403 };
+  }
 
   const col = db.collection("hr_employees");
 
@@ -177,7 +184,7 @@ export async function createHrEmployee(db: Db, scope: BranchScope, body: CreateE
     phone,
     hrEmployeeId: nextId,
     fullName: name,
-    role: employee.turi || "employee",
+    role: accountRoleOf(employee.turi),
     status: "invited",
     passwordHash: null,
     invite: { token, expiresAt: new Date(now.getTime() + INVITE_TTL_MS) },

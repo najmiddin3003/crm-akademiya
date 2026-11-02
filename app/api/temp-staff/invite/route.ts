@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/adminOnly";
 import { generateToken, INVITE_TTL_MS, issueCode, normalizePhone, sendActivationSms } from "@/lib/invite";
 import { APPROVAL_FIELD, type AdminApproval } from "@/lib/adminApproval";
 import { logSms } from "@/lib/smsLog";
+import { accountRoleOf } from "@/lib/employeeRoleSync";
 
 // POST /api/temp-staff/invite  { ids: number[] }
 // "Vaqtinchalik tugma" sahifasidagi FAOLLASHTIRISH SMS'i — bittaga ham,
@@ -133,7 +134,7 @@ export async function POST(req: Request) {
           phone,
           hrEmployeeId: id,
           fullName: name,
-          role: String(emp.turi ?? "") || "employee",
+          role: accountRoleOf(emp.turi),
           status: "invited",
           passwordHash: null,
           invite,

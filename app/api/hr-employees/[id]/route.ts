@@ -21,6 +21,8 @@ import {
 import { getBranchScope } from "@/lib/branchScope";
 import { resolveCenterRole, STAFF_TURI } from "@/lib/roles";
 import { syncEmployeeRename } from "@/lib/employeeRename";
+import { requireAdmin } from "@/lib/adminOnly";
+import { applyLavozimChange, checkLavozimChange, lavozimChanged, type LavozimCheck } from "@/lib/employeeRoleSync";
 import { deleteFaceData } from "@/lib/staffFace";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
@@ -258,6 +260,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (choice.centerRoleId !== null) set.centerRoleId = choice.centerRoleId;
     else if (current.centerRoleId !== null && current.centerRoleId !== undefined) unset.centerRoleId = "";
   } else if (typeof set.turi === "string") {
+    set.turi = set.turi.trim();
     if (set.turi === STAFF_TURI) delete set.turi;
     else if (current.centerRoleId !== null && current.centerRoleId !== undefined) unset.centerRoleId = "";
   }
@@ -350,6 +353,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
+  // LAVOZIM O'ZGARDI — hisob roli (`users.role`, admin huquqi shundan) ham ergashadi
+  // (lib/employeeRoleSync.ts). Tekshiruv hech narsa yozilmasdan oldin; tahrir oynasi
+  // lavozimni har safar qayta yuboradi, shuning uchun faqat HAQIQIY o'zgarishda.
+  let lavozim: Extract<LavozimCheck, { ok: true }> | null = null;
+  if (lavozimChanged(current.turi, set.turi)) {
+    const check = await checkLavozimChange(db, {
+      empId,
+      phone: current.phone,
+      fromTuri: current.turi,
+      toTuri: set.turi,
+      admin: await requireAdmin(),
+    });
+    if (!check.ok) return NextResponse.json({ ok: false, error: check.error }, { status: check.status });
+    lavozim = check;
+  }
+
   if (newPhone !== null) {
     // Raqam BOSHQA xodimda yoki BOSHQA hisobda band bo'lmasin. Ikkala
     // kolleksiya ham qaraladi — import qilingan xodimlarda `users` yozuvi
@@ -364,6 +383,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     set.phone = newPhone;
   }
+
+  // Hisob roli — barcha tekshiruvlardan keyin, xodim yozuvidan OLDIN (tartib sababi
+  // lib/employeeRoleSync.ts boshida).
+  if (lavozim) await applyLavozimChange(db, lavozim);
 
   // Qamrov FILTRDA, JS'da emas: o'qib→tekshirib→yozish oralig'ida xodim
   // boshqa filialga ko'chirilsa ham yozuv o'tib ketmasin.
