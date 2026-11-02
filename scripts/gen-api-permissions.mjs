@@ -123,6 +123,12 @@ const SHARED_EXTRA = [
   // uchun alohida kesiladi va yopiq kartaning soni umuman so'ralmaydi
   // (app/api/home-stats/route.ts, lib/homeStats.ts).
   "/api/home-stats",
+  // Ctrl K qidiruv oynasi (yangi UI yuqori paneli, components/v2/shell/
+  // CommandPaletteV2.tsx) — qo'ng'iroq bilan bir xil sabab: HAR sahifada
+  // turadi. Har bir manba (o'quvchi / lid / guruh / xodim / to'lov) handler
+  // ICHIDA `isPathAllowed` bilan alohida kesiladi va yopiq manba umuman
+  // so'ralmaydi (app/api/search/global/route.ts).
+  "/api/search/global",
   // Xodim topshiriqlari (/tasks). Sahifa HAMMAGA ochiq (lib/permissions.ts
   // → SELF_SERVICE_PATHS): oddiy xodim ham o'z topshirig'ini ko'radi va
   // «Bajardim» bosadi. "/tasks" ga bog'lansa u 403 olardi. Qamrov va
