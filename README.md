@@ -3298,3 +3298,21 @@ deploy to'xtardi). Foydalanuvchi (20.10): «ha, qil» — shriftlar loyihaga joy
   bir xil; /ariza va /sorovnoma da faqat animatsiya va sub-piksel farqi.
 - **Yangi shrift kerak bo'lsa**: `next/font/google` ISHLATILMASIN — `npm i -E @fontsource-variable/<nom>`
   va `import "@fontsource-variable/<nom>/wght.css"`.
+
+## SMS'dagi markaz nomi: `SMS_CENTER_SHORT` (2026-11-02)
+
+Eskiz faqat moderatsiyadan o'tgan shablonga mos matnni yuboradi, boshqasini 400 bilan qaytaradi
+(«текст еще не прошёл модерацию»). Temuriylar ishga tushgan kuni yangi xodimga taklif SMS'i
+bormadi: «CRM-Temuriylar tizimida hisobingizni faollashtirish…» shabloni hali tasdiqlanmagan edi.
+Egasi (02.11): «hozircha akademiyadagi shablonda ketaversin».
+
+- `lib/invite.ts` — `activationMessage` va `resetMessage` markaz nomini `smsCenterShort()` dan
+  oladi: serverda `SMS_CENTER_SHORT` bo'lsa o'sha, bo'sh bo'lsa `CENTER_SHORT`. Qiymat ish vaqtida
+  o'qiladi (`NEXT_PUBLIC_*` kabi build'ga yozilmaydi) — almashtirish uchun
+  `set-center-secret.sh SMS_CENTER_SHORT` yetadi, qayta build kerak emas.
+- Yangi markazda o'z shabloni tasdiqlanguncha: `SMS_CENTER_SHORT=Akademiya` — matn Akademiya
+  akkauntidagi tasdiqlangan «CRM-Akademiya tizimida hisobingizni faollashtirish uchun havola: %w
+  yoki tasdiqlash kodi: %w» shabloniga tushadi (havola baribir markazning o'z `PUBLIC_SITE_URL`
+  idan). O'z shabloni tasdiqlangach qator `/root/center.env` dan olib tashlanadi va
+  `new-center-env.sh` + `pm2 reload crm --update-env`.
+- Akademiya'da o'rnatilmagan — matn avvalgidek.

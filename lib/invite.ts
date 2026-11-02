@@ -149,14 +149,28 @@ export async function verifyCode(phone: string, code: string, purpose: Purpose):
  */
 const PUBLIC_SITE_URL = "https://www.tizimli24.uz";
 
+/**
+ * SMS matnidagi markaz nomi («CRM-<nom> tizimida ...»).
+ *
+ * Eskiz faqat moderatsiyadan o'tgan shablonga mos matnni yuboradi, boshqasini
+ * 400 bilan qaytaradi. Yangi markazning o'z shabloni tasdiqlanguncha u boshqa
+ * markazning tasdiqlangan shabloni bilan yuborsin deb serverga
+ * `SMS_CENTER_SHORT` (masalan `Akademiya`) qo'yiladi. Qiymat ish vaqtida
+ * o'qiladi — qayta build shart emas; olib tashlansa `CENTER_SHORT` ga qaytadi.
+ * (02.11.2026: Temuriylar shabloni moderatsiyada edi.)
+ */
+function smsCenterShort(): string {
+  return (process.env.SMS_CENTER_SHORT || "").trim() || CENTER_SHORT;
+}
+
 /** Taklif SMS matni (havola + kod). */
 export function activationMessage(token: string, code: string): string {
   const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || PUBLIC_SITE_URL;
-  return `CRM-${CENTER_SHORT} tizimida hisobingizni faollashtirish uchun havola: ${base}/activate?t=${token} yoki tasdiqlash kodi: ${code}`;
+  return `CRM-${smsCenterShort()} tizimida hisobingizni faollashtirish uchun havola: ${base}/activate?t=${token} yoki tasdiqlash kodi: ${code}`;
 }
 
 export function resetMessage(code: string): string {
-  return `CRM-${CENTER_SHORT} tizimida parolni tiklash uchun tasdiqlash kodi: ${code}. Kod 10 daqiqa amal qiladi. Uni hech kimga bermang.`;
+  return `CRM-${smsCenterShort()} tizimida parolni tiklash uchun tasdiqlash kodi: ${code}. Kod 10 daqiqa amal qiladi. Uni hech kimga bermang.`;
 }
 
 export { sendSms, normalizePhone };
