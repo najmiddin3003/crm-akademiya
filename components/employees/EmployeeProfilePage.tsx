@@ -173,7 +173,8 @@ function buildStats({ bonus, jarima, avans, oylik, ready, payroll, t, months }: 
     { label: "Avans", value: v(avans), icon: <XCircle className="w-4 h-4" />, wrap: "bg-rose-100 text-rose-600", valueCls: avans > 0 ? "text-rose-600" : "" },
     { label: "Jarima", value: v(jarima), icon: <Frown className="w-4 h-4" />, wrap: "bg-amber-100 text-amber-600" },
     { label: "Akladi", value: p(payroll?.fixedSalary), icon: <Briefcase className="w-4 h-4" />, wrap: "bg-secondary text-foreground/70" },
-    { label: "Oylik", value: v(oylik), icon: <CreditCard className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-700" },
+    // Butun davrda berilgan oyliklar yig'indisi, bir oylik maosh emas — maosh «Akladi» da.
+    { label: "Jami olingan oylik", value: v(oylik), icon: <CreditCard className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-700" },
     {
       label: "To'lanmagan",
       value: p(payroll?.owed),
