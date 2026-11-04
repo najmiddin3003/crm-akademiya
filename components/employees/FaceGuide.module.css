@@ -2,7 +2,7 @@
 
    hero.webp — 5 ustun x 4 qator, bitta keng qatlam surilib kerakli katak
    ko'rinadi (ustun 20%, qator 25%). Kataklar: 0-16 boshning chapdan o'ngga
-   burilishi (8 — to'g'ri), 17-19 ko'zning yumilishi.
+   burilishi (8 — to'g'ri), 17-19 ko'zning yumilishi (04.11 dan ishlatilmaydi).
 
    Faqat transform: yuz aniqlash telefonda asosiy oqimni yuzlab ms band qiladi,
    shuning uchun harakat kompozitorda yurishi kerak — JS yoki canvas shu paytda
@@ -30,21 +30,7 @@
   transform: translate(-60%, -25%);
 }
 
-.bubble[data-demo="blink"] .sprite { animation: heroBlink 2.8s step-end infinite; }
 .bubble[data-demo="turn"] .sprite { animation: heroTurn 4.4s step-end infinite; }
-
-/* KO'Z YUMISH. Ko'z 0.7 s yumuq turadi: sekin telefonda ham bir necha kadr
-   ko'rishi uchun odam shu sur'atda takrorlashi kerak, va butun harakat
-   FaceCapture'dagi BLINK_MAX_MS (3 s) dan ancha qisqa. */
-@keyframes heroBlink {
-  0% { transform: translate(-60%, -25%); }
-  40% { transform: translate(-40%, -75%); }
-  43% { transform: translate(-60%, -75%); }
-  46% { transform: translate(-80%, -75%); }
-  71% { transform: translate(-60%, -75%); }
-  74% { transform: translate(-40%, -75%); }
-  77%, 100% { transform: translate(-60%, -25%); }
-}
 
 /* BOSH BURISH: avval chapga, keyin o'ngga, sekin boshlanib sekin to'xtaydi.
    Chetki kataklar TURN_LOW/TURN_HIGH dan o'tadigan burchakda. */

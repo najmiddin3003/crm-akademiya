@@ -14,22 +14,20 @@ import { faceVoiceAvailable, faceVoiceMuted, setFaceVoiceMuted, unlockFaceVoice,
 // Kutubxona (~1.3 MB) va modellar (~7 MB, public/xodim/face-models) faqat shu
 // komponent ochilganda yuklanadi; keyin brauzer keshidan.
 //
-// JONLILIK — rasmni telefonga tutib o'tishga qarshi: avval KO'Z YUMISH (ko'z
-// ochiqligi keskin tushib qayta ko'tarilishi). 10 soniyada aniqlanmasa — BOSHNI
-// BURISH: burun uchi ko'zlar o'qi bo'ylab chapga va o'ngga siljishi kerak.
+// JONLILIK — rasmni telefonga tutib o'tishga qarshi: BOSHNI BURISH, burun uchi
+// ko'zlar o'qi bo'ylab chapga va o'ngga siljishi kerak. KO'Z YUMISH (ko'z
+// ochiqligi keskin tushib qayta ko'tarilishi) so'ralmaydi, lekin ko'rilsa o'tadi.
 // Ikkala o'lchov ham yassi rasmni yonga og'dirish yoki oldinga engashtirishdan
 // o'zgarmaydi (30.10 sinovi: eski o'lchovlar bilan qog'oz rasmni ±20° tebratib
 // «bosh burish»dan o'tish mumkin edi — tuzatildi, yawOf/eyeOpenness).
 //
-// 31.10.2026, foydalanuvchi telefonida: «ko'zni tekshirgandan keyin boshni
-// qimirlatishni so'rayapti» — ko'z yumish ilg'anmay, 10 soniyadan keyin bosh
-// burishga o'tib ketardi. Ehtimoliy sabab: tanib olish modeli birinchi marta
-// aynan ko'z yumilgan kadrda ishga tushardi (WebGL shader'lari telefonda
-// soniyalab kompilyatsiya qilinadi) va qayta ochilish BLINK_MAX_MS dan kech
-// ko'rilardi. Endi model oldindan isitiladi (loadRecognizer), chegaralar
-// yumshatildi, bosh burish so'ralsa sababi aytiladi, har urinish o'lchovlari
-// (FaceStats) serverga yoziladi — chegaralarni haqiqiy telefonlar bo'yicha
-// sozlash uchun (staff_face_shots.stats).
+// 04.11.2026: oldin avval ko'z yumish so'ralar, 10 soniyada ilg'anmasa bosh
+// burishga o'tilardi. Ikkala markazdagi 114 urinishdan atigi 12 tasi 10 soniyada
+// ko'z yumish bilan o'tdi, qolganlari behuda kutdi: bosh burish bilan o'tgan 85
+// tadan 70 tasida yumilish umuman ko'rinmagan (ochiqlik odatda 10–15% tushadi,
+// chegara 20%). Telefon tezligi sabab emas edi. Egasi bosh burishni birinchi
+// qilishni tanladi, chegaralar o'zgarmadi. Har urinish o'lchovlari (FaceStats)
+// serverga yoziladi: staff_face_shots.stats.
 //
 // Jonlilik va suratlar BITTA YUZGA bog'langan: jonlilik o'tgan kadrda yuz izi
 // olinadi, keyingi har surat shu izga yaqin bo'lishi shart. Yuz yo'qolsa yoki
@@ -92,11 +90,9 @@ const LOOP_GAP_MS = 40;
  * 30.10 sinovida 144 holatdan 3 tasida yuzni o'tkazib yubordi, 256 da — 21 ta.
  */
 const DETECT_INPUT = 224;
-/** Ko'z yumish shuncha vaqtda aniqlanmasa — boshni burishga o'tiladi. */
-const BLINK_TIMEOUT_MS = 10_000;
 /**
- * Ko'z yumilgan deb hisoblanadigan eng uzoq vaqt. Yumilgandan keyingi kadrlar
- * iz bilan (sekin) hisoblanadi — sekin telefonda 2 s yetmasdi (31.10: 2 → 3 s).
+ * Ko'z yumilgan deb hisoblanadigan eng uzoq vaqt. Jonlilik kadrlari iz bilan
+ * (sekin) hisoblanadi — sekin telefonda 2 s yetmasdi (31.10: 2 → 3 s).
  */
 const BLINK_MAX_MS = 3_000;
 /** Ko'z yumildi: ochiqlik ochiq holatdagidan shuncha marta past (31.10: 0.75 → 0.8; FaceStats.closeMin bo'yicha sozlanadi). */
@@ -286,7 +282,7 @@ function cropPhoto(src: HTMLCanvasElement, box: Box): string {
 
 // ── Matnlar: har kalit to'g'ridan-to'g'ri t() ichida — i18n-scan ko'rsin ──
 
-type CueId = "camera" | "models" | "noFace" | "many" | "closer" | "farther" | "center" | "blink" | "turn" | "look" | "straight" | "wait" | "done";
+type CueId = "camera" | "models" | "noFace" | "many" | "closer" | "farther" | "center" | "turn" | "look" | "straight" | "wait" | "done";
 type ErrorId = "unsupported" | "denied" | "notFound" | "busy" | "camera" | "models" | "detect";
 
 function cueText(t: (k: string) => string, id: CueId): string {
@@ -305,10 +301,8 @@ function cueText(t: (k: string) => string, id: CueId): string {
       return t("Biroz uzoqlashing");
     case "center":
       return t("Yuzingizni doira markaziga olib keling");
-    case "blink":
-      return t("Ko'zingizni sekin yumib oching");
     case "turn":
-      return t("Ko'z yumish ilg'anmadi — boshingizni sekin chapga, keyin o'ngga buring");
+      return t("Boshingizni sekin chapga, keyin o'ngga buring");
     case "look":
       return t("Kameraga to'g'ri qarang");
     case "straight":
@@ -534,14 +528,9 @@ export default function FaceCapture({
         }
         frameCtx.drawImage(video, 0, 0, vw, vh);
         const t0 = performance.now();
-        const turnMode = live === null && liveSince > 0 && t0 - liveSince > BLINK_TIMEOUT_MS;
-        // Iz: jonlilik o'tishi mumkin bo'lgan kadrlarda (ko'z yumilgan payt, bosh
-        // burish rejimi) — o'tgan kadrning o'zida bo'lsin; suratga olishda — har 150 ms.
-        const wantDesc =
-          recognizerReady &&
-          (live === null
-            ? turnMode || (closedAt !== null && t0 - closedAt < BLINK_MAX_MS)
-            : t0 - lastShotAt >= CAPTURE_GAP_MS);
+        // Iz: jonlilik istalgan kadrda o'tishi mumkin — iz o'tgan kadrning o'zida
+        // bo'lsin; suratga olishda — har 150 ms.
+        const wantDesc = recognizerReady && (live === null || t0 - lastShotAt >= CAPTURE_GAP_MS);
         const dets = await detect(wantDesc).catch(() => null);
         if (cancelled) break;
         if (!dets) return fail("detect");
@@ -584,7 +573,8 @@ export default function FaceCapture({
             else {
               liveSince ||= now;
               let passed: "blink" | "turn" | null = null;
-              // Ko'z yumish: ochiq holat bazasi yetarli kadrdan keyin baholanadi.
+              // Ko'z yumish (so'ralmaydi, ko'rilsa o'tadi): ochiq holat bazasi
+              // yetarli kadrdan keyin baholanadi.
               if (opens.length >= 5 && openBase > 0) {
                 closeMin = Math.min(closeMin, open / openBase);
                 if (open < openBase * CLOSE_RATIO) {
@@ -597,16 +587,16 @@ export default function FaceCapture({
                   closedAt = null;
                 }
               }
-              // Boshni burish (zaxira yo'l) — ikkala tomonga.
+              // Boshni burish — ikkala tomonga.
               yawMin = Math.min(yawMin, yaw);
               yawMax = Math.max(yawMax, yaw);
-              if (turnMode && yawMin < TURN_LOW && yawMax > TURN_HIGH) passed = "turn";
+              if (yawMin < TURN_LOW && yawMax > TURN_HIGH) passed = "turn";
               if (passed && face.descriptor) {
                 live = passed;
                 liveMs = Math.round(now - liveSince);
                 anchor = Array.from(face.descriptor);
               }
-              cue = turnMode ? "turn" : "blink";
+              cue = "turn";
             }
           }
           if (live !== null) {
@@ -659,7 +649,7 @@ export default function FaceCapture({
           cue,
           good: face !== null,
           progress: live === null ? 0 : shots.length / need,
-          demo: live !== null || !liveSince || now - lastGoodAt > DEMO_HOLD_MS ? null : turnMode ? "turn" : "blink",
+          demo: live !== null || !liveSince || now - lastGoodAt > DEMO_HOLD_MS ? null : "turn",
         });
         if (debug && now - lastDbgAt > 200) {
           lastDbgAt = now;

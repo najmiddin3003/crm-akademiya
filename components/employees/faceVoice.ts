@@ -19,9 +19,9 @@ import type { Lang } from "@/lib/i18n";
 //
 // Faqat o'zbek tilida: inglizchada ovoz ham, ortiqcha bosish ham yo'q.
 
-export type VoiceCue = "noFace" | "many" | "closer" | "farther" | "center" | "blink" | "turn" | "look" | "straight" | "done";
+export type VoiceCue = "noFace" | "many" | "closer" | "farther" | "center" | "turn" | "look" | "straight" | "done";
 
-const CUES: readonly VoiceCue[] = ["noFace", "many", "closer", "farther", "center", "blink", "turn", "look", "straight", "done"];
+const CUES: readonly VoiceCue[] = ["noFace", "many", "closer", "farther", "center", "turn", "look", "straight", "done"];
 const CLIP_DIR = "/xodim/face-voice";
 const MUTE_KEY = "tizimli:face-voice-off";
 /** Ko'rsatma shuncha turib qolsagina aytiladi: bir-ikki kadrlik sakrashlar jim o'tadi. */
