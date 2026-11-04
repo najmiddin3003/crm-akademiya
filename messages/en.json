@@ -958,6 +958,7 @@
   "Bu joriy qurilma. Chiqarilsa tizimdan chiqib ketasiz. Davom etamizmi?": "This is the current device. Signing it out will log you out. Continue?",
   "Bu kassa sizga biriktirilmagan": "This cashbox is not assigned to you",
   "Bu kassa sizga biriktirilmagan yoki arxivlangan": "This cashbox is not assigned to you or is archived",
+  "Bu kassada tranzaksiyalar bor — o'chirib bo'lmaydi. O'rniga «Kassani arxiv qilish» belgisini qo'ying.": "This cashbox has transactions, so it cannot be deleted. Tick «Archive cashbox» instead.",
   "Bu kassani faqat uning mas'uli tasdiqlashi mumkin": "Only the person responsible for this cashbox can confirm",
   "Bu ko'chirma allaqachon hal qilingan": "This transfer has already been resolved",
   "Bu kursda bosqich yo'q — Oflayn kurslar → kurs sahifasida qo'shing": "This course has no stages — add them under Offline courses → course page",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, zeroMethodTotals, type Cashbox } from "@/lib/cashboxes";
+import { nextCashboxId } from "@/lib/cashboxLifecycle";
 import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
 import { loadPendingOut } from "@/lib/transferPending";
 import { loadCardStats } from "@/lib/cashboxStats";
@@ -146,8 +147,9 @@ export async function POST(req: Request) {
     }
   }
 
-  const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
-  const nextId = (last[0]?.id ?? 0) + 1;
+  // `max(id)+1` EMAS: o'chirilgan kassa raqami qaytib kelardi va uning eski
+  // to'lovlari yangi kassaga yopishardi (lib/cashboxLifecycle.ts).
+  const nextId = await nextCashboxId(db);
 
   // Kassa QAYSI FILIALDA ochilgani — navbardagi tanlovdan (lidlar bilan bir
   // xil qoida). Shu maydon to'lovni Telegram'da filial topigiga yo'naltiradi

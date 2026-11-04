@@ -90,6 +90,9 @@ export default function CashboxDrawer({
       if (!data.ok) {
         showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
+        // Tasdiq oynasi yopiladi: tarixi bor kassa uchun xabar shu paneldagi
+        // «Kassani arxiv qilish» belgisiga yuboradi.
+        setConfirmDelete(false);
         return;
       }
       onDeleted?.(cashbox.id);

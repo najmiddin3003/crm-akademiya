@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type Cashbox } from "@/lib/cashboxes";
+import { cashboxHasHistory, HISTORY_BLOCKS_DELETE, retireCashboxId } from "@/lib/cashboxLifecycle";
 import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
 import { getCurrentEmployee } from "@/lib/currentEmployee";
 
@@ -86,7 +87,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({ ok: true, cashbox: normalizeCashbox(cashbox, await loadPaymentMethodKeys(db)) });
 }
 
-// DELETE /api/cashboxes/:id — kassani o'chiradi. FAQAT ADMIN.
+// DELETE /api/cashboxes/:id — kassani o'chiradi. FAQAT ADMIN. Tarixi bor
+// kassa o'chirilmaydi, arxivlanadi (lib/cashboxLifecycle.ts).
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin();
   if (denied) return denied;
@@ -97,9 +99,13 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
   const db = await ensureIndexes();
+  if (await cashboxHasHistory(db, cashboxId)) {
+    return NextResponse.json({ ok: false, error: HISTORY_BLOCKS_DELETE }, { status: 409 });
+  }
   const res = await db.collection("cashboxes").deleteOne({ id: cashboxId });
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "Kassa topilmadi" }, { status: 404 });
   }
+  await retireCashboxId(db, cashboxId);
   return NextResponse.json({ ok: true });
 }
