@@ -224,17 +224,19 @@ export function createSurveyLead(db: Db, input: SurveyLeadInput, deps: AdjustDep
 /**
  * Botdagi «📝 Kursga yozilish» dan kelgan lid (16.10.2026) — manba "Telegram bot",
  * odamning Telegram hisobi lidda (`tgUser`) va filial topigidagi xabarda.
+ * `pupilId` — bot kartani lid bilan birga ochgan markazda (lib/studentBot/signup.ts).
  */
 export function createBotLead(
   db: Db,
   input: SurveyLeadInput,
   tg: { chatId: number; username?: string; name?: string },
   deps: AdjustDeps,
+  pupilId?: number,
 ): Promise<InsertedOrder> {
   const tgUser = {
     chatId: tg.chatId,
     ...(tg.username ? { username: tg.username } : {}),
     ...(tg.name ? { name: tg.name } : {}),
   };
-  return insertSelfServeLead(db, input, BOT_SOURCE, { tgUser }, deps);
+  return insertSelfServeLead(db, input, BOT_SOURCE, { tgUser, ...(pupilId ? { pupilId } : {}) }, deps);
 }

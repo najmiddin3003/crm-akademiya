@@ -29,6 +29,13 @@ export type NotifyKind = "attendance" | "payment" | "group" | "due";
 export interface BotUserLink {
   pupilId: number;
   role: MatchRole;
+  /**
+   * "form" — bog'lanish raqam bilan kirishda emas, forma orqali berilgan: ota-ona
+   * farzandining ism familiyasi va raqamini yozgan yoki bot anketasi kartani
+   * ochgan. Bunday bola odamning O'Z raqamiga bog'liq emas, shu bois
+   * `linkBotUser` uni qayta hisoblashda tashlab yubormaydi.
+   */
+  via?: "form";
 }
 
 export interface StudentBotUser {
@@ -90,8 +97,12 @@ export async function linkBotUser(
   tg: { name: string; username: string },
 ): Promise<StudentBotUser> {
   const now = uzStamp();
-  const links: BotUserLink[] = matches.map((m) => ({ pupilId: m.pupilId, role: m.role }));
   const existing = await getBotUser(db, chatId);
+  const links: BotUserLink[] = matches.map((m) => ({ pupilId: m.pupilId, role: m.role }));
+  // Forma bilan qo'shilgan bolalar raqamga bog'liq emas — qayta ulanishda qoladi.
+  for (const l of existing?.links ?? []) {
+    if (l.via === "form" && !links.some((x) => x.pupilId === l.pupilId)) links.push(l);
+  }
 
   // Avval tanlangan farzand hali ham ro'yxatdami — bo'lmasa birinchisi.
   const keepActive =
@@ -110,6 +121,49 @@ export async function linkBotUser(
         tgUsername: tg.username,
         lastSeenAt: now,
         // Qayta ulanish = bot bloklanmagan.
+        blocked: false,
+        awaiting: null,
+      },
+      $setOnInsert: { chatId, linkedAt: now },
+    },
+    { upsert: true },
+  );
+
+  const saved = await getBotUser(db, chatId);
+  if (!saved) throw new Error("Bog'lanish saqlanmadi");
+  return saved;
+}
+
+/**
+ * Forma orqali bog'laydi (ota-ona formasi, bot anketasi). `linkBotUser` dan
+ * farqi: mavjud bog'lanishlar SAQLANADI va yangi qo'shilgan o'quvchi ochiladi —
+ * ikkinchi farzandini ulagan ota-ona birinchisini yo'qotmasin va kimni
+ * qo'shganini darrov ko'rsin.
+ */
+export async function addBotLinks(
+  db: Db,
+  chatId: number,
+  phone: string,
+  added: Omit<BotUserLink, "via">[],
+  tg: { name: string; username: string },
+): Promise<StudentBotUser> {
+  const now = uzStamp();
+  const existing = await getBotUser(db, chatId);
+  const links: BotUserLink[] = [...(existing?.links ?? [])];
+  for (const l of added) {
+    if (!links.some((x) => x.pupilId === l.pupilId)) links.push({ ...l, via: "form" });
+  }
+
+  await db.collection(BOT_USERS).updateOne(
+    { chatId },
+    {
+      $set: {
+        phone: existing?.phone || phone,
+        links,
+        activePupilId: added[0].pupilId,
+        tgName: tg.name,
+        tgUsername: tg.username,
+        lastSeenAt: now,
         blocked: false,
         awaiting: null,
       },

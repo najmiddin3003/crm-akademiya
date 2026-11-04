@@ -9,9 +9,10 @@ import { redirectToStaffBot } from "@/lib/staffBot/moved";
 import { handleStaffUpdate } from "@/lib/staffBot/router";
 import { getStaffUser } from "@/lib/staffBot/session";
 import { loadStudentBotConfig } from "@/lib/studentBot/config";
-import { phoneKey } from "@/lib/studentBot/phone";
+import { hasActiveParentForm, isParentStartText } from "@/lib/studentBot/parentForm";
+import { findPupilsByPhone, phoneKey } from "@/lib/studentBot/phone";
 import { handleStudentUpdate, type TelegramUpdate } from "@/lib/studentBot/router";
-import { hasActiveSignup } from "@/lib/studentBot/signup";
+import { hasActiveSignup, isSignupStartText } from "@/lib/studentBot/signup";
 import { getBotUser } from "@/lib/studentBot/users";
 
 // @tizimli_akademiya_bot — BITTA BOTDA IKKI OQIM (29.09.2026; 17.10 dan xodim
@@ -29,8 +30,9 @@ import { getBotUser } from "@/lib/studentBot/users";
 //      qolgani o'quvchiniki. Prefikslar to'qnashmaydi.
 //   2. Havola/buyruq — aniq niyat: `/start k_…|x_…` (QR), `/start xodim`,
 //      `/xodim` → xodim; `/start <shaxsiy havola tokeni>` → o'quvchi.
+//      2b. «📝 Kursga yozilish» va «👪 Ota-ona kirishi»: boshlash yoki ochiq
+//      anketa/forma → o'quvchi (04.11.2026 dan xodim sessiyasidan OLDIN).
 //   3. Kirgan (yoki parol kutilayotgan) xodim → xodim.
-//      3b. Ochiq «📝 Kursga yozilish» anketasi (16.10.2026) → o'quvchi.
 //   4. Raqam (tugma yoki qo'lda): yangi odam, yoki xodim kirishini
 //      boshlagan (`/xodim`, QR) odam — raqam xodimniki bo'lsa (faol xodim
 //      yoki CRM paroli bor hisob) xodim, aks holda o'quvchi. O'quvchilarda
@@ -43,6 +45,10 @@ import { getBotUser } from "@/lib/studentBot/users";
 // Xodim ham, ota-ona ham bo'lgan odam (29.09 da 53 xodim raqamidan 21 tasi
 // o'quvchi yozuvida ham bor) — XODIM ustun: raqamni o'zi tasdiqlagan.
 // O'quvchi sifatida bog'langan xodim `/xodim` bilan xodimlar bo'limiga o'tadi.
+// Xodimlar BOSHQA botda bo'lsa (`STAFF_BOT_HOST`, 04.11.2026): bu bot ularga
+// faqat havola bera oladi, ya'ni farzandi o'qiydigan xodim o'z bolasini ko'ra
+// olmay qolardi. Shu bois bog'langan yoki raqami kartada bor xodim — o'quvchi
+// tomoni; xodim ishi baribir bu botda emas.
 //
 // 17.10.2026 DAN XODIMLAR @akademiya_crm_bot DA (lib/staffBot/config.ts →
 // `STAFF_BOT_HOST`): bu botga ManyChat ulandi va uning xabarlari CRM'ga
@@ -95,15 +101,19 @@ export async function pickSide(db: Db, update: TelegramUpdate): Promise<BotSide 
   }
   if (STAFF_COMMAND.test(text)) return "staff";
 
+  // 2b) Anketa va ota-ona formasi — aniq niyat, xodim ham ota-ona bo'lishi mumkin.
+  // Ochiq bo'lsa javob (ism, raqam, izoh, kontakt) o'quvchilar routeriga: raqam
+  // xodimniki bo'lsa ham bu kirish emas, arizadagi yoki farzandning raqami.
+  if (!msg.contact && (isSignupStartText(text) || isParentStartText(text))) return "student";
+  if ((await hasActiveSignup(db, chatId)) || (await hasActiveParentForm(db, chatId))) return "student";
+
   // 3) Xodim sessiyasi.
   const staff = await getStaffUser(db, chatId);
-  if (staff && staff.stage !== "phone") return "staff";
+  if (staff && staff.stage !== "phone") {
+    if (STAFF_BOT_HOST !== "student" && (await getBotUser(db, chatId))) return "student";
+    return "staff";
+  }
   const staffStarted = staff?.stage === "phone";
-
-  // 3b) «📝 Kursga yozilish» anketasi ochiq (lib/studentBot/signup.ts) — javob
-  // (ism, raqam, izoh, kontakt) o'quvchilar routeriga: raqam xodimniki bo'lsa
-  // ham bu kirish emas, arizadagi aloqa raqami.
-  if (await hasActiveSignup(db, chatId)) return "student";
 
   // 4) Raqam — yangi odam yoki xodim kirishini boshlagan odam.
   const typed = !msg.contact && text && !text.startsWith("/") ? phoneKey(text) : null;
@@ -113,7 +123,9 @@ export async function pickSide(db: Db, update: TelegramUpdate): Promise<BotSide 
       // Begona kontakt — ikkala router ham rad etadi; matn kirish boshlangan tomondan.
       if (msg.contact && msg.contact.user_id !== msg.from.id) return staffStarted ? "staff" : "student";
       const raw = msg.contact ? String(msg.contact.phone_number ?? "") : text;
-      return (await isStaffPhone(db, raw)) ? "staff" : "student";
+      if (!(await isStaffPhone(db, raw))) return "student";
+      if (STAFF_BOT_HOST !== "student" && (await findPupilsByPhone(db, raw)).length > 0) return "student";
+      return "staff";
     }
     return "student";
   }

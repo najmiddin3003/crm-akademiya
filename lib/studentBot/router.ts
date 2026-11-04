@@ -37,6 +37,7 @@ import {
   mainMenu,
   monthArg,
   notifyArg,
+  PARENT_START_CB,
   settingsMenu,
   SIGNUP_START_CB,
 } from "@/lib/studentBot/keyboards";
@@ -53,6 +54,15 @@ import {
   type SignupCtx,
 } from "@/lib/studentBot/signup";
 import { clearPhoneAttempts, takePhoneAttempt } from "@/lib/studentBot/attempts";
+import {
+  answerParentForm,
+  closeParentForm,
+  getParentForm,
+  isParentCallback,
+  isParentStartText,
+  startParentForm,
+  type ParentFormCtx,
+} from "@/lib/studentBot/parentForm";
 import { findPupilsByPhone, phoneKey } from "@/lib/studentBot/phone";
 import {
   activeLink,
@@ -269,6 +279,12 @@ async function showScreen(
   else if (sent.blocked) await markBlocked(db, chatId);
 }
 
+/** Bog'langan odamning bosh ekrani — tanlangan o'quvchi bilan. */
+async function openHome(db: Db, cfg: StudentBotConfig, chatId: number, user: StudentBotUser, messageId?: number): Promise<void> {
+  const pupil = await loadPupil(db, user.activePupilId);
+  if (pupil) await showScreen(db, cfg, chatId, messageId, await homeScreen(db, cfg, user, pupil));
+}
+
 // ── Kirish (telefon) ────────────────────────────────────────────────
 
 async function handleContact(db: Db, cfg: StudentBotConfig, msg: TgMessage): Promise<void> {
@@ -462,9 +478,37 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage, defe
   if (!msg.contact && isSignupStartText(text)) {
     const ctx = await signupCtx();
     if (ctx.linked) await setAwaiting(db, chatId, null);
+    await closeParentForm(db, chatId);
     await startSignup(ctx);
     return;
   }
+
+  // 👪 OTA-ONA KIRISHI (lib/studentBot/parentForm.ts). Forma ochiq bo'lsa matn yoki
+  // kontakt — uning javobi (telefon bilan kirish urinishi EMAS).
+  const parentCtx: ParentFormCtx = {
+    db,
+    cfg,
+    chatId,
+    tg: { name: displayName(msg.from), username: msg.from?.username ?? "" },
+  };
+  if (!msg.contact && isParentStartText(text)) {
+    await setAwaiting(db, chatId, null);
+    await closeSignup(db, chatId);
+    await startParentForm(parentCtx);
+    return;
+  }
+  const parentForm = await getParentForm(db, chatId);
+  if (parentForm) {
+    if (msg.contact || !text.startsWith("/")) {
+      const answer = msg.contact ? String(msg.contact.phone_number ?? "") : text;
+      const linked = await answerParentForm(parentCtx, parentForm, answer);
+      if (linked) await openHome(db, cfg, chatId, linked);
+      return;
+    }
+    // Buyruq (/start, /menu …) — forma yopiladi, odatdagi oqim davom etadi.
+    await closeParentForm(db, chatId);
+  }
+
   const draft = await getSignup(db, chatId);
   if (draft?.step) {
     if (msg.contact) {
@@ -569,7 +613,11 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
   // 📝 Kursga yozilish anketasi — bog'lanmagan odamga ham (lib/studentBot/signup.ts).
   if (isSignupCallback(data)) {
     const u = await getBotUser(db, chatId);
-    if (u && data === SIGNUP_START_CB) await setAwaiting(db, chatId, null);
+    if (data === SIGNUP_START_CB) {
+      if (u) await setAwaiting(db, chatId, null);
+      // Forma ochiq qolsa keyingi matn anketaga emas, unga tushardi.
+      await closeParentForm(db, chatId);
+    }
     await signupCallback(
       { db, cfg, chatId, from: cq.from, linked: !!u, linkedPhone: u?.phone ?? null, defer },
       cq.id,
@@ -578,6 +626,28 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
     );
     return;
   }
+
+  // 👪 Ota-ona formasi — bog'lanmagan odamga ham (lib/studentBot/parentForm.ts).
+  if (isParentCallback(data)) {
+    const u = await getBotUser(db, chatId);
+    if (data === PARENT_START_CB) {
+      if (u) await setAwaiting(db, chatId, null);
+      await closeSignup(db, chatId);
+      await answerStudent(cfg, cq.id, "");
+      await startParentForm(
+        { db, cfg, chatId, tg: { name: displayName(cq.from), username: cq.from?.username ?? "" } },
+        messageId,
+      );
+      return;
+    }
+    await closeParentForm(db, chatId);
+    await answerStudent(cfg, cq.id, "Bekor qilindi");
+    if (u) await openHome(db, cfg, chatId, u, messageId);
+    else await sendToStudent(cfg, chatId, V.startPrompt(greetName(cq.from)), contactKeyboard());
+    return;
+  }
+  // Boshqa tugma bosildi — odam formadan chiqdi, keyingi matni unga javob bo'lmasin.
+  await closeParentForm(db, chatId);
 
   const user = await getBotUser(db, chatId);
   if (!user) {

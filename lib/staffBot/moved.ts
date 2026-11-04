@@ -28,7 +28,8 @@ function movedView(): string {
     "",
     OTHER_BOT_HOST === "crm"
       ? "<i>Bu bot endi faqat guruhlarga xabar yozadi.</i>"
-      : "<i>Bu bot o'quvchilar va ota-onalar uchun.</i>",
+      : // Tizimga kirgan xodim /start da pastki tugmalarni ko'rmaydi, farzandi o'qisa shu yo'l qoladi.
+        "<i>Bu bot o'quvchilar va ota-onalar uchun.</i>\nFarzandingiz shu markazda o'qisa, uni ulang: /otaona",
   ].join("\n");
 }
 

@@ -29,7 +29,11 @@ function clean(doc: Record<string, unknown>): Pupil {
  * filial bo'yicha kesilmasdan olinadi. Ikki so'rov bir vaqtda kelsa
  * ikkinchisi E11000 ga uriladi — bir necha marta qayta uriniladi.
  */
-export async function createPupil(db: Db, branchId: number, values: NewPupilValues): Promise<PupilWriteOutcome> {
+export async function createPupil(
+  db: Db,
+  branchId: number,
+  values: NewPupilValues & Pick<Pupil, "grade" | "note">,
+): Promise<PupilWriteOutcome> {
   if (!values.firstName?.trim()) return { ok: false, error: "Ism majburiy", status: 400 };
   const source = typeof values.source === "string" ? values.source.trim() : "";
   if (!source) return { ok: false, error: "Manba majburiy", status: 400 };

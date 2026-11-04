@@ -11,10 +11,16 @@ import { SOURCE_FROM_ORDER } from "@/constants";
 
 const digitsOf = (s: string) => (s || "").replace(/\D/g, "");
 
-/** Buyurtmadagi o'quvchini `pupils` ichidan topadi (telefon, bo'lmasa ism). */
+/**
+ * Buyurtmadagi o'quvchini `pupils` ichidan topadi: lidga bog'langan karta
+ * (`pupilId` — bot kartani lid bilan birga ochgan, lib/studentBot/signup.ts),
+ * so'ng telefon, bo'lmasa ism.
+ */
 // Generik: chaqiruvchi boyroq tur bersa (masalan `birthDate` bilan), javob
 // ham o`sha turda qaytadi — `PupilListItem` ga qisilib qolmaydi.
 export function findPupilForOrder<T extends PupilListItem>(order: Order, pupils: T[]): T | undefined {
+  const own = order.pupilId ? pupils.find((p) => p.id === order.pupilId) : undefined;
+  if (own) return own;
   const phone = digitsOf(order.phone);
   if (phone) {
     const byPhone = pupils.find((p) => digitsOf(p.phone) === phone);
@@ -53,6 +59,18 @@ export async function enrollOrderInGroup(
 ): Promise<EnrollResult> {
   let pupils = knownPupils;
   if (!pupils) {
+    try {
+      pupils = await loadPupilsCached(true);
+    } catch {
+      return { ok: false, error: "O'quvchilar ro'yxatini olib bo'lmadi" };
+    }
+  }
+
+  // Bot kartani endigina ochgan, sahifadagi ro'yxat esa undan eski bo'lishi mumkin —
+  // topilmasa ikkinchi karta ochilib ketardi. Karta o'chirilgan bo'lsa yangi ro'yxatda
+  // ham yo'q va pastda odatdagidek yangisi yaratiladi.
+  if (order.pupilId && !pupils.some((p) => p.id === order.pupilId)) {
+    invalidateStudents();
     try {
       pupils = await loadPupilsCached(true);
     } catch {

@@ -124,6 +124,8 @@ if (arg === "--commands") {
       { command: "menu", description: "Asosiy menyu" },
       // 16.10.2026 — yangi o'quvchining o'zi ariza qoldiradi (lib/studentBot/signup.ts).
       { command: "yozilish", description: "Kursga yozilish (yangi o'quvchilar)" },
+      // 04.11.2026 — ota-ona farzandini ism familiyasi va raqami bilan ulaydi (lib/studentBot/parentForm.ts).
+      { command: "otaona", description: "Ota-ona: farzandni ulash" },
     ],
   });
   console.log(res.ok ? "Buyruqlar ro'yxati yozildi." : `Xato: ${JSON.stringify(res)}`);

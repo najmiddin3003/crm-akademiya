@@ -663,6 +663,7 @@ const LEAD_FIELDS = {
   firstLesson: 1,
   firstLessonStatus: 1,
   groupId: 1,
+  pupilId: 1,
   teacher: 1,
   branchId: 1,
   moderator: 1,
@@ -841,6 +842,7 @@ const fullNameKey = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 /**
  * Lidning o'quvchisi — lib/enrollStudent.ts → findPupilForOrder (Lidlar
  * sahifasidagi «Guruhga qo'shish») bilan BIR XIL qoida, filial hovuzida:
+ *   0) lidga bog'langan karta (`pupilId` — bot kartani lid bilan ochgan);
  *   1) telefon bo'yicha — bir nechta o'quvchi (aka-uka bitta telefonda)
  *      bo'lsa avval ISMI lidnikiga teng bo'lgani, bo'lmasa ENG YANGISI
  *      (web ro'yxati `id` kamayish tartibida va birinchisini oladi);
@@ -850,12 +852,16 @@ const fullNameKey = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
  * yaratilardi; telefonda esa tasodifiy aka-uka olinardi (09.10.2026).
  * Topilmasa `null` — tasdiqda lid ma'lumotidan yaratiladi.
  */
-export async function findPupilForLead(ctx: AiContext, o: Pick<Order, "name" | "phone">): Promise<{ id: number; name: string } | null> {
+export async function findPupilForLead(ctx: AiContext, o: Pick<Order, "name" | "phone" | "pupilId">): Promise<{ id: number; name: string } | null> {
   const projection = { _id: 0, id: 1, firstName: 1, lastName: 1 };
   const toPick = (r: Record<string, unknown>) => ({
     id: Number(r.id),
     name: pupilFullName({ firstName: String(r.firstName ?? ""), lastName: String(r.lastName ?? "") }),
   });
+  if (o.pupilId) {
+    const own = await ctx.db.collection("pupils").findOne(withPupilBranch({ id: o.pupilId }, ctx.scope), { projection });
+    if (own) return toPick(own);
+  }
   const name = (o.name ?? "").trim();
   const wanted = fullNameKey(name);
   const key = phoneKey(o.phone);

@@ -8,7 +8,7 @@ import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
 import { esc } from "@/lib/telegramApi";
 import type { ExamsView, NextLesson, PaymentsView } from "@/lib/studentBot/data";
 import { STAFF_BOT_HOST, staffBotUsername } from "@/lib/staffBot/config";
-import { CONTACT_BUTTON, SIGNUP_BUTTON } from "@/lib/studentBot/keyboards";
+import { CONTACT_BUTTON, PARENT_BUTTON, SIGNUP_BUTTON } from "@/lib/studentBot/keyboards";
 import { formatPhone } from "@/lib/studentBot/phone";
 import { pe } from "@/lib/studentBot/premiumEmoji";
 import type { StudentBotUser } from "@/lib/studentBot/users";
@@ -118,6 +118,9 @@ export function startPrompt(nick = ""): string {
     // 16.10.2026 — yangi o'quvchining o'zi ariza qoldiradi (lib/studentBot/signup.ts).
     `🆕 <b>Hali o'quvchimiz emasmisiz?</b> Pastdagi "${SIGNUP_BUTTON}" tugmasini bosing — bir daqiqada ariza qoldirasiz, filial administratori o'zi bog'lanadi.`,
     "",
+    // 04.11.2026 — ota-ona farzandini ism familiyasi va raqami bilan ulaydi (lib/studentBot/parentForm.ts).
+    `👪 <b>Ota-onamisiz?</b> Pastdagi "${PARENT_BUTTON}" tugmasini bosing, farzandingizning ism familiyasi va telefon raqamini yozing — davomati va boshqa ma'lumotlarini shu yerda ko'rasiz.`,
+    "",
     // Xodimlar qaysi botda — lib/staffBot/config.ts (17.10.2026 dan @akademiya_crm_bot).
     // Shu botda bo'lsa raqami xodimniki odamga bot o'zi xodimlar bo'limini ochadi,
     // aks holda o'sha botga havola beradi (lib/botDispatch.ts).
@@ -137,6 +140,8 @@ export function phoneNotFound(phone: string): string {
     "",
     // 16.10.2026: raqami yo'q odam ko'pincha hali o'quvchi emas — ariza yo'li birinchi.
     `🆕 <b>Hali o'quvchimiz bo'lmasangiz</b> — pastdagi "${SIGNUP_BUTTON}" tugmasini bosing va ariza qoldiring: filial administratori siz bilan bog'lanadi.`,
+    "",
+    `👪 <b>Ota-ona bo'lsangiz</b> — pastdagi "${PARENT_BUTTON}" tugmasini bosing va farzandingizning ism familiyasi bilan raqamini yozing.`,
     "",
     "O'quvchi bo'lsangiz, sabablari:",
     "• raqam CRM'da boshqacha yozilgan bo'lishi mumkin;",
@@ -168,6 +173,56 @@ export function foreignContact(): string {
     "",
     "Boshqa odamning kontakti yuborildi. Faqat <b>o'z</b> raqamingizni",
     "yuborishingiz mumkin — pastdagi tugmani bosing.",
+  ].join("\n");
+}
+
+// ── Ota-ona formasi (lib/studentBot/parentForm.ts) ──────────────────
+
+/** `notice` — oldingi javob qabul qilinmagani haqida ogohlantirish. */
+export function parentNamePrompt(notice?: string): string {
+  return [
+    ...(notice ? [`⚠️ <b>${esc(notice)}</b>`, ""] : []),
+    "👪 <b>Farzandingizni ulash</b> · 1/2",
+    "",
+    "Farzandingizning <b>ism familiyasini</b> yozing — markazdagi kartasida qanday bo'lsa.",
+    "Masalan: <i>Vali Aliyev</i>",
+  ].join("\n");
+}
+
+export function parentPhonePrompt(name: string, notice?: string): string {
+  return [
+    ...(notice ? [`⚠️ <b>${esc(notice)}</b>`, ""] : []),
+    "👪 <b>Farzandingizni ulash</b> · 2/2",
+    "",
+    `O'quvchi: <b>${esc(name)}</b>`,
+    "",
+    "Endi markazga berilgan <b>telefon raqamini</b> yozing: <code>90 123 45 67</code>",
+    "<i>Bu farzandingizning raqami yoki siz markazga qoldirgan raqam.</i>",
+  ].join("\n");
+}
+
+/**
+ * Ism yoki raqamdan qaysi biri to'g'ri kelmagani ATAYLAB AYTILMAYDI: aks holda
+ * begona odam raqam bazada borligini bilib olardi. Odam yana urinishi uchun forma
+ * boshiga qaytadi.
+ */
+export function parentNotFound(): string {
+  return [
+    "🔍 <b>O'quvchi topilmadi</b>",
+    "",
+    "Bunday ism familiya va raqam birga uchramadi. Ikkalasini ham markazga berilgan holda yozing.",
+    "",
+    "Qayta urinish uchun farzandingizning <b>ism familiyasini</b> yozing.",
+    "",
+    "<i>Yana topilmasa, o'quv markaziga murojaat qiling — kartadagi raqamni tekshirishadi.</i>",
+  ].join("\n");
+}
+
+export function parentTooMany(minutes: number): string {
+  return [
+    "⏳ <b>Juda ko'p urinish</b>",
+    "",
+    `<b>${minutes}</b> daqiqadan keyin qayta urinib ko'ring yoki o'quv markaziga murojaat qiling.`,
   ].join("\n");
 }
 

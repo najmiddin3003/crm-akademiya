@@ -81,6 +81,23 @@ export const SIGNUP_BUTTON = "📝 Kursga yozilish";
 export const SIGNUP_START_CB = "yz:go";
 
 /**
+ * «OTA-ONA KIRISHI» — farzandining ism familiyasi va raqamini yozib ulash
+ * (04.11.2026, lib/studentBot/parentForm.ts). Oddiy klaviaturada — matn tugmasi;
+ * bog'langan odamda — «➕ Farzand qo'shish» (`PARENT_START_CB`).
+ */
+export const PARENT_BUTTON = "👪 Ota-ona kirishi";
+export const PARENT_START_CB = "ot:go";
+export const PARENT_CANCEL_CB = "ot:x";
+
+/** Ikkinchi farzand: Sozlamalar va «Boshqa profil» ro'yxatida. */
+const ADD_KID: InlineButton = { text: "➕ Farzand qo'shish", callback_data: PARENT_START_CB };
+
+/** Ota-ona formasi qadamlari ostidagi tugma. */
+export function parentCancel(): InlineKeyboard {
+  return { inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: PARENT_CANCEL_CB }]] };
+}
+
+/**
  * Telefon so'raydigan ODDIY klaviatura — bog'lanmagan odamga ko'rsatiladi.
  *
  * `request_contact` ATAYLAB: matn maydoniga raqam yozdirilsa, odam
@@ -89,11 +106,12 @@ export const SIGNUP_START_CB = "yz:go";
  * SMS bilan tasdiqlangan raqam.
  *
  * Ikkinchi qatorda «📝 Kursga yozilish» — hali o'quvchi bo'lmagan odam
- * uchun (raqami bazada yo'q, kirish o'rniga ariza qoldiradi).
+ * uchun (raqami bazada yo'q, kirish o'rniga ariza qoldiradi) va «👪 Ota-ona
+ * kirishi» — kartada o'z raqami yo'q ota-ona uchun.
  */
 export function contactKeyboard(): ReplyKeyboard {
   return {
-    keyboard: [[{ text: CONTACT_BUTTON, request_contact: true }], [{ text: SIGNUP_BUTTON }]],
+    keyboard: [[{ text: CONTACT_BUTTON, request_contact: true }], [{ text: SIGNUP_BUTTON }, { text: PARENT_BUTTON }]],
     resize_keyboard: true,
     one_time_keyboard: true,
     input_field_placeholder: "Pastdagi tugmani bosing",
@@ -210,6 +228,7 @@ export function settingsMenu(user: StudentBotUser): InlineKeyboard {
     rows.push([{ text: "🔄 Boshqa profil", callback_data: CB.kids }]);
   }
 
+  rows.push([ADD_KID]);
   rows.push([{ text: "🚪 Chiqish (bog'lanishni uzish)", callback_data: CB.logout }]);
   rows.push([{ text: "⬅️ Asosiy menyu", callback_data: CB.home }]);
   return { inline_keyboard: rows };
@@ -235,12 +254,13 @@ export function kidsMenu(
   names: Map<number, string>,
   activeId: number | null,
 ): InlineKeyboard {
-  const rows = links.map((l) => [
+  const rows: InlineButton[][] = links.map((l) => [
     {
       text: `${l.pupilId === activeId ? "✅ " : ""}${names.get(l.pupilId) ?? `O'quvchi #${l.pupilId}`}`,
       callback_data: `kid:${l.pupilId}`,
     },
   ]);
+  rows.push([ADD_KID]);
   rows.push([{ text: "⬅️ Asosiy menyu", callback_data: CB.home }]);
   return { inline_keyboard: rows };
 }

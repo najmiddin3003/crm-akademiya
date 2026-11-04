@@ -27,6 +27,13 @@ export interface StudentBotConfig {
    */
   supportChatId: string;
   supportThreadId: string;
+  /**
+   * Botdagi «📝 Kursga yozilish» lid bilan birga O'QUVCHI KARTASI ham ochadimi
+   * (lib/studentBot/signup.ts). Sukut — o'chiq: karta `pupils` ga yozadi, ya'ni
+   * markaz buni ongli yoqadi (STUDENT_BOT_SIGNUP_PUPIL=true; 04.11.2026 dan
+   * Temuriylar). O'chiq markazda anketa faqat lid yaratadi.
+   */
+  signupCreatesPupil: boolean;
 }
 
 /**
@@ -49,6 +56,7 @@ export function loadStudentBotConfig(): StudentBotConfig {
     webhookSecret: (env.TELEGRAM_STUDENT_WEBHOOK_SECRET || "").trim(),
     supportChatId: (env.TELEGRAM_CHAT_SUPPORT || "").trim(),
     supportThreadId: (env.TELEGRAM_TOPIC_SUPPORT || "").trim(),
+    signupCreatesPupil: isEnvTrue(env.STUDENT_BOT_SIGNUP_PUPIL),
   };
 }
 

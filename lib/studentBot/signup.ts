@@ -1,7 +1,8 @@
 import type { Db } from "mongodb";
 import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { darajaMatnUz, hasDaraja } from "@/lib/leadSettings";
-import { createBotLead } from "@/lib/ordersCreate";
+import { createBotLead, type SurveyLeadInput } from "@/lib/ordersCreate";
+import { createPupil } from "@/lib/pupilWrite";
 import {
   cleanSurveyName,
   cleanSurveyNote,
@@ -16,6 +17,8 @@ import { esc, type InlineButton, type InlineKeyboard, type ReplyKeyboard } from 
 import { answerStudent, dropReplyKeyboard, editStudentMenu, sendToStudent } from "@/lib/studentBot/api";
 import type { StudentBotConfig } from "@/lib/studentBot/config";
 import { CB, SIGNUP_BUTTON, SIGNUP_START_CB } from "@/lib/studentBot/keyboards";
+import { findPupilsByNameAndPhone, isFullName, splitPupilName } from "@/lib/studentBot/pupilMatch";
+import { addBotLinks } from "@/lib/studentBot/users";
 
 // 📝 KURSGA YOZILISH — yangi o'quvchining o'zi botda ariza qoldiradi (16.10.2026).
 //
@@ -55,6 +58,17 @@ import { CB, SIGNUP_BUTTON, SIGNUP_START_CB } from "@/lib/studentBot/keyboards";
 // bir suhbatdan kuniga 5 tadan ortiq ariza yo'q; bir xil raqam + kurs + ism
 // 10 daqiqa ichida qayta yuborilsa ikkinchi lid yaratilmaydi («Yuborish» ni
 // ikki marta bosish ham `submitting` bilan to'silgan).
+//
+// O'QUVCHI KARTASI (04.11.2026, Temuriylar; `cfg.signupCreatesPupil`). Foydalanuvchi:
+// «o'quvchi agar botdan ro'yxatdan o'tsa shu botdan o'quvchi kartasi yaratilishi
+// kerak». Lid bilan birga karta ochiladi va suhbat unga bog'lanadi — odam darrov
+// menyuni ko'radi. Kartaning id'si lidda (`orders.pupilId`): «Guruhga qo'shish»
+// ikkinchi karta ochmaydi (lib/enrollStudent.ts). Shu ism va shu raqamli karta
+// bazada bo'lsa yangisi ochilmaydi. Bir raqamda boshqa ism — aka-uka: alohida karta.
+// Suhbat faqat o'sha kartaga bog'lanadi: raqam tasdiqlanmagan, ya'ni shu raqamdagi
+// boshqa bolalar ochilmaydi. Bu rejimda ism qadami O'QUVCHINI so'raydi va familiya
+// majburiy (ota-ona formasi ism familiya bilan qidiradi); Telegramdagi ism tugmasi
+// ko'rsatilmaydi — ota-ona to'ldirsa kartaga o'z ismi tushib qolardi.
 
 export const SIGNUPS = "student_bot_signups";
 const DRAFT_TTL_MS = 24 * 3_600_000;
@@ -364,16 +378,19 @@ function render(sc: SurveyConfig, d: SignupDraft, ctx: SignupCtx, notice?: strin
       ]);
 
     case "ism": {
+      const card = ctx.cfg.signupCreatesPupil;
       const rows: InlineButton[][] = [];
       if (a.ism) rows.push([{ text: `✅ ${a.ism}`, callback_data: "yz:keep" }]);
-      const nick = cleanSurveyName(tgName(ctx.from));
+      const nick = card ? null : cleanSurveyName(tgName(ctx.from));
       if (nick && nick !== a.ism && [...nick].length <= 40) rows.push([{ text: `👤 ${nick}`, callback_data: "yz:nm" }]);
       rows.push(nav);
       return inline(
         [
-          ...head(step, "Siz bilan qanday bog'lanamiz?", notice),
+          ...head(step, card ? "O'quvchining ism familiyasi" : "Siz bilan qanday bog'lanamiz?", notice),
           "",
-          "Ism familiyangizni shu yerga yozing (masalan: <i>Aliyev Vali</i>).",
+          card
+            ? "O'quvchining ismi va familiyasini shu yerga yozing (masalan: <i>Vali Aliyev</i>). Farzandingizni yozdirayotgan bo'lsangiz — uning ismini."
+            : "Ism familiyangizni shu yerga yozing (masalan: <i>Aliyev Vali</i>).",
           ...(rows.length > 1 ? ["Yoki pastdagi tugmani bosing."] : []),
         ],
         rows,
@@ -522,6 +539,7 @@ export async function signupText(ctx: SignupCtx, d: SignupDraft, text: string): 
     case "ism": {
       const name = cleanSurveyName(t);
       if (!name) return show(ctx, d, { notice: "Ism familiyani to'liq yozing — kamida 3 harf, havolasiz." });
+      if (ctx.cfg.signupCreatesPupil && !isFullName(name)) return show(ctx, d, { notice: "Ism va familiyani birga yozing." });
       d.a.ism = name;
       d.step = "tel";
       return show(ctx, d);
@@ -665,7 +683,7 @@ export async function signupCallback(ctx: SignupCtx, callbackId: string, message
     }
     case "nm": {
       const name = cleanSurveyName(tgName(ctx.from));
-      if (!at("ism") || !name) return stale();
+      if (!at("ism") || !name || cfg.signupCreatesPupil) return stale();
       a.ism = name;
       d.step = "tel";
       break;
@@ -704,6 +722,45 @@ export async function signupCallback(ctx: SignupCtx, callbackId: string, message
 }
 
 // ── Yuborish ─────────────────────────────────────────────────────────
+
+interface SignupCard {
+  pupilId: number;
+  /** `false` — shu ism va raqamli karta bazada bor edi. */
+  created: boolean;
+}
+
+/**
+ * Arizadan o'quvchi kartasi. HECH QACHON OTMAYDI: ariza kartadan muhim — lid
+ * saqlanib qoladi, kartani esa xodim «Guruhga qo'shish» da odatdagidek ochadi.
+ *
+ * Manba — odamning «bizni qayerdan bildingiz?» javobi: ro'yxat O'quvchilar
+ * manbalaridan, `pupils.source` ning ma'nosi ham aynan shu. Lid kanali («Telegram
+ * bot») bu yerga yozilmaydi — lib/enrollStudent.ts dagi izohga qarang.
+ */
+async function openCard(db: Db, lead: SurveyLeadInput): Promise<SignupCard | null> {
+  try {
+    const known = await findPupilsByNameAndPhone(db, lead.name, lead.phone);
+    const last = known[known.length - 1];
+    if (last) return { pupilId: last.pupilId, created: false };
+
+    const grade = Number.parseInt(lead.sinf ?? "", 10);
+    const out = await createPupil(db, lead.branchId, {
+      ...splitPupilName(lead.name),
+      phone: lead.phone,
+      extraPhone: "",
+      category: "",
+      birthDate: "",
+      source: lead.heardFrom,
+      note: [`Telegram botdan ro'yxatdan o'tdi: ${lead.course}`, lead.note].filter(Boolean).join(" · "),
+      ...(Number.isInteger(grade) ? { grade } : {}),
+    });
+    if (out.ok) return { pupilId: out.pupil.id, created: true };
+    console.error("[student-bot] karta ochilmadi:", out.error);
+  } catch (e) {
+    console.error("[student-bot] karta ochilmadi:", e instanceof Error ? e.message : e);
+  }
+  return null;
+}
 
 async function submit(ctx: SignupCtx, d: SignupDraft, messageId: number | undefined, sc: SurveyConfig): Promise<void> {
   const { db, chatId } = ctx;
@@ -761,12 +818,16 @@ async function submit(ctx: SignupCtx, d: SignupDraft, messageId: number | undefi
   }
 
   const hit = await hits.insertOne({ chatHash, telHash, dupHash, via: "bot", at: new Date(now) });
+  // Karta LIDDAN OLDIN: lid uning id'sini saqlaydi. Lid yozilmay qolib odam qayta
+  // bossa ikkinchi karta ochilmaydi — o'sha ism va raqam bazada topiladi.
+  const card = ctx.cfg.signupCreatesPupil ? await openCard(db, v.value) : null;
   try {
     const order = await createBotLead(
       db,
       v.value,
       { chatId, username: ctx.from?.username, name: tgName(ctx.from) },
       { defer: ctx.defer },
+      card?.pupilId,
     );
     await hits.updateOne({ _id: hit.insertedId }, { $set: { orderId: order.id } });
   } catch (e) {
@@ -775,16 +836,40 @@ async function submit(ctx: SignupCtx, d: SignupDraft, messageId: number | undefi
     return show(ctx, d, { editId: messageId, sc, notice: "Saqlab bo'lmadi — birozdan keyin «✅ Yuborish» ni qayta bosing." });
   }
   await closeSignup(db, chatId);
-  await done(ctx, d, sc, messageId, false);
+  if (card) {
+    await addBotLinks(
+      db,
+      chatId,
+      tel,
+      // Bog'langan odam yozdirayotgani — boshqa bola: o'zi emas.
+      [{ pupilId: card.pupilId, role: ctx.linked ? "parent" : "student" }],
+      { name: tgName(ctx.from), username: ctx.from?.username ?? "" },
+    );
+  }
+  await done(card ? { ...ctx, linked: true } : ctx, d, sc, messageId, false, card);
 }
 
-async function done(ctx: SignupCtx, d: SignupDraft, sc: SurveyConfig, messageId: number | undefined, repeated: boolean): Promise<void> {
+async function done(
+  ctx: SignupCtx,
+  d: SignupDraft,
+  sc: SurveyConfig,
+  messageId: number | undefined,
+  repeated: boolean,
+  card: SignupCard | null = null,
+): Promise<void> {
   const a = d.a;
   const branch = sc.filiallar.find((b) => b.id === a.filialId);
   const html = [
     repeated ? "✅ <b>Arizangiz allaqachon qabul qilingan</b>" : "✅ <b>Arizangiz qabul qilindi!</b>",
     "",
     `24 soat ichida <b>${plusPhone(a.tel ?? "")}</b> raqamiga qo'ng'iroq qilamiz.`,
+    ...(card
+      ? [
+          "",
+          `🎓 ${card.created ? "O'quvchi kartasi ochildi" : "O'quvchi kartasi bazada bor"}: <b>${esc(a.ism ?? "")}</b>`,
+          "Davomat, dars jadvali va to'lovlar shu botda — «Asosiy menyu».",
+        ]
+      : []),
     "",
     ...summaryLines(sc, { ...a, ism: undefined, tel: undefined, manba: undefined, izoh: undefined }),
     ...(branch?.telefon ? ["", `Savol bo'lsa: 📞 ${esc(branch.telefon)}`] : []),
