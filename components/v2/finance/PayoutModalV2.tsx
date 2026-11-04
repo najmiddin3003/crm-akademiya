@@ -61,6 +61,8 @@ interface View {
   plastik: number;
   naqd: number;
   tax: number;
+  /** O'tgan oylardan qo'shilgan qism (04.11.2026). */
+  carry: number;
 }
 
 export default function PayoutModalV2({ mode, p, onClose }: { mode: "all" | "karta"; p: PayrollState; onClose: () => void }) {
@@ -71,13 +73,13 @@ export default function PayoutModalV2({ mode, p, onClose }: { mode: "all" | "kar
   // oyna yopilish animatsiyasida «0 xodim» bo'lib miltillamasin.
   const [snapshot, setSnapshot] = useState<View | null>(null);
   const karta = mode === "karta";
-  const { period, monthLabel, loadedAt, isPastMonth, saving } = p;
+  const { period, monthLabel, loadedAt, saving } = p;
 
   /* ---- Kimga qancha (o'z hisobi — lib/salary.ts) ---- */
   const live: View = (() => {
     if (karta) {
       const rows = p.kartaRows.map(({ e, amount }) => ({ e, amount, parts: [t("kartaga {amount}", { amount: fmtNum(amount) })] }));
-      return { rows, total: p.kartaTotal, plastik: p.kartaTotal, naqd: 0, tax: 0 };
+      return { rows, total: p.kartaTotal, plastik: p.kartaTotal, naqd: 0, tax: 0, carry: 0 };
     }
     let tax = 0;
     const rows = p.employees
@@ -95,21 +97,21 @@ export default function PayoutModalV2({ mode, p, onClose }: { mode: "all" | "kar
         } else {
           if (plastik > 0) parts.push(t("kartaga {amount}", { amount: fmtNum(plastik) }));
           if (naqd > 0) parts.push(t("naqd {amount}", { amount: fmtNum(naqd) }));
+          const carry = Math.min(Math.max(e.carryOver, 0), amount);
+          if (carry > 0) parts.push(t("o'tgan oylardan {amount}", { amount: fmtNum(carry) }));
         }
         if (eTax > 0) parts.push(t("soliq {amount}", { amount: fmtNum(eTax) }));
         if (e.plastikSalary <= 0) parts.push(t("kartasiz"));
         return { e, amount, parts };
       });
-    return { rows, total: p.payoutTotal, plastik: p.plastikTotal, naqd: p.naqdTotal, tax };
+    return { rows, total: p.payoutTotal, plastik: p.plastikTotal, naqd: p.naqdTotal, tax, carry: p.selectedCarryTotal };
   })();
   const view = snapshot ?? live;
 
   /* ---- Davr ---- */
   const monthLower = (months[period.month] ?? "").toLowerCase();
   const range = t("1-{month}dan {day}-{month}", { month: monthLower, day: period.day });
-  const subtitle = isPastMonth
-    ? `${range} | ${t("to'liq oy")}`
-    : loadedAt ? `${range} | ${t("{time} gacha hisoblandi", { time: loadedAt })}` : range;
+  const subtitle = loadedAt ? `${range} | ${t("{time} gacha hisoblandi", { time: loadedAt })}` : range;
 
   /* ---- Kassa va to'lov turlari ---- */
   const box = p.activeCashbox;
@@ -195,42 +197,6 @@ export default function PayoutModalV2({ mode, p, onClose }: { mode: "all" | "kar
     if (p.payoutBlockedReason) line("blocked", p.payoutBlockedReason);
     if (!karta && p.sameMethod) line("same", t("Plastik va naqd uchun bir xil to'lov turi tanlangan — birini o'zgartiring, aks holda jurnalda ikki qism ajralmay qoladi."));
     if (!karta && p.payoutTotal === 0) line("zero", t("Tanlangan xodimlarda to'lanadigan qoldiq yo'q — oylik allaqachon chiqarilgan yoki qarzdorlik bor."), "warning");
-    // O'TGAN OYLARDA TO'LANMAGAN qoldiq bu chiqarishga KIRMAYDI (04.10.2026, «faqat o'z oyidan»).
-    if (!karta && p.selectedPendingTotal > 0) {
-      line(
-        "pending",
-        t("Tanlanganlarning o'tgan oylardan to'lanmagan {amount} qoldig'i bu summaga kirmaydi — u {months} sahifasidan chiqariladi.", {
-          amount: `${fmtNum(p.selectedPendingTotal)} ${t("so'm")}`,
-          months: p.selectedPending.map((pm) => p.pendingMonthLabel(pm.month)).join(", "),
-        }),
-        "warning",
-      );
-    }
-    // O'TGAN OY sahifasi: bu oy puli joriy oyda allaqachon berilgan bo'lishi mumkin.
-    if (!karta && p.selectedMaybePaid.length > 0) {
-      issues.push(
-        <div key="maybe" className="rounded-v2-md bg-v2-danger-bg px-3 py-2 text-v2-small text-v2-danger">
-          {t("{count} ta tanlangan xodimda bu oy puli keyingi oyda allaqachon berilgan bo'lishi mumkin: {list}. Qayta chiqarilsa ikki marta to'lanadi — avval o'sha yozuvlarning oyini tekshiring.", {
-            count: p.selectedMaybePaid.length,
-            list: p.selectedMaybePaid.map((e) => `${e.name} — ${fmtNum(e.maybePaidIn!.amount)} (${p.pendingMonthLabel(e.maybePaidIn!.month)})`).join(", "),
-          })}{" "}
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() =>
-              p.setSelected((prev) => {
-                const next = new Set(prev);
-                for (const e of p.selectedMaybePaid) next.delete(e.id);
-                return next;
-              })
-            }
-            className="font-semibold underline underline-offset-2 hover:no-underline disabled:opacity-50"
-          >
-            {t("Ularni tanlovdan chiqarish")}
-          </button>
-        </div>,
-      );
-    }
     if (short) {
       line("short", t("Mablag' yetarli emas — {available} kam. Boshqa kassa yoki to'lov turini tanlang.", { available: `${fmtNum(karta ? p.kartaShort : p.shortfall)} ${t("so'm")}` }));
     }
@@ -253,6 +219,7 @@ export default function PayoutModalV2({ mode, p, onClose }: { mode: "all" | "kar
       {view.plastik > 0 && view.naqd > 0
         ? t(": plastik {plastik}, naqd {naqd}.", { plastik: fmtNum(view.plastik), naqd: fmtNum(view.naqd) })
         : view.plastik > 0 ? t(": plastik {plastik}.", { plastik: fmtNum(view.plastik) }) : "."}
+      {view.carry > 0 && ` ${t("Shundan {amount} so'm — o'tgan oylardan qo'shilgan qoldiq.", { amount: fmtNum(view.carry) })}`}
       {view.tax > 0 && ` ${t("Ushlangan {amount} so'm soliq chiqarishlar tarixida qayd etiladi.", { amount: fmtNum(view.tax) })}`}
       {` ${t("To'langan xodimlarning shu oy qolgan oyligi 0 bo'ladi.")}`}
     </>
@@ -307,10 +274,6 @@ export default function PayoutModalV2({ mode, p, onClose }: { mode: "all" | "kar
                 <div className="text-v2-text-2">{monthLabel}</div>
               </div>
             </div>
-            {isPastMonth && (
-              <p className="-mt-2 text-v2-caption font-normal text-v2-warning">{t("Chiqim yozuvi {monthLabel} oyining oxirgi kuni bilan qayd etiladi.", { monthLabel })}</p>
-            )}
-
             {/* Kimga qancha */}
             {view.rows.length > 0 && (
               <ul className="max-h-[216px] divide-y divide-v2-border overflow-y-auto rounded-v2-lg border border-v2-border">

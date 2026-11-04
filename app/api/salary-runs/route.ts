@@ -12,7 +12,6 @@ import {
   payrollDue,
   payrollTax,
   payrollTaxLines,
-  payrollMonthEndIso,
   payrollMonthKey,
   payrollPeriod,
   payrollPeriodOf,
@@ -155,6 +154,12 @@ export async function POST(req: Request) {
 
   // QAYSI OY uchun chiqariladi. Parametrsiz — joriy oy (eski xulq).
   // Kelajak oy rad etiladi: sahifada ham tanlanmaydi, bu oxirgi himoya.
+  //
+  // O'TGAN OY ham rad etiladi (04.11.2026, foydalanuvchi: "oylik chiqarishda
+  // faqat bitta oydan chiqarilishi kerak"): o'tgan oyning qoldig'i joriy oyning
+  // "O'tgan oydan" qatorida turibdi (lib/salary.ts). U sahifadan ham chiqarilsa
+  // o'sha pul IKKI MARTA to'lanardi — bu tekshiruv aynan shuni yopadi. Eski
+  // oynada ochiq qolgan sahifa ham shu yerda to'xtaydi.
   const monthRaw = (body.month ?? "").trim();
   if (monthRaw && !isMonthKey(monthRaw)) {
     return NextResponse.json({ ok: false, error: "Oy noto'g'ri (YYYY-MM kutiladi)" }, { status: 400 });
@@ -162,6 +167,9 @@ export async function POST(req: Request) {
   const current = payrollPeriod();
   if (monthRaw && monthRaw > payrollMonthKey(current)) {
     return NextResponse.json({ ok: false, error: "Kelajak oy uchun oylik chiqarilmaydi" }, { status: 400 });
+  }
+  if (monthRaw && monthRaw < payrollMonthKey(current)) {
+    return NextResponse.json({ ok: false, error: "Oylik faqat joriy oydan chiqariladi — sahifani yangilang" }, { status: 400 });
   }
   const period = monthRaw ? payrollPeriodOf(monthRaw) : current;
 
@@ -377,6 +385,8 @@ export async function POST(req: Request) {
         paidAvans: ep.paidAvans,
         paidOylik: ep.paidOylik,
         carryOver: ep.carryOver,
+        // Qaysi oydan qancha qo'shilgani — bazada ko'rinib tursin (04.11.2026).
+        ...(ep.carryMonths?.length ? { carryMonths: ep.carryMonths } : {}),
         // PLASTIK kesimi — chekda muzlatiladi. `plastikSalary` ataylab
         // tez-tez qo'lda o'zgartiriladigan maydon, chek esa o'zgarmasligi
         // shart: bir marta bosib berilgan qog'oz bilan ekrandagi chek
@@ -532,20 +542,8 @@ export async function POST(req: Request) {
   }
 
   const txNames = await salaryCategories(db);
-  // Chiqim yozuvining SANASI — chiqarilayotgan OY ichida bo'lishi shart.
-  // Joriy oyda bu bugungi kun, o'tgan oyda esa o'sha oyning oxirgi kuni.
-  //
-  // NIMA UCHUN: "to'langan oylik" aynan `date` maydonining oyi bo'yicha
-  // yig'iladi (lib/payrollSources.ts → loadPaidByEmployee). Avgust oyligi
-  // sentabr sanasi bilan yozilsa, avgust qayta ochilganda o'sha summa yana
-  // "to'lanmagan" bo'lib chiqardi va IKKINCHI marta to'lash mumkin bo'lardi.
-  //
-  // Kassaning BALANSI baribir hozir kamayadi (pul rostdan bugun chiqadi) —
-  // faqat jurnaldagi sana o'sha oyga tegishli bo'ladi. Bu kelishuv orqaga
-  // sanalangan Kirim uchun allaqachon qabul qilingan
-  // (app/api/cashboxes/[id]/adjust/route.ts → `date || todayIso()`).
-  const isCurrentMonth = period.year === current.year && period.month === current.month;
-  const entryDate = isCurrentMonth ? todayIso() : payrollMonthEndIso(period);
+  // Chiqim yozuvining SANASI — bugun: oylik faqat joriy oydan chiqadi (yuqorida).
+  const entryDate = todayIso();
   const time = nowTime();
 
   const run: SalaryRun = {
@@ -649,11 +647,9 @@ export async function POST(req: Request) {
         status: "",
         cashboxId,
         salaryRunId: nextId,
-        // To'lov QAYSI OY oyligi ekani. `date` ham shu oy ichida bo'ladi
-        // (yuqoridagi `entryDate`), lekin maydon baribir ochiq yoziladi:
-        // "avgust oyligi" degan fakt sanadan chiqariladigan taxmin emas,
-        // yozuvning o'zida turishi kerak. loadPaidByEmployee avval shunga
-        // qaraydi (lib/payrollSources.ts → monthMatch).
+        // To'lov QAYSI OY oyligi ekani. Maydon ochiq yoziladi: bu fakt sanadan
+        // chiqariladigan taxmin emas, yozuvning o'zida turishi kerak.
+        // loadPaidByEmployee avval shunga qaraydi (lib/payrollSources.ts → monthMatch).
         periodMonth: payrollMonthKey(period),
       });
       createdEntryIds.push(entryId);

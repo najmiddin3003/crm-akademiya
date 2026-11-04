@@ -2,7 +2,6 @@ import type { Db } from "mongodb";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { buildPayrollRows, loadPayrollRefs } from "@/lib/payrollSources";
 import {
-  payrollCarryTotal,
   payrollHasFoiz,
   payrollMonthKey,
   payrollOkladPart,
@@ -34,10 +33,9 @@ import {
 // QOIDA — lib/payrollSources.ts bilan BIR XIL, ikkinchi nusxa emas:
 //   • oy chegarasi: `periodMonth`, u bo'lmasa `date` ning oyi (monthMatch);
 //   • oy boshidagi qoldiq: o'tgan oylardan JAMI qolgan
-//     (`payrollCarryTotal` = shu oyda to'lanadigan `carryOver` + o'z oyidan
-//     chiqariladigan `carryPending`; ikkalasi `loadCarryOver` dan — o'tgan
+//     (`carryOver`, `loadCarryOver` dan — o'tgan
 //     oylarning jonli sof qoldig'i, 02.10.2026 dan) — chap kartadagi
-//     "To'lanmagan" (`payrollOwedTotal`) ham aynan shundan boshlanadi;
+//     "To'lanmagan" (`payrollDue`) ham aynan shundan boshlanadi;
 //     okladli xodimda unga shu oy okladi (`payrollOkladPart`: o'tgan oyda
 //     to'liq, joriy oyda bugungi kungacha pro-rata, ishga kirgan kundan)
 //     qo'shiladi;
@@ -52,19 +50,9 @@ import {
 //     kun"), yangi ustozga o'tgan qism uning oy boshiga qo'shiladi;
 //   • bekor qilingan yozuv hisobga kirmaydi.
 //
-// Ya'ni oyning OXIRGI qatoridagi "Qoldiq keyin" = `payrollOwedTotal` —
+// Ya'ni oyning OXIRGI qatoridagi "Qoldiq keyin" = `payrollDue` —
 // bonus, jarima va soliqsiz (ular kassa yozuvi emas, jadvalda ko'rinmaydi;
 // tooltip shuni aytadi).
-//
-// NEGA JAMI, TO'LANADIGAN EMAS (04.10.2026, "faqat o'z oyidan
-// chiqarilsin"): o'tgan oyning to'lanmagan musbat qoldig'i endi joriy oyda
-// TO'LANMAYDI (`carryPending`, o'z oyi sahifasidan chiqariladi) — lekin u
-// xodimning puli bo'lib qolaveradi. Daftar xodimning O'Z hisobi: oy
-// ochilishi faqat `carryOver` bo'lsa, sentabr qoldig'i oktabr daftaridan
-// sababsiz "yo'qolib", oktabr qatorlari sentabr oxiridan shuncha past
-// boshlanardi, chap kartadagi "To'lanmagan" bilan ham ajralardi.
-// `payrollCarryTotal` — 02.10 dagi chiziqli qoldiqning o'zi, ya'ni daftar
-// raqamlari 04.10 qoidasi bilan O'ZGARMAYDI.
 //
 // ULUSH YAXLITLANMAY yig'iladi, faqat ko'rsatishda yaxlitlanadi: aks holda
 // har qatorda ±0.5 so'm yig'ilib, oy yakuni `round(collected × foiz)` dan
@@ -235,18 +223,24 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
     return r.old < 1 ? { factor: r.old, note: `${r.oldDays}/${r.daysIn} ${r.unit === "lessons" ? "dars" : "kun"}` } : null;
   };
 
+  // Har oy O'SHA OYNING qatori bilan: foiz o'zgargan bo'lsa o'tgan oy ulushi eski
+  // foizda (lib/salary.ts → «O'tgan oy stavkalari»), jadval bilan bir xil.
+  // Oylar bir-biriga bog'liq emas, parallel o'qiladi.
+  const byMonth = new Map(await Promise.all(
+    [...new Set(entries.map((e) => payrollMonthOfEntry(e)))].map(
+      async (m) => [m, m === nowKey ? current : await rowOf(m)] as const,
+    ),
+  ));
   const effects = entries
-    .map((e) => ({ e, eff: salaryEffectOf(e, name, me, splitOf(e)) }))
+    .map((e) => ({ e, eff: salaryEffectOf(e, name, byMonth.get(payrollMonthOfEntry(e))?.row ?? me, splitOf(e)) }))
     .filter((x): x is { e: LedgerEntry & { pupilId?: number }; eff: { amount: number; note: string } } => x.eff !== null);
 
   // Har bir oy uchun oy boshidagi qoldiq — o'sha oyning `EmployeePayroll`
-  // qatoridan. Oylar bir-biriga bog'liq emas, parallel o'qiladi.
-  const months = [...new Set(effects.map((x) => payrollMonthOfEntry(x.e)))];
+  // qatoridan.
   const openings = new Map<string, number>();
   if (me.configured) {
-    await Promise.all(months.map(async (m) => {
-      const { period, row } = m === nowKey ? current : await rowOf(m);
-      if (!row) return;
+    for (const [m, { period, row }] of byMonth) {
+      if (!row) continue;
       // Okladli xodimda oklad oy boshida yoziladi (o'tgan oyda to'liq,
       // joriy oyda bugungi kungacha, ishga kirgan kundan); foiz qismi esa
       // yozuvma-yozuv keladi. Faqat foizli xodimda oklad qismi 0.
@@ -258,10 +252,9 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
       const incoming = payrollHasFoiz(row)
         ? (row.handovers ?? []).filter((h) => h.dir === "in").reduce((s, h) => s + h.amount, 0) * row.percent / 100
         : 0;
-      // Oy ochilishi — o'tgan oylardan JAMI qoldiq (to'lanadigan +
-      // o'z oyidan chiqariladigan; yuqoridagi "NEGA JAMI" izohi, 04.10.2026).
-      openings.set(m, payrollCarryTotal(row) + payrollOkladPart(row, period) + incoming);
-    }));
+      // Oy ochilishi — o'tgan oylardan shu oyga qo'shilgan qoldiq.
+      openings.set(m, row.carryOver + payrollOkladPart(row, period) + incoming);
+    }
   }
 
   const running = new Map<string, number>(openings);

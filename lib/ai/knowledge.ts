@@ -77,10 +77,10 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     pages: ["/finance-cash", "/finance-payroll"],
     text: [
       "Moliya → Kassalar → «Chiqim» → tranzaksiya turini tanlang.",
-      "«Hodimga avans» / «Hodimga oylik»: xodim va «Qaysi oy uchun» tanlanadi; summa o'sha oyning oylik hisobidan ayriladi, chegara server tomonidan tekshiriladi.",
+      "«Hodimga avans» / «Hodimga oylik»: xodim tanlanadi, oy tanlanmaydi — avans va oylik faqat joriy oydan beriladi. Summa joriy oyning oylik hisobidan ayriladi, o'tgan oylardan qolgan pul ham shu hisobda; chegara server tomonidan tekshiriladi.",
       "«O'quvchiga pul qaytarildi»: o'quvchi tanlanadi, summa u to'lagan puldan oshmaydi.",
       "Boshqa xarajatlar (ijara, kommunal va h.k.) — summa va izoh.",
-      "Oyning oyligini to'liq chiqarish: Moliya → Oylik chiqarish → «Oylikni chiqarish».",
+      "Oyning oyligini to'liq chiqarish: Moliya → Oylik chiqarish → «Oylikni chiqarish». Oylik faqat joriy oydan chiqariladi: o'tgan oy sahifasi faqat ko'rish uchun, o'sha oyning qoldig'i (masalan, kech kelgan to'lov ulushi) joriy oyga qo'shiladi va «O'tgan oydan» ustunida qaysi oydan qancha kelgani yozilib turadi. Oklad, foiz yoki soliq o'zgartirilsa yangi stavka joriy oydan ishlaydi, o'tgan oylar eski stavkada qoladi; o'tgan oy uchun farqni bonus bilan berish mumkin.",
     ].join("\n"),
   },
   {

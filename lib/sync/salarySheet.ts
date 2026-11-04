@@ -47,10 +47,9 @@ import { salaryTypeTag } from "@/lib/salary";
 // yozilmasdi. `ensureTab` endi gridni kengaytiradi va sarlavhani
 // yangilaydi (lib/sync/googleSheets.ts).
 //
-// "O'tgan oylardan" (04.10.2026, "faqat o'z oyidan chiqarilsin") — o'tgan
-// oylarda to'lanmagan, shu oyda TO'LANMAYDIGAN qoldiq (lib/sync/salaryDigest.ts
-// → Line.pending): "Qolgan"ga kirmaydi, har biri o'z oyining sahifasidan
-// chiqariladi. OXIRIGA qo'shildi — mavjud ustunlar joyidan siljimasin.
+// "O'tgan oylardan" (04.11.2026) — o'tgan oylardan shu oyga qo'shilgan qoldiq,
+// manfiy — qarzdorlik (lib/sync/salaryDigest.ts → Line.carryMonths). U "Qolgan"
+// ichida turadi. OXIRIGA qo'shilgan — mavjud ustunlar joyidan siljimasin.
 const HEADERS = [
   "Xodim", "Lavozim", "Stavka", "Hisoblangan", "Soliq", "Olingan", "Qolgan",
   "Kartaga", "Naqd", "Davr", "Yangilangan", "O'tgan oylardan",
@@ -118,7 +117,7 @@ export async function writeSalarySummary(
       Math.round(Math.max(l.cashDue, 0)),
       periodLabel,
       stamp,
-      Math.round(l.pending),
+      Math.round(l.carryMonths.reduce((s, x) => s + x.amount, 0)),
     ]);
 
     const target = cfg.targets.salary;

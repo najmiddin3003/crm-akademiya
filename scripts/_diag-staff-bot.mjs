@@ -14,8 +14,6 @@
 //                --amount 320000     ("max" — chiqimda "Hammasi" tugmasi)
 //                --flow chiqim --type "Avans" --person Nilufar --method Naqd
 //                                    (chiqim oqimi: tur nomi, kim, to'lov turi)
-//                --month 2026-09     (chiqimda Avans/Oylik "qaysi oy uchun";
-//                                     sukut — belgilangan shu oy)
 //                --flow transfer | methods | inbox | lead
 //                                    (boshqa kassaga / turlar orasida / kelayotganlar / lid)
 //                --apply             (tasdiqni ham bosadi — PUL YOZILADI, Sheets/guruhga
@@ -61,7 +59,6 @@ const FLOW = opt("--flow") ?? "kirim"; // kirim | chiqim
 const TYPE_NAME = opt("--type") ?? "Avans";
 const PERSON = opt("--person") ?? "Nilufar";
 const METHOD = opt("--method") ?? "Naqd";
-const MONTH = opt("--month"); // "YYYY-MM" — chiqimda Avans/Oylik oyi
 
 const APPLY = has("--apply");
 const KEEP = has("--keep");
@@ -336,18 +333,6 @@ if (FLOW === "kirim") {
       const personCb = pick("s:c:e:") ?? pick("s:c:s:");
       if (!personCb) line("  Kim topilmadi — --person bilan boshqa matn bering.");
       else await cb(personCb);
-    }
-    // Avans/Oylikda xodimdan keyin OY so'raladi (04.10.2026, `s:c:p:YYYY-MM`)
-    // — usiz oqim shu qadamda to'xtab qolardi: to'lov turi tugmalari yo'q.
-    // --month berilsa o'sha oy, aks holda belgilangan (•) shu oy.
-    const monthStep = await getStaffUser(db, CHAT);
-    if (monthStep?.draft?.step === "month") {
-      const monthCb = MONTH
-        ? pick(`s:c:p:${MONTH}`)
-        : lastKeyboard.flat().find((b) => String(b.callback_data ?? "").startsWith("s:c:p:") && b.text.startsWith("•"))?.callback_data
-          ?? pick("s:c:p:");
-      if (!monthCb) line(`  "${MONTH}" oyi tugmalarda yo'q — o'tgan yoki shu oyni bering.`);
-      else await cb(monthCb);
     }
     const methodCb = lastKeyboard.flat().find((b) => String(b.callback_data ?? "").startsWith("s:c:m:") && b.text.startsWith(METHOD))?.callback_data
       ?? pick("s:c:m:");

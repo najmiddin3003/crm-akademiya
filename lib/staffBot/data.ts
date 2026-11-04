@@ -4,7 +4,7 @@ import { loadCardStats, type CashboxCardStats } from "@/lib/cashboxStats";
 import type { CashboxMethodTotals } from "@/lib/cashboxes";
 import { groupLabel, type Group } from "@/lib/groups";
 import { loadPaymentMethods, type PaymentMethod } from "@/lib/paymentMethods";
-import { attachMaybePaidIn, buildPayrollRows } from "@/lib/payrollSources";
+import { buildPayrollRows } from "@/lib/payrollSources";
 import { phoneSearchPattern } from "@/lib/phoneSearch";
 import { pupilFullName } from "@/lib/pupilsData";
 import { pupilSearchFilter } from "@/lib/pupilSearch";
@@ -16,7 +16,6 @@ import {
   payrollPeriodOf,
   payrollPlastikLeg,
   payrollTax,
-  pendingMaybePaidByMonth,
 } from "@/lib/salary";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { loadPendingOut } from "@/lib/transferPending";
@@ -101,51 +100,34 @@ export async function loadEmployeeHit(db: Db, id: number): Promise<EmployeeHit |
 }
 
 /**
- * Xodimning TANLANGAN OYDAGI oylik hisobi — Avans/Oylik chegarasi uchun.
+ * Xodimning SHU OYDAGI oylik hisobi — Avans/Oylik chegarasi uchun.
  *
  * Oylik hisob-kitob sahifasi, Chiqim oynasi va server (lib/cashboxAdjust.ts)
  * bilan AYNAN BIR XIL funksiyalar (lib/salary.ts). Qator butun kompaniya
  * bo'yicha quriladi (filialga kesilmaydi) — server ham shunday tekshiradi.
  * `null` — xodim oylik ro'yxatida yo'q.
  *
- * `monthKey` — "YYYY-MM", botdagi "Qaysi oy uchun" tanlovi (04.10.2026).
- * Ilgari bu yerga bugungi sana berilardi: oktabrda SENTABR oyligi
- * berilganda chegara oktabr qatoridan olinardi, server esa endi
- * `periodMonth` bo'yicha (sentabr) tekshiradi — ikkalasi ajralmasin.
- * "YYYY-MM-DD" berilsa ham ishlaydi (oyi olinadi).
+ * `monthKey` — "YYYY-MM" (bot va AI joriy oyni beradi). "YYYY-MM-DD" berilsa
+ * ham ishlaydi (oyi olinadi).
  */
 export async function employeeSalaryInfo(db: Db, name: string, monthKey: string): Promise<SalaryInfo | null> {
   const period = payrollPeriodOf(monthKey.slice(0, 7));
   const rows = await buildPayrollRows(db, period);
   const key = name.trim().toLowerCase();
-  const found = rows.find((e) => e.name.trim().toLowerCase() === key);
-  if (!found) return null;
-  // O'tgan oy tanlangan bo'lsa — shu oy puli joriy oyda berilgan bo'lishi
-  // mumkinmi (04.10.2026, o'tish davri qorovuli; joriy oyda hech narsa
-  // qilmaydi). Faqat shu bitta qator uchun.
-  const [row] = await attachMaybePaidIn(db, period, [found]);
+  const row = rows.find((e) => e.name.trim().toLowerCase() === key);
+  if (!row) return null;
   if (!row.configured) {
     return { configured: false, earned: 0, tax: 0, karta: 0, paid: 0, carryOver: 0, naqd: 0, jami: 0, plastikSalary: 0 };
   }
-  const maybePaid = pendingMaybePaidByMonth(row, period);
   return {
     configured: true,
     earned: payrollEarned(row, period),
     tax: payrollTax(row, period),
     karta: payrollPlastikLeg(row, period),
     paid: payrollPaid(row),
-    // Chegara (`naqd`/`jami`) — faqat SHU OYDA to'lanadigan qism. O'tgan
-    // oyning to'lanmagan musbat qoldig'i bu oyda chiqarilmaydi (04.10.2026,
-    // "faqat o'z oyidan chiqarilsin") — kassirga faqat ma'lumot bo'lib
-    // ko'rinadi (`pending`), o'sha oyni tanlab chiqaradi.
+    // O'tgan oylardan qo'shilgan qoldiq — chegara (`naqd`/`jami`) ham shu bilan.
     carryOver: row.carryOver,
-    // Shu oyda shu oy yozuvi bo'lib berilgan bo'lishi mumkin qism pending'dan
-    // AYRILADI (u "qayta chiqarmang" bo'lib alohida aytiladi).
-    pending: (row.carryPendingMonths ?? [])
-      .map((x) => ({ month: x.month, amount: x.amount - (maybePaid.find((m) => m.month === x.month)?.amount ?? 0) }))
-      .filter((x) => x.amount > 0),
-    ...(maybePaid.length > 0 ? { pendingMaybePaid: maybePaid } : {}),
-    ...(row.maybePaidIn ? { paidLater: row.maybePaidIn } : {}),
+    carryMonths: row.carryMonths ?? [],
     naqd: payrollCashLeg(row, period),
     jami: payrollPayout(row, period),
     plastikSalary: row.plastikSalary,

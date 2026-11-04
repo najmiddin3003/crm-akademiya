@@ -404,7 +404,7 @@ export default function EmployeesListV2() {
           <div>
             <span className={`font-semibold tabular-nums ${s.qolganOylik < 0 ? "text-v2-danger" : "text-v2-text"}`}>{fmtSum(s.qolganOylik)}</span>
             {s.otganOylar > 0 && (
-              <div className="whitespace-nowrap text-v2-caption font-normal tabular-nums text-v2-text-3" title={t("O'tgan oylarda to'lanmagan qoldiq joriy oyda chiqarilmaydi — o'z oyining Oylik sahifasidan chiqariladi")}>
+              <div className="whitespace-nowrap text-v2-caption font-normal tabular-nums text-v2-text-3" title={t("O'tgan oylardan shu oy oyligiga qo'shilgan qoldiq")}>
                 {t("o'tgan oylardan: {amount}", { amount: fmtSum(s.otganOylar) })}
               </div>
             )}

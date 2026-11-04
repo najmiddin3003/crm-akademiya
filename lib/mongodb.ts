@@ -282,6 +282,8 @@ async function createAllIndexes(db: Db): Promise<void> {
   // hr_employees — edutizim dizaynidagi to'liq xodim roster (invite oqimidagi
   // `employees` kolleksiyasidan ALOHIDA; ular turli shakl/vazifada).
   tasks.push(db.collection("hr_employees").createIndex({ id: 1 }, { unique: true }));
+  // O'tgan oy stavkalari nusxasi — oyga bitta (lib/payrollSources.ts → freezePayrollRates).
+  tasks.push(db.collection("payroll_rate_snapshots").createIndex({ month: 1 }, { unique: true }));
   // employee_notes — Xodim profili > "Eslatma". Demo bilan to'ldirilmaydi.
   tasks.push(db.collection("employee_notes").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("employee_notes").createIndex({ employeeId: 1 }));

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { attachBranchPayouts, attachMaybePaidIn, buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
+import { attachBranchPayouts, buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
 import { isMonthKey, payrollHasFoiz, payrollMonthKey, payrollPeriod, payrollPeriodOf, prevMonthKey } from "@/lib/salary";
 import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 import { branchPool } from "@/lib/branchPools";
@@ -15,11 +15,9 @@ import { detectMovedPupils } from "@/lib/teacherHandoverStore";
 //   paidAvans/paidOylik ← transaction_entries (shu oydagi chiqimlar)
 //   fixedSalary ← xodim kartasidagi filiallar bo'yicha ish haqi
 //   percent ← Sozlamalar > Moliya > Oylik foizlari (daraja nomi orqali)
-//   carryOver ← o'tgan oylardan SHU OYDA TO'LANADIGAN qism (loadCarryOver):
-//               nol-yopish ulushi yoki qarzdorlik
-//   carryPending, carryPendingMonths ← o'tgan oylarda to'lanmagan, FAQAT
-//               o'z oyidan chiqariladigan qoldiq (04.10.2026) — bu oyda
-//               ma'lumot, `payrollDue`/chegaraga kirmaydi
+//   carryOver ← o'tgan oylardan SHU OYGA qo'shilgan qoldiq (loadCarryOver):
+//               to'lanmagan qoldiq yoki qarzdorlik
+//   carryMonths ← shu qoldiq qaysi oylardan kelgani (04.11.2026)
 //
 // `configured: false` bo'lgan xodimning raqamlari ma'nosiz — interfeys
 // ularni "Oylik sozlanmagan" deb ko'rsatishi kerak.
@@ -89,7 +87,7 @@ export async function GET(req: Request) {
   // OYLIK RO'YXATI — `payrollBranchId` bo'yicha, `branchIds` bo'yicha EMAS.
   // Ikki filialda ishlaydigan xodim faqat BITTA filialning ro'yxatida
   // turadi, ya'ni oylik ikki marta chiqarilishi mumkin emas.
-  const built = await buildPayrollRows(
+  const employees = await buildPayrollRows(
     db,
     period,
     allBranches
@@ -98,12 +96,6 @@ export async function GET(req: Request) {
         ? { memberOfBranchIds: branchPool(scope.branchId) }
         : { payrollBranchId: building },
   );
-  // O'TGAN OY ochilganda — "bu oy puli joriy oyda allaqachon berilgan
-  // bo'lishi mumkin" belgisi (`maybePaidIn`, 04.10.2026, o'tish davri
-  // qorovuli: lib/payrollSources.ts → attachMaybePaidIn). Joriy/kelajak
-  // oyda hech narsa qilmaydi. Oylik sahifasi va Chiqim oynasi shu bilan
-  // "qayta chiqarmang" deydi.
-  const employees = await attachMaybePaidIn(db, period, built);
   // `month` QAYTARILADI: mijoz qaysi oy hisoblanganini taxmin qilmasin —
   // parametrsiz so'rovda ham server tanlagan oy aniq bo'lsin.
   const month = payrollMonthKey(period);

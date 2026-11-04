@@ -57,12 +57,12 @@ export interface AdjustInput {
   note?: string;
   /**
    * To'lov qaysi oy uchun — "YYYY-MM". Berilmasa yoki bo'sh bo'lsa —
-   * sananing oyi (eski mijozlar va bot uchun xulq o'zgarmaydi).
+   * sananing oyi (kirimda eski mijozlar va bot uchun xulq o'zgarmaydi).
    *
    * Kirimda va boshqa chiqimlarda noto'g'ri shakl jimgina tashlanadi.
-   * XODIMGA AVANS/OYLIK chiqimida (04.10.2026 dan) esa oy chegarani
-   * belgilaydi, shuning uchun noto'g'ri shakl ham, KELAJAK oy ham,
-   * YOPILGAN oy (oxirgi nol-yopish va undan oldingilar) ham rad etiladi —
+   * XODIMGA AVANS/OYLIK chiqimida esa oy doim JORIY oy (04.11.2026):
+   * berilmasa o'zi qo'yiladi; noto'g'ri shakl ham, O'TGAN oy ham, KELAJAK oy
+   * ham, YOPILGAN oy (oxirgi nol-yopish va undan oldingilar) ham rad etiladi —
    * pastdagi `applyCashboxAdjust` izohiga qarang.
    */
   periodMonth?: string;
@@ -145,32 +145,42 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   const available = (current.methodTotals as CashboxMethodTotals)[chosen.key] ?? 0;
   if (mode === "chiqim" && available < amount) return fail("Mablag' yetarli emas");
 
-  // TO'LOV QAYSI OY UCHUN — "YYYY-MM" (oy 01–12, `isMonthKey`). 04.10.2026
-  // dan CHEGARADAN OLDIN aniqlanadi: xodimga avans/oylikda chegara aynan
-  // shu oyning oylik qatoridan olinadi (pastda).
-  const period = typeof periodMonth === "string" && isMonthKey(periodMonth)
-    ? periodMonth.trim()
-    : undefined;
-
   // XODIMGA AVANS/OYLIK — tur nomida "avans"/"oylik" (jurnal ham shu qoida
   // bilan yig'adi: lib/payrollSources.ts → loadPayoutEntries).
   const employeePayout = mode === "chiqim" && isEmployeePayoutCategory(category);
-  // Yozuv oylik hisobida QAYSI OYGA tushadi (`monthMatch`): oy berilgan
-  // bo'lsa — o'sha, aks holda (eski mijoz) sananing oyi. Chegara ham,
-  // yopilgan oy tekshiruvi ham shu bitta oydan.
+  // TO'LOV QAYSI OY UCHUN — "YYYY-MM" (oy 01–12, `isMonthKey`). CHEGARADAN
+  // OLDIN aniqlanadi: xodimga avans/oylikda chegara aynan shu oyning oylik
+  // qatoridan olinadi (pastda).
+  //
+  // XODIMGA AVANS/OYLIK — DOIM JORIY OY (04.11.2026, foydalanuvchi: "oylik
+  // chiqarishda faqat bitta oydan chiqarilishi kerak"), oy yuborilmasa ham:
+  // sana orqaga surilgan bo'lsa ham yozuv joriy oyga tushadi va shu oyning
+  // qoldig'idan ayriladi. Toshkent vaqti bo'yicha (`payrollPeriod` → uzNow).
+  const sentPeriod = typeof periodMonth === "string" && isMonthKey(periodMonth)
+    ? periodMonth.trim()
+    : undefined;
+  const nowMonth = payrollMonthKey(payrollPeriod());
+  const period = sentPeriod ?? (employeePayout ? nowMonth : undefined);
+  // Yozuv oylik hisobida QAYSI OYGA tushadi (`monthMatch`): oy bo'lsa — o'sha,
+  // aks holda (kirimda eski mijoz) sananing oyi.
   const payMonth = period ?? (date || todayIso()).slice(0, 7);
   if (employeePayout) {
-    // Oy YUBORILGAN, lekin shakli noto'g'ri — jimgina sana oyiga tushirilmaydi:
-    // aynan shu (pul boshqa oyga yozilib, o'sha oyda ikkinchi marta
-    // chiqarilishi) tuzatilayapti. Bo'sh satr — "oy yuborilmagan" degani.
-    if (typeof periodMonth === "string" && periodMonth.trim() && !period) return fail("Noto'g'ri oy");
+    // Oy YUBORILGAN, lekin shakli noto'g'ri — jimgina joriy oyga tushirilmaydi.
+    // Bo'sh satr — "oy yuborilmagan" degani.
+    if (typeof periodMonth === "string" && periodMonth.trim() && !sentPeriod) return fail("Noto'g'ri oy");
     // KELAJAK oy uchun avans/oylik berilmaydi: u oy hali ishlanmagan
     // (payrollPeriodOf da `day = 0`) va "Oylik chiqarish" ham kelajak oyni
-    // rad etadi (app/api/salary-runs/route.ts) — bir xil qoida. Joriy oy
-    // TOSHKENT vaqti bo'yicha (`payrollPeriod` → uzNow). Kirimda kelajak oy
-    // RUXSAT (oldindan to'lov) — bu shart faqat xodimga chiqimda.
-    if (period && period > payrollMonthKey(payrollPeriod())) {
+    // rad etadi (app/api/salary-runs/route.ts) — bir xil qoida. Kirimda
+    // kelajak oy RUXSAT (oldindan to'lov) — bu shart faqat xodimga chiqimda.
+    if (payMonth > nowMonth) {
       return fail("Kelajak oy uchun avans yoki oylik berilmaydi");
+    }
+    // O'TGAN oy uchun ham berilmaydi: o'sha oyning qoldig'i joriy oyning
+    // "O'tgan oydan" qatorida turibdi — u yerdan ham, bu yerdan ham chiqsa
+    // bitta pul ikki marta to'lanardi (lib/salary.ts). Eski oynada ochiq
+    // qolgan sahifa va oy tanlaydigan eski bot tugmasi shu yerda to'xtaydi.
+    if (payMonth < nowMonth) {
+      return fail("Avans va oylik faqat joriy oydan beriladi — sahifani yangilang");
     }
     // YOPILGAN oy uchun ham berilmaydi (04.10.2026): oxirgi NOL-YOPISH oyi
     // (hozir 2026-08) va undan oldingilar. `loadCarryOver` zanjiri o'sha
@@ -179,9 +189,7 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     // oyining ulushi 0), ya'ni kassadan chiqib, oylik hisobidan tashqarida
     // qolardi. O'sha oy qatori esa tizimdan oldingi davrdan quriladi va
     // butun okladni "to'lanmagan" ko'rsatib, chegarani asossiz katta
-    // qilardi. Ilgari bunga sanani orqaga surib yetilardi; «Qaysi oy uchun»
-    // tanlovi bilan bir bosishda ochilib qolmasin. Oyna ham shu oyni
-    // oldindan to'sadi (CashboxAdjustDrawer → closedThrough).
+    // qilardi. Oyna ham shu oyni oldindan to'sadi (useChiqimForm → closedThrough).
     const closed = await loadLastPureCloseMonth(db);
     if (closed && payMonth <= closed) {
       return fail("Yopilgan oy uchun avans yoki oylik berilmaydi");
@@ -189,17 +197,14 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   }
 
   // IZOHDAGI OY ≠ «QAYSI OY UCHUN» — MAJBURIY (04.10.2026, lib/noteMonth.ts →
-  // noteMonthConflict). Faqat oy kimningdir oyligini belgilaydigan joyda va
-  // oy ANIQ yuborilganda (eski mijoz — tekshirilmaydi):
-  //   • kirim + ustoz — ustoz ulushi shu oyga tushadi (Kirim oynasi
-  //     `teacherName` ni faqat ustoz maydoni bor turda yuboradi — oyna ham
-  //     aynan shu holatda to'sadi);
-  //   • xodimga avans/oylik — o'sha oyning oyligidan ayriladi.
-  // Oynalar ham, bot ham buni oldindan to'sadi; bu — zaxira qorovul.
-  const noteCheck = !!period && (
-    (mode === "kirim" && String(teacherName ?? "").trim() !== "")
-    || employeePayout
-  );
+  // noteMonthConflict). Faqat kirim + ustozda va oy ANIQ yuborilganda (eski
+  // mijoz — tekshirilmaydi): ustoz ulushi shu oyga tushadi. Kirim oynasi
+  // `teacherName` ni faqat ustoz maydoni bor turda yuboradi va aynan shu
+  // holatda to'sadi; bot ham — bu zaxira qorovul.
+  //
+  // Xodimga avans/oylikda TEKSHIRILMAYDI (04.11.2026): oy doim joriy, izohda
+  // esa "oktabr oyligi" deb yozilishi tabiiy — pul o'sha qoldiqni yopadi.
+  const noteCheck = !!period && mode === "kirim" && String(teacherName ?? "").trim() !== "";
   if (noteCheck && noteMonthConflict(note, period)) {
     return fail("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi — oyni yoki izohni to'g'rilang");
   }
@@ -230,24 +235,16 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   // oynasi ham `branch=all` bilan so'raydi; xodim boshqa filialning oylik
   // ro'yxatida bo'lsa ham chegara o'sha yerdagi raqam bilan bir xil.
   //
-  // QAYSI OY QATORI (04.10.2026): `periodMonth` berilgan bo'lsa — O'SHA oy
-  // (Chiqim oynasidagi "Qaysi oy uchun"), aks holda avvalgidek sananing
-  // oyi. NIMA NOTO'G'RI EDI: chegara faqat sana oyidan olinardi va oy
-  // yozuvga ham yozilmasdi — oktabrda berilgan SENTABR oyligi oktabrga
-  // tushardi: sentabr sahifasida ayrilmasdi, oktabrda "O'tgan oydan"
-  // kamaymasdi, keyin sentabr uchun "Oylikni chiqarish" uni IKKINCHI marta
-  // to'lardi. Endi chegara ham, yozuvning oyi ham (`monthMatch`) bitta
-  // oydan — oyna, server va oylik sahifasi bitta qatorga qaraydi.
+  // QAYSI OY QATORI: `payMonth` — joriy oy (yuqorida). Chegara ham, yozuvning
+  // oyi ham (`monthMatch`) bitta oydan — oyna, server va oylik sahifasi bitta
+  // qatorga qaraydi. NIMA NOTO'G'RI EDI (04.10.2026 gacha): chegara faqat sana
+  // oyidan olinardi va oy yozuvga ham yozilmasdi — oktabrda berilgan SENTABR
+  // oyligi oktabrga tushardi, keyin sentabr uchun "Oylikni chiqarish" uni
+  // IKKINCHI marta to'lardi.
   //
-  // O'TGAN OYLARNING TO'LANMAGAN QOLDIG'I CHEGARAGA KIRMAYDI (04.10.2026,
-  // foydalanuvchi: "faqat o'z oyidan chiqarilsin"). `payrollCashLeg` /
-  // `payrollPayout` faqat shu oyda TO'LANADIGAN `carryOver` ni oladi
-  // (nol-yopish ulushi yoki qarzdorlik), `carryPending` ni — ATAYLAB — emas.
-  // NIMA NOTO'G'RI EDI: sentabrning to'lanmagan qoldig'i oktabr chegarasida
-  // turardi; oktabrda u bilan birga berilgan pul OKTABR yozuvi bo'lib,
-  // sentabr sahifasi uni hamon "Qolgan" ko'rsatardi — ikkinchi marta
-  // to'lash mumkin edi. Sentabr puli endi faqat `periodMonth` = sentabr
-  // bilan chiqadi (Chiqim oynasi `carryHint` bilan o'sha oyga o'tkazadi).
+  // O'TGAN OYLARNING TO'LANMAGAN QOLDIG'I CHEGARAGA KIRADI (04.11.2026): u
+  // `carryOver` da, `payrollCashLeg` / `payrollPayout` uni oladi. Berilgan pul
+  // joriy oy yozuvi bo'lib shu qoldiqni yopadi — keyingi oyga o'tmaydi.
   if (employeePayout && studentName) {
     const payPeriod = payrollPeriodOf(payMonth);
     const rows = await buildPayrollRows(db, payPeriod);

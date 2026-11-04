@@ -10,8 +10,8 @@ import {
   payrollHasOklad,
   payrollOkladDays,
   payrollOkladPart,
-  payrollOwedTotal,
   payrollCashLeg,
+  payrollDue,
   payrollPlastikLeg,
   payrollTax,
   type EmployeePayroll,
@@ -27,8 +27,8 @@ import { fmtSum } from "./employeeBits";
 // Raqamlar Oylik chiqarish bilan BITTA manbadan (/api/salary-runs/employees-payroll →
 // lib/salary.ts), bu yerda hisob yo'q — faqat ko'rsatish. Qatorlar yig'indisi «Qolgan
 // oylik»ka teng: rasmdagidan tashqari faqat qiymati bo'lganda Soliq va «Berilgan oylik»
-// ham chiqadi; «O'tgan oydan» = shu oyda to'lanadigan + o'z oyidan chiqariladigan qoldiq
-// (`payrollOwedTotal`, eski profil va ro'yxatdagi bilan bir xil).
+// ham chiqadi; «O'tgan oydan» — o'tgan oylardan shu oyga qo'shilgan qoldiq, ostida qaysi
+// oydan qancha kelgani (eski profil va ro'yxatdagi bilan bir xil).
 
 export type SalaryCardState =
   | { kind: "loading" }
@@ -113,11 +113,10 @@ export default function EmployeeSalaryCard({
   }
 
   const tax = payrollTax(e, period);
-  const carry = e.carryOver + (e.carryPending ?? 0);
-  const owed = payrollOwedTotal(e, period);
+  const owed = payrollDue(e, period);
   const karta = payrollPlastikLeg(e, period);
   const naqd = payrollCashLeg(e, period);
-  const pending = (e.carryPendingMonths ?? []).filter((pm) => pm.amount > 0);
+  const carryMonths = e.carryMonths ?? [];
   const monthLabel = (key: string) => {
     const i = Number(key.slice(5, 7)) - 1;
     return i >= 0 && i < 12 ? `${(months[i] ?? "").toLowerCase()} ${key.slice(0, 4)}` : key;
@@ -149,8 +148,8 @@ export default function EmployeeSalaryCard({
   lines.push({
     key: "carry",
     label: t("O'tgan oydan"),
-    sub: pending.length > 0 ? t("o'z oyidan chiqariladi: {months}", { months: pending.map((pm) => `${monthLabel(pm.month)} — ${fmtSum(pm.amount)}`).join(", ") }) : e.carryNote || undefined,
-    value: carry,
+    sub: carryMonths.length > 0 ? carryMonths.map((m) => `${monthLabel(m.month)} — ${fmtSum(m.amount)}`).join(", ") : undefined,
+    value: e.carryOver,
   });
 
   return shell(

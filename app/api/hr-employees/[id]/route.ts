@@ -33,6 +33,7 @@ import {
 import { employeePermissions } from "@/lib/rolePermissions";
 import { checkEmployeeGrant, grantorAccess } from "@/lib/permissionGrant";
 import { deleteFaceData } from "@/lib/staffFace";
+import { freezePayrollRates } from "@/lib/payrollSources";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
 /**
@@ -47,6 +48,12 @@ const PAYROLL_FIELDS = [
   "archReason", "archDate", "permissions", "twoFactor", "turi", "degree", "employmentRate",
   "centerRoleId",
 ] as const;
+
+/**
+ * Oylik hisobidagi STAVKA maydonlari — o'zgarsa o'tgan oylar eski stavkada qoladi.
+ * `archReason`: arxivdan qaytgan xodimning yo'q oylari to'lanmagan bo'lib chiqmasin.
+ */
+const RATE_FIELDS = new Set(["percent", "plastikSalary", "taxIds", "branchAssignments", "archReason"]);
 
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 const sortedNums = (v: unknown) => (Array.isArray(v) ? v.map(Number).filter((n) => Number.isFinite(n) && n > 0).sort((x, y) => x - y) : []);
@@ -424,6 +431,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Hisob roli — barcha tekshiruvlardan keyin, xodim yozuvidan OLDIN (tartib sababi
   // lib/employeeRoleSync.ts boshida).
   if (lavozim) await applyLavozimChange(db, lavozim);
+
+  // Stavka o'zgaryapti — nusxa YOZUVDAN OLDIN (lib/salary.ts → «O'tgan oy stavkalari»).
+  if (payrollChanges.some((f) => RATE_FIELDS.has(f))) await freezePayrollRates(db);
 
   // Qamrov FILTRDA, JS'da emas: o'qib→tekshirib→yozish oralig'ida xodim
   // boshqa filialga ko'chirilsa ham yozuv o'tib ketmasin.

@@ -11,13 +11,12 @@ import {
   payrollHasOklad,
   payrollOkladDays,
   payrollOkladPart,
-  payrollOwedTotal,
   payrollStartsInPeriod,
   type EmployeePayroll,
   type PayrollPeriod,
 } from "@/lib/salary";
 import Modal, { useModalClose } from "@/components/ui/Modal";
-import { useT, type TFn } from "@/components/shared/Language";
+import { useT } from "@/components/shared/Language";
 
 // Kassa → Chiqim oynasidagi "Xodim ma'lumotlarini ko'rish" tugmasi ochadigan
 // modal (referens skrinshoti). Sarlavhasi "Xodimlar", yonidagi ikonka —
@@ -35,13 +34,9 @@ import { useT, type TFn } from "@/components/shared/Language";
 // "Olingan oylik" qatori referensda yo'q, lekin bizda alohida hisoblanadi —
 // usiz Balans qayerdan kelganini tushunib bo'lmasdi.
 //
-// O'TGAN OYLARDA TO'LANMAGAN (04.10.2026, "faqat o'z oyidan chiqarilsin"):
-// "Akladi (o'tgan oydan)" va "Balans" — SHU OYDA to'lanadigan qism, Chiqim
-// oynasidagi chegara bilan bir xil (`payrollDue`). O'tgan oyning to'lanmagan
-// musbat qoldig'i bu oyda chiqarilmaydi — u Balansga kirmaydi, ostida
-// alohida MA'LUMOT qatori bo'lib turadi ("Sentyabr 2026 — o'z oyidan") va
-// "Jami to'lanmagan" (`payrollOwedTotal`) xodimga jami qancha qolganini
-// aytadi. Ikkalasi faqat shunday qoldiq bor bo'lsa chiziladi.
+// O'TGAN OYLARDAN QO'SHILGAN (04.11.2026): "Akladi" — o'tgan oylardan shu oyga
+// qo'shilgan qoldiq (manfiy — qarzdorlik), izohida qaysi oydan qancha kelgani;
+// "Balans" Chiqim oynasidagi chegara bilan bir xil (`payrollDue`).
 //
 // ── Animatsiya haqida ────────────────────────────────────────────────────
 // 1. Tailwind klasslari ISHLATILMAYDI. Bu loyihada CSS kompilyatsiya qilingan
@@ -75,24 +70,13 @@ function monthKeyLabel(month: string, months: string[]): string {
   return i >= 0 && i < 12 ? `${months[i]} ${month.slice(0, 4)}` : month;
 }
 
-function rowsOf(e: EmployeePayroll, p: PayrollPeriod, t: TFn, months: string[]): Row[] {
+function rowsOf(e: EmployeePayroll, p: PayrollPeriod, months: string[]): Row[] {
   const earned = payrollEarned(e, p);
   const due = payrollDue(e, p);
-  // O'tgan oylarda to'lanmagan, o'z oyidan chiqariladigan qoldiqlar —
-  // Balansga KIRMAYDI (yuqoridagi izoh).
-  const pending = (e.carryPendingMonths ?? []).filter((pm) => pm.amount > 0);
-  const pendingRows: Row[] = pending.length > 0
-    ? [
-        {
-          label: "O'tgan oylarda to'lanmagan",
-          value: pending.reduce((s, pm) => s + pm.amount, 0),
-          hint: t("{months} — o'z oyidan chiqariladi", {
-            months: pending.map((pm) => monthKeyLabel(pm.month, months)).join(", "),
-          }),
-        },
-        { label: "Jami to'lanmagan", value: payrollOwedTotal(e, p), strong: true },
-      ]
-    : [];
+  // Qoldiq qaysi oylardan kelgani: "Sentyabr 2026: 86 100 UZS, Oktabr 2026: …".
+  const carryFrom = (e.carryMonths ?? [])
+    .map((m) => `${monthKeyLabel(m.month, months)}: ${fmtUZS(m.amount)}`)
+    .join(", ");
   const hasFoiz = payrollHasFoiz(e);
   // Asos qatorlari: foiz qismi va/yoki oklad qismi. "Oklad + foiz" xodimda
   // IKKALASI ham turadi — yig'indisi `payrollBase` (lib/salary.ts).
@@ -118,12 +102,11 @@ function rowsOf(e: EmployeePayroll, p: PayrollPeriod, t: TFn, months: string[]):
     ...baseRows,
     { label: "Bonus", value: e.bonus },
     { label: "Jarima", value: e.jarima },
-    { label: "Akladi", value: e.carryOver, hint: "o'tgan oydan" },
+    { label: "Akladi", value: e.carryOver, hint: carryFrom || "o'tgan oydan" },
     { label: "Oylik", value: earned, strong: true },
     { label: "Avans", value: e.paidAvans },
     { label: "Olingan oylik", value: e.paidOylik },
     { label: "Balans", value: due, hint: "qolgan", strong: true },
-    ...pendingRows,
   ];
 }
 
@@ -148,7 +131,7 @@ export default function EmployeeSalaryModal({
 
   const duration = reduceMotion ? "0s" : ".3s";
   const ease = `${duration} cubic-bezier(.4,0,.2,1)`;
-  const rows = payroll?.configured ? rowsOf(payroll, period, t, months) : null;
+  const rows = payroll?.configured ? rowsOf(payroll, period, months) : null;
 
   /** Ochilib bo'lgach balandlikni `auto` ga qaytaradi — kontent o'zgarsa
    *  yoki oyna kengligi o'zgarib qator ikkiga bo'linsa kesilmasin. */

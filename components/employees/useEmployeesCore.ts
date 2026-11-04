@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { HrEmployeeFull } from "./employeeExtras";
 import type { Group } from "@/lib/groups";
-import { payrollEarned, payrollOwedTotal, payrollPeriod, type EmployeePayroll, type SalaryType } from "@/lib/salary";
+import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll, type SalaryType } from "@/lib/salary";
 
 // BOSHQARUV → XODIMLAR — MA'LUMOT YADROSI (20.10.2026). Eski ro'yxat
 // (EmployeesListPage.tsx) dan AYNAN ko'chirildi: yangi versiyadagi Xodimlar
@@ -25,16 +25,11 @@ export interface SalaryView {
   jamiOylik: number;
   jamiAvans: number;
   /**
-   * Xodimga JAMI qancha qarzmiz (`payrollOwedTotal`): shu oyda
-   * to'lanadigani + o'tgan oylarda to'lanmagani. Kartochka "xodim
-   * holati"ni ko'rsatadi, chiqarish chegarasini emas.
+   * Xodimga qancha qolgan (`payrollDue`), o'tgan oylardan qo'shilgani bilan
+   * birga. Kartochka "xodim holati"ni ko'rsatadi, chiqarish chegarasini emas.
    */
   qolganOylik: number;
-  /**
-   * Shundan o'tgan oylarda to'lanmagan qism (`carryPending`, ≥ 0) — u
-   * joriy oyda TO'LANMAYDI, o'z oyining Oylik sahifasidan chiqariladi
-   * (04.10.2026, "faqat o'z oyidan chiqarilsin"). 0 — yo'q.
-   */
+  /** Shundan o'tgan oylardan qo'shilgan qism (≥ 0). 0 — yo'q. */
   otganOylar: number;
 }
 
@@ -51,12 +46,8 @@ export function salaryFor(
     fixedSalary: row.fixedSalary,
     jamiOylik: payrollEarned(row, p),
     jamiAvans: row.paidAvans,
-    // 04.10.2026 gacha `payrollDue` edi — u o'shanda o'tgan oylar qoldig'ini
-    // ham to'liq olardi. Endi `payrollDue` faqat SHU OYDA to'lanadiganini
-    // oladi; kartochka raqami avvalgidek JAMI qolsin (sentabr qoldig'i
-    // ro'yxatdan "yo'qolmasin") — `payrollOwedTotal`, qismi pastda alohida.
-    qolganOylik: payrollOwedTotal(row, p),
-    otganOylar: Math.max(row.carryPending ?? 0, 0),
+    qolganOylik: payrollDue(row, p),
+    otganOylar: Math.max(row.carryOver, 0),
   };
 }
 

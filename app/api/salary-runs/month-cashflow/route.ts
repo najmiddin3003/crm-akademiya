@@ -10,7 +10,8 @@ import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 //
 // Kartochka kattaroq raqamda tushumni, tagida esa sof foydani ko'rsatadi:
 //     sof foyda = daromad − xarajat − qolgan to'lanadigan oylik
-// Uchinchi qism ATAYLAB bu yerda emas: u xodimlar jadvalidan hosila
+//                 + o'tgan oylardan qo'shilgan qoldiq
+// Oylik qismi ATAYLAB bu yerda emas: u xodimlar jadvalidan hosila
 // (components/finance/SalaryCreatePage.tsx → `stats.qolgan`) va uni
 // serverda qayta hisoblash ikkita raqam bir-biriga mos kelmasligi
 // xavfini tug'dirardi.

@@ -756,15 +756,11 @@ export default function EmployeesListPage() {
                             <div>
                               <div className="text-muted-foreground">{t("Qolgan")}</div>
                               <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.qolganOylik)}</div>
-                              {/* O'tgan oylarda to'lanmagan qism ("Qolgan"
-                                  ichida) — joriy oyda chiqarilmaydi, o'z oyi
-                                  sahifasidan (04.10.2026). "shundan" deyilmaydi:
-                                  shu oy manfiy bo'lsa (sentabr puli oktabr
-                                  yozuvi bo'lib berilgan) jami undan kichik. */}
+                              {/* O'tgan oylardan shu oyga qo'shilgan qism ("Qolgan" ichida). */}
                               {s.otganOylar > 0 && (
                                 <div
                                   className="text-[11px] text-muted-foreground tabular-nums"
-                                  title={t("O'tgan oylarda to'lanmagan qoldiq joriy oyda chiqarilmaydi — o'z oyining Oylik sahifasidan chiqariladi")}
+                                  title={t("O'tgan oylardan shu oy oyligiga qo'shilgan qoldiq")}
                                 >
                                   {t("o'tgan oylardan: {amount}", { amount: fmtNum(s.otganOylar) })}
                                 </div>

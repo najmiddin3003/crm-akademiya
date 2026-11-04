@@ -16,7 +16,7 @@
 //   • sentabr chiqarishida (salary_runs chek kesimi) avgust ulushi bormidi
 //     (`receipt.carryOver`) — ya'ni u pul o'sha chiqarishda berilganmi;
 //   • HOZIR: sentabr sahifasidagi «O'tgan oydan» va «Qolgan», oktabrdagi
-//     «o'tgan oylardan» (pending) — tizim nimani to'lanmagan deb turibdi.
+//     «O'tgan oydan» — tizim nimani to'lanmagan deb turibdi.
 import fs from "node:fs";
 
 const { getDb } = await import("@/lib/mongodb");
@@ -151,8 +151,8 @@ for (const a of augRows) {
     sepPayouts: pays.map((x) => ({ run: x.runId, at: tash(x.at), branchId: x.branchId, carryInReceipt: x.carryOver, paid: x.paid })),
     sepCarryNow: s?.carryOver ?? null,
     sepDueNow: s ? payrollDue(s, pSep) : null,
-    octPendingNow: o?.carryPending ?? 0,
-    octPendingMonths: o?.carryPendingMonths ?? [],
+    octCarryNow: o?.carryOver ?? 0,
+    octCarryMonths: o?.carryMonths ?? [],
   };
   report.push(row);
   console.log(
@@ -167,7 +167,7 @@ for (const a of augRows) {
       console.log(`    sentabr chiqarishi #${x.run} (filial ${x.branchId}) ${x.at}: berilgan ${fmt(x.paid)}, chekdagi «O'tgan oydan» ${fmt(x.carryInReceipt)}`);
   else console.log("    sentabr oyligi chiqarilmagan (kassadan)");
   console.log(
-    `    HOZIR: sentabr «O'tgan oydan» ${fmt(row.sepCarryNow)}, sentabr «Qolgan» ${fmt(row.sepDueNow)}, oktabrdagi o'tgan oylardan ${fmt(row.octPendingNow)}${row.octPendingMonths.length ? ` (${row.octPendingMonths.map((m) => `${m.month}: ${fmt(m.amount)}`).join(", ")})` : ""}`,
+    `    HOZIR: sentabr «O'tgan oydan» ${fmt(row.sepCarryNow)}, sentabr «Qolgan» ${fmt(row.sepDueNow)}, oktabrdagi o'tgan oylardan ${fmt(row.octCarryNow)}${row.octCarryMonths.length ? ` (${row.octCarryMonths.map((m) => `${m.month}: ${fmt(m.amount)}`).join(", ")})` : ""}`,
   );
 }
 

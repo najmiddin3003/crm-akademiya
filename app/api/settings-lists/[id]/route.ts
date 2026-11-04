@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { freezePayrollRates } from "@/lib/payrollSources";
 import {
   SETTINGS_LIST_KINDS,
   pickListFields,
@@ -10,6 +11,9 @@ import {
 function isKind(v: string | null): v is SettingsListKind {
   return !!v && v in SETTINGS_LIST_KINDS;
 }
+
+/** Foiz darajasi va soliq — oylik stavkasi: o'zgarsa o'tgan oylar eski stavkada qoladi. */
+const isRateKind = (kind: SettingsListKind) => kind === "monthly-percents" || kind === "taxes";
 
 // PATCH /api/settings-lists/:id?kind=…
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -37,6 +41,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const db = await ensureIndexes();
+  if (isRateKind(kind)) await freezePayrollRates(db);
   const res = await db.collection(SETTINGS_LIST_KINDS[kind]).findOneAndUpdate(
     { id: itemId },
     { $set: set },
@@ -71,6 +76,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ ok: false, error: "Tizimli yozuvni o'chirib bo'lmaydi" }, { status: 400 });
   }
 
+  if (isRateKind(kind)) await freezePayrollRates(db);
   await col.deleteOne({ id: itemId });
 
   // Soliq o'chirilsa — u biriktirilgan XODIMLARDAN ham yechiladi.

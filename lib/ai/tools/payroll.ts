@@ -1,10 +1,9 @@
-import { attachBranchPayouts, attachMaybePaidIn, buildPayrollRows } from "@/lib/payrollSources";
+import { attachBranchPayouts, buildPayrollRows } from "@/lib/payrollSources";
 import {
   payrollDebt,
   payrollDue,
   payrollEarned,
   payrollMonthKey,
-  payrollOwedTotal,
   payrollPayout,
   payrollPeriod,
   payrollPeriodOf,
@@ -25,9 +24,8 @@ import { optInt, optMonth, optString, ToolInputError, type AiTool, type ToolArgs
 // ro'yxatida turadi. Formulalar lib/salary.ts dan — o'zimiz hisoblamaymiz,
 // aks holda AI aytgan "qolgan" sahifadagidan farq qilib qolardi.
 //
-// ZANJIR HAM SAHIFANIKI (09.10.2026): qatorlar → o'tgan oyda «qayta
-// chiqarmang» belgisi (attachMaybePaidIn) → «Berilgan avans» / «To'langan
-// oylik» kartochkalari KASSA filiali bo'yicha (attachBranchPayouts). Jami
+// ZANJIR HAM SAHIFANIKI (09.10.2026): qatorlar → «Berilgan avans» /
+// «To'langan oylik» kartochkalari KASSA filiali bo'yicha (attachBranchPayouts). Jami
 // «Qolgan to'lanadigan» faqat musbat qoldiqlardan (payrollPayout),
 // qarzdorlik alohida (payrollDebt) — ishorali yig'indida bir xodimning
 // qarzi boshqasiga to'lanadigan pulni "yeb" qo'yardi (SalaryCreatePage).
@@ -92,18 +90,9 @@ function employeeRow(e: EmployeePayroll, p: PayrollPeriod, branch?: string) {
     remaining: payrollDue(e, p),
     toPay: payrollPayout(e, p) || undefined,
     debt: payrollDebt(e, p) || undefined,
-    // O'tgan oylarda to'lanmagan qism ham qo'shilgan jami — faqat ma'lumot.
-    owedIncludingPastMonths: payrollOwedTotal(e, p),
-    // O'tgan oy ochilganda: shu qoldiq joriy oyda o'sha oy yozuvi bo'lib berilgan bo'lishi mumkin.
-    ...(e.maybePaidIn
-      ? {
-          possiblyAlreadyPaid: {
-            month: e.maybePaidIn.month,
-            amount: e.maybePaidIn.amount,
-            warning: "may already be paid as a record of that month — do not pay it again before checking",
-          },
-        }
-      : {}),
+    // O'tgan oylardan shu oyga qo'shilgan qoldiq va qaysi oydan qancha (04.11.2026).
+    carryOver: e.carryOver || undefined,
+    carryMonths: e.carryMonths?.length ? e.carryMonths : undefined,
   };
 }
 
@@ -133,8 +122,10 @@ export const payrollSummary: AiTool = {
     "remainders only) and debt (paid above the earned amount) — never net toPay and debt against each other. " +
     "Payroll lists are kept per branch (per building in Akademiya Chortoq). allBranches=true covers every list the user may " +
     "see, with per-branch subtotals and grand totals — use it for 'barcha filiallar' / 'hamma xodimlar' and, for an " +
-    "administrator, whenever no branch is named. position='teacher' for teachers (ustozlar). For a past month, a row with " +
-    "possiblyAlreadyPaid must NOT be paid again before the user checks that record.",
+    "administrator, whenever no branch is named. position='teacher' for teachers (ustozlar). Salaries are paid out only from the " +
+    "CURRENT month: what stayed unpaid in past months, including the share of payments that came late for a past month, is added " +
+    "to the current month as carryOver (carryMonths tells which month it came from). For a past month, remaining is view-only: " +
+    "that money is already in the next month's carryOver, so never add the two together.",
   parameters: {
     type: "object",
     properties: {
@@ -168,13 +159,14 @@ export const payrollSummary: AiTool = {
       rows.filter((e) => byPosition(e) && (!who || String(e.name ?? "").toLowerCase().includes(who)));
     const rule =
       "remaining = earned − tax + carry-over − paid. toPay sums only positive remainders (what the cashboxes still have to pay out); " +
-      "debt sums what employees received above their pay. advance and salaryPaid count money given FOR this month.";
+      "debt sums what employees received above their pay. advance and salaryPaid count money given FOR this month. " +
+      "Payouts are made only from the current month; carry-over already holds what stayed unpaid in past months.";
 
     // ── BARCHA FILIALLAR ──
     if (args.allBranches === true) {
       const lists = payrollListsFor(ctx);
       const parts = await Promise.all(
-        lists.map(async (id) => ({ id, rows: pick(await attachMaybePaidIn(ctx.db, p, await buildPayrollRows(ctx.db, p, { payrollBranchId: id }))) })),
+        lists.map(async (id) => ({ id, rows: pick(await buildPayrollRows(ctx.db, p, { payrollBranchId: id })) })),
       );
       let grand: Totals = { earned: 0, advance: 0, salaryPaid: 0, toPay: 0, debt: 0 };
       const branches = parts.map(({ id, rows }) => {
@@ -211,8 +203,7 @@ export const payrollSummary: AiTool = {
 
     // GET /api/salary-runs/employees-payroll?given=1 bilan bir xil tartib.
     const built = await buildPayrollRows(ctx.db, p, { payrollBranchId: building });
-    const flagged = await attachMaybePaidIn(ctx.db, p, built);
-    const { rows, given } = await attachBranchPayouts(ctx.db, monthKey, building, flagged);
+    const { rows, given } = await attachBranchPayouts(ctx.db, monthKey, building, built);
     const hit = pick(rows);
     const filtered = Boolean(who) || hit.length !== rows.length;
 

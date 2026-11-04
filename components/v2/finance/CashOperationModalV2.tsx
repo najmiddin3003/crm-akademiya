@@ -661,16 +661,12 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
       c.setRefundTeacher("");
       setChosen(null);
     }
-    // «Qaysi oy uchun» sananing oyiga qaytadi — faqat tur HAQIQATAN almashganda.
-    if ((next?.id ?? null) !== c.categoryId) c.resetPeriod();
     c.setCategoryId(next?.id ?? null);
   }
-  /** Kishi almashishi: boshqa xodim/o'quvchi — oldingisi uchun tanlangan oy va ustoz qolib ketmasin. */
+  /** Kishi almashishi: boshqa o'quvchi — oldingisining ustozi qolib ketmasin. */
   function pickPerson(v: string) {
     c.setPersonKey(v);
     c.setRefundTeacher("");
-    // BIRINCHI tanlovda (personKey bo'sh) oy tegilmaydi (eski oynadagi izoh, 04.10.2026).
-    if (c.personKey && v !== c.personKey) c.resetPeriod();
   }
   function pickStudent(s: StudentRow | null) {
     setChosen(s);
@@ -703,7 +699,7 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
 
   const dirty = c.categoryId !== null || !!c.personKey || c.rows.some((r) => !!r.amount) || !!c.note.trim() || !!c.method;
   // Eski oynadagi «Saqlash» o'chiq bo'ladigan holatlar.
-  const blocked = c.salaryExceeds || c.salaryExhausted || c.studentBalanceExceeds || c.periodBlocked || c.payrollPending || c.noteMismatch || c.categoriesLoading;
+  const blocked = c.salaryExceeds || c.salaryExhausted || c.studentBalanceExceeds || c.periodClosed || c.payrollPending || c.categoriesLoading;
   useEffect(() => {
     register("chiqim", { submit });
   });
@@ -726,10 +722,6 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
   });
   const teacherOptions: PickerOption[] = c.teacherNames.map((n) => ({ value: n, label: n }));
   const methodOptions = c.methodOptions.map(({ m }) => ({ value: m.key, label: t(m.name), dot: methodDot(m.key) }));
-  const pickMonth = (key: string) => {
-    c.setPeriodMonth(key);
-    c.setPeriodTouched(true);
-  };
   const exceedsText = t("Summa {limit} dan ko'p bo'lishi mumkin emas", { limit: money(c.remainingSalary) });
   const sb = c.salaryBreakdown;
 
@@ -767,7 +759,7 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
           {c.selectedEmployee && (
             <>
               {c.isSalaryPayoutCategory ? (
-                c.periodBlocked ? null : c.payrollPending ? (
+                c.periodClosed ? null : c.payrollPending ? (
                   <p className="text-v2-caption text-v2-text-3">{t("Yuklanmoqda…")}</p>
                 ) : c.salaryConfigured && sb ? (
                   // Hisob zanjiri OCHIQ — kassir naqd nega kam (yoki 0) ekanini shu yerda ko'rsin.
@@ -782,6 +774,11 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
                       {sb.paid > 0 ? t(" − olingan {paid}", { paid: money(sb.paid) }) : ""}
                       {!c.isPlastikMethod && sb.karta > 0 ? t(" − kartaga {karta}", { karta: money(sb.karta) }) : ""})
                     </span>
+                    {sb.carryMonths.length > 0 && (
+                      <span className="mt-1 block text-v2-text-2">
+                        {t("O'tgan oydan: {list}", { list: sb.carryMonths.map((m) => `${c.monthName(m.month)} — ${money(m.amount)}`).join(", ") })}
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <Note tone="warning">{t("Ish haqi sozlanmagan — chegara qo'llanmaydi. Xodim profilida oylikni kiriting.")}</Note>
@@ -834,7 +831,7 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
             // «Oylik» — summa qo'lda terilmaydi: xodimning shu oyda chiqarish mumkin bo'lgan qoldig'i.
             <Field label={t("Summa")} hint={t("Oylik summasi hisobdan olinadi — qo'lda o'zgartirilmaydi.")}>
               <MoneyField
-                value={c.payrollPending || c.periodBlocked ? "" : String(Math.max(0, Math.round(c.remainingSalary)))}
+                value={c.payrollPending || c.periodClosed ? "" : String(Math.max(0, Math.round(c.remainingSalary)))}
                 onChange={() => {}}
                 readOnly
                 placeholder={c.payrollPending ? t("Yuklanmoqda…") : "0"}
@@ -853,99 +850,19 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
         </div>
         <Field label={t("Sana va vaqt")}>
           <div className="[&>button]:h-12">
-            <V2DateField
-              value={c.date}
-              withTime
-              onChange={(d) => {
-                c.setDate(d);
-                // Sana o'zgarsa oy ham ergashadi; oy QO'LDA tanlangan bo'lsa — tegilmaydi.
-                if (!c.periodTouched) c.setPeriodMonth(monthKeyOf(d));
-              }}
-            />
+            <V2DateField value={c.date} withTime onChange={c.setDate} />
           </div>
         </Field>
       </div>
 
-      {/* QAYSI OY UCHUN — faqat xodimga avans/oylikda (yozuv shu oy oyligidan ayriladi). */}
-      {c.isSalaryPayoutCategory && (
-        <div className="space-y-2">
-          <div>
-            <FieldLabel>{t("Qaysi oy uchun")}</FieldLabel>
-            <MonthChips
-              value={c.periodMonth}
-              onChange={pickMonth}
-              keys={[shiftMonth(c.nowMonthKey, -1), c.nowMonthKey]}
-              currentKey={c.nowMonthKey}
-              // Kelajak oy hali ishlanmagan, yopilgan oy — nol-yopishgacha (server ham rad etadi).
-              isDisabled={(key) => key > c.nowMonthKey || key <= c.closedThrough}
-            />
-          </div>
-          {c.periodFuture ? (
-            <Note tone="danger">{t("Kelajak oy uchun avans yoki oylik berilmaydi")}.</Note>
-          ) : c.periodClosed ? (
-            <Note tone="danger">{t("Yopilgan oy uchun avans yoki oylik berilmaydi")}.</Note>
-          ) : c.noteMismatch ? (
-            <Note tone="danger">
-              {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
-                note: c.noteMonthNums.map((x) => months[x - 1]).join(", "),
-                month: c.monthName(c.periodMonth),
-              })}{" "}
-              {t("Oy yoki izoh to'g'rilanmaguncha saqlanmaydi.")}
-              {c.noteTarget && (
-                <button type="button" onClick={() => pickMonth(c.noteTarget!)} className="ml-1 font-semibold underline underline-offset-2 hover:no-underline">
-                  {t("{month} oyiga o'tkazish", { month: c.monthName(c.noteTarget) })}
-                </button>
-              )}
-            </Note>
-          ) : (
-            <>
-              {c.paidLater && (
-                <Note tone="danger">
-                  {t("{month} qoldig'idan {amount} {later} oyida {later} yozuvi bo'lib berilgan bo'lishi mumkin — u yerda shuncha ortiqcha oylik bor. Qayta bermang: avval o'sha yozuvning oyini tekshiring.", {
-                    month: c.monthName(c.periodMonth),
-                    amount: money(c.paidLater.amount),
-                    later: c.monthName(c.paidLater.month),
-                  })}
-                </Note>
-              )}
-              {c.carryHint && c.pendingMaybePaid > 0 ? (
-                <Note tone="danger">
-                  {t("{current} oyida {amount} ortiqcha oylik berilgan — bu {months} puli bo'lishi mumkin. O'sha oydan qayta chiqarmang: avval yozuvning oyini tekshiring.", {
-                    current: c.monthName(c.periodMonth),
-                    amount: money(c.pendingMaybePaid),
-                    months: c.pendingMonths.map((x) => c.monthName(x.month)).join(", "),
-                  })}
-                </Note>
-              ) : (
-                c.carryHint && (
-                  <Note tone="warning">
-                    {c.pendingMonths.length === 1
-                      ? t("{month} oyidan {amount} to'lanmagan — u {current} hisobidan emas, {month} oyligidan chiqariladi.", {
-                          month: c.monthName(c.pendingMonths[0].month),
-                          amount: money(c.pendingMonths[0].amount),
-                          current: c.monthName(c.periodMonth),
-                        })
-                      : t("O'tgan oylardan to'lanmagan: {list} — ular {current} hisobidan emas, har biri o'z oyligidan chiqariladi.", {
-                          list: c.pendingMonths.map((x) => `${c.monthName(x.month)} — ${money(x.amount)}`).join(", "),
-                          current: c.monthName(c.periodMonth),
-                        })}
-                    {c.pendingTarget && (
-                      <button type="button" onClick={() => pickMonth(c.pendingTarget!)} className="ml-1 font-semibold text-v2-brand-text hover:underline">
-                        {t("{month} oyiga o'tkazish", { month: c.monthName(c.pendingTarget) })}
-                      </button>
-                    )}
-                  </Note>
-                )
-              )}
-              {c.periodMonth !== c.dateMonthKey && (
-                <p className="text-v2-caption font-normal text-v2-warning">
-                  {t("To'lov {month} oyiga yoziladi — xodimning o'sha oydagi oyligidan ayriladi.", { month: c.monthName(c.periodMonth) })}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {/* Avans/oylik doim JORIY oyga yoziladi (04.11.2026): sana faqat pul chiqqan kun. */}
+      {c.isSalaryPayoutCategory && (c.periodClosed ? (
+        <Note tone="danger">{t("Yopilgan oy uchun avans yoki oylik berilmaydi")}.</Note>
+      ) : c.nowMonthKey !== c.dateMonthKey && (
+        <p className="text-v2-caption font-normal text-v2-warning">
+          {t("To'lov {month} oyiga yoziladi — xodimning o'sha oydagi oyligidan ayriladi.", { month: c.monthName(c.nowMonthKey) })}
+        </p>
+      ))}
 
       {/* To'lov turi — faqat shu kassada mablag'i bor turlar (eski oynadagi qoida). */}
       <div ref={methodRef}>
@@ -968,7 +885,7 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
           placeholder={
             c.target === null
               ? t("Masalan: {month} oyi internet to'lovi", { month: (months[Number(c.dateMonthKey.slice(5, 7)) - 1] ?? "").toLowerCase() })
-              : t("Masalan: {month} oyi uchun", { month: (months[Number((c.isSalaryPayoutCategory ? c.periodMonth : c.dateMonthKey).slice(5, 7)) - 1] ?? "").toLowerCase() })
+              : t("Masalan: {month} oyi uchun", { month: (months[Number(c.monthKey.slice(5, 7)) - 1] ?? "").toLowerCase() })
           }
           maxLength={300}
         />

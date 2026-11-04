@@ -3,7 +3,6 @@
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import DatePicker from "@/components/ui/DatePicker";
-import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import EmployeeSalaryModal from "./EmployeeSalaryModal";
 import StudentGroupsModal from "./StudentGroupsModal";
@@ -25,11 +24,6 @@ function fmtUZS(n: number): string {
 function fmtSum(n: number): string {
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " so'm";
 }
-/** Sanadan "YYYY-MM". Sana bo'lmasa — bugungi oy (Kirim oynasidagi bilan bir xil). */
-function monthOf(d: Date | null): string {
-  const x = d ?? new Date();
-  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0");
-}
 
 // Kassalar sahifasidagi "- Chiqim" — referens saytdagi oyna: Tranzaksiya
 // (xarajat turi), O'quvchini/Xodimni tanlang, so'ng bir nechta Qiymat
@@ -42,19 +36,8 @@ function monthOf(d: Date | null): string {
 // — Moliya → Tranzaksiya turi (/finance-tx-types) sahifasidagi HAQIQIY,
 // admin boshqaradigan ro'yxatdan (mainType: "chiqim").
 //
-// "QAYSI OY UCHUN" (04.10.2026) — FAQAT xodimga AVANS/OYLIK turida, sana
-// yonida (Kirim oynasidagi kabi). Tanlangan oy `periodMonth` bo'lib
-// yozuvga tushadi va oylik hisobi uni `monthMatch` bilan o'qiydi
-// (lib/payrollSources.ts); chegara ham, "Oylik" qulflangan summasi ham
-// AYNAN shu oy qatoridan. Sukut — sananing oyi.
-//
-// NIMA NOTO'G'RI EDI: oy yuborilmasdi va yozuv SANA oyiga tushardi —
-// oktabrda berilgan SENTABR oyligi sentabr sahifasida ayrilmasdi,
-// oktabrda "O'tgan oydan" kamaymasdi, keyin sentabr uchun "Oylikni
-// chiqarish" uni IKKINCHI marta to'lardi. (Ilgari har qatorda turgan
-// "Oyni tanlang" esa hech qayerga yuborilmasdi va olib tashlangan edi —
-// bu boshqa narsa: bitta oy, butun yozuv uchun.) Boshqa chiqim turlarida
-// oy tanlanmaydi va yuborilmaydi — ular hech kimning oyligiga tegmaydi.
+// AVANS/OYLIK FAQAT JORIY OYDAN (04.11.2026): oy tanlanmaydi, yozuv doim joriy
+// oyga tushadi — sababi ./useChiqimForm.ts boshidagi izohda.
 export default function CashboxAdjustDrawer({
   cashbox,
   students,
@@ -79,7 +62,7 @@ export default function CashboxAdjustDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
-  const { t, months } = useT();
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess } = useToast();
   // Mantiq va so'rov — yangi versiya «Kassa amali» bilan BITTA manba
@@ -99,10 +82,7 @@ export default function CashboxAdjustDrawer({
     setMethod,
     date,
     setDate,
-    periodMonth,
-    setPeriodMonth,
-    periodTouched,
-    setPeriodTouched,
+    nowMonthKey,
     note,
     setNote,
     saving,
@@ -113,14 +93,8 @@ export default function CashboxAdjustDrawer({
     isSalaryPayoutCategory,
     period,
     payrollReady,
-    periodFuture,
     periodClosed,
-    periodBlocked,
     monthName,
-    noteMonthNums,
-    noteMismatch,
-    noteTarget,
-    resetPeriod,
     employeesLoading,
     activeEmployees,
     roleOf,
@@ -150,11 +124,6 @@ export default function CashboxAdjustDrawer({
     salaryExceeds,
     exhaustedMessage,
     earnedLabel,
-    pendingMonths,
-    pendingMaybePaid,
-    pendingTarget,
-    carryHint,
-    paidLater,
     studentBalanceExceeds,
     addRow,
     removeRow,
@@ -195,9 +164,6 @@ export default function CashboxAdjustDrawer({
                     setPersonKey("");
                     setRefundTeacher("");
                   }
-                  // "Qaysi oy uchun" ham sananing oyiga qaytadi (`resetPeriod`) —
-                  // faqat tur HAQIQATAN almashganda.
-                  if ((next?.id ?? null) !== categoryId) resetPeriod();
                   setCategoryId(next?.id ?? null);
                 }} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(categoriesLoading, categories.length, "Chiqim turi qo'shilmagan")} clearable disabled={categoriesLoading} />
           </div>
@@ -216,14 +182,6 @@ export default function CashboxAdjustDrawer({
                   // Boshqa o'quvchi — oldingisining ustozi qolib ketmasin;
                   // yangisi effektda oxirgi to'lovidan qayta to'ladi.
                   setRefundTeacher("");
-                  // Boshqa xodim — oldingisi uchun tanlangan oy qolib ketmasin.
-                  // Faqat HAQIQIY almashishda (oldin boshqa xodim tanlangan
-                  // bo'lsa; tozalash ham shunga kiradi). BIRINCHI tanlovda
-                  // (personKey bo'sh) oy tegilmaydi: kassir avval «Sentyabr»
-                  // ni tanlab, xodimni keyin tanlasa, oy jimgina sananing
-                  // oyiga qaytib, sentabr oyligi oktabrga yozilib ketardi
-                  // (04.10.2026, ko'rib chiquvchi topgan).
-                  if (personKey && v !== personKey) resetPeriod();
                 }}
                 options={target === "employee" ? activeEmployees.map((e) => e.name) : studentOptions}
                 // O'quvchi turida variantlar ID, ko'rinadigan matn esa ism.
@@ -302,12 +260,11 @@ export default function CashboxAdjustDrawer({
               {selectedEmployee && (
                 <>
                   {/* Xodim tanlangach — nimadan qancha chiqarish mumkinligi. */}
-                  {/* Kelajak va yopilgan oyda hisob ko'rsatilmaydi — sababi
-                      «Qaysi oy uchun» tagida aytiladi (`periodBlocked`).
-                      Tanlangan oy qatori kelguncha — "Yuklanmoqda…",
-                      "Sozlanmagan" emas. */}
+                  {/* Yopilgan oyda hisob ko'rsatilmaydi — sababi sana tagida
+                      aytiladi (`periodClosed`). Oy qatori kelguncha —
+                      "Yuklanmoqda…", "Sozlanmagan" emas. */}
                   {isSalaryPayoutCategory ? (
-                    periodBlocked ? null
+                    periodClosed ? null
                     : payrollPending ? (
                       <div className="text-[12.5px] text-muted-foreground">{t("Yuklanmoqda…")}</div>
                     )
@@ -328,6 +285,11 @@ export default function CashboxAdjustDrawer({
                           {!isPlastikMethod && salaryBreakdown.karta > 0 ? t(" − kartaga {karta}", { karta: fmtUZS(salaryBreakdown.karta) }) : ""}
                           )
                         </span>
+                        {salaryBreakdown.carryMonths.length > 0 && (
+                          <span className="mt-1 block text-muted-foreground">
+                            {t("O'tgan oydan: {list}", { list: salaryBreakdown.carryMonths.map((m) => `${monthName(m.month)} — ${fmtUZS(m.amount)}`).join(", ") })}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <div className="text-[12.5px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-md px-2.5 py-2">
@@ -367,10 +329,10 @@ export default function CashboxAdjustDrawer({
             // ham yo'q: oylik bir necha bandga bo'linmaydi.
             <div>
               <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
-              {/* Tanlangan oy qatori kelguncha bo'sh — boshqa oyning
-                  qoldig'i bir lahza ham ko'rinmasin (`payroll` izohi). */}
+              {/* Oy qatori kelguncha bo'sh — boshqa oyning qoldig'i bir
+                  lahza ham ko'rinmasin (`payroll` izohi). */}
               <input
-                value={payrollPending || periodBlocked ? "" : groupNumber(remainingSalary)}
+                value={payrollPending || periodClosed ? "" : groupNumber(remainingSalary)}
                 placeholder={payrollPending ? t("Yuklanmoqda…") : undefined}
                 readOnly
                 type="text"
@@ -434,123 +396,19 @@ export default function CashboxAdjustDrawer({
             )}
           </div>
 
-          {/* Sana + "Qaysi oy uchun" — Kirim oynasidagi joylashuv. Oy faqat
-              xodimga avans/oylikda chiqadi; boshqa turlarda grid bitta
-              ustunga tushadi va faqat sana qoladi. */}
-          <div className={isSalaryPayoutCategory ? "grid grid-cols-2 gap-3" : ""}>
-            <div>
-              <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
-              <DatePicker
-                value={date}
-                onChange={(d) => {
-                  setDate(d);
-                  // Sana o'zgarsa oy ham ergashadi; oy QO'LDA tanlangan
-                  // bo'lsa — tegilmaydi (`periodTouched` izohi).
-                  if (d && !periodTouched) setPeriodMonth(monthOf(d));
-                }}
-                className="w-full"
-              />
-            </div>
-            {isSalaryPayoutCategory && (
-              <div>
-                <label className="block text-[13px] font-medium mb-1.5">{t("Qaysi oy uchun")}</label>
-                <MonthYearPicker
-                  className="w-full"
-                  value={{ month: Number(periodMonth.slice(5, 7)), year: Number(periodMonth.slice(0, 4)) }}
-                  onChange={(v) => {
-                    setPeriodMonth(`${v.year}-${String(v.month).padStart(2, "0")}`);
-                    setPeriodTouched(true);
-                  }}
-                />
-              </div>
-            )}
+          <div>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
+            <DatePicker value={date} onChange={setDate} className="w-full" />
           </div>
-          {/* Oy bo'yicha izohlar — faqat avans/oylikda. Ustuvorlik: kelajak
-              yoki yopilgan oy (saqlab bo'lmaydi) → izohdagi oy farqi →
-              aks holda HAMMASI (birini boshqasi yashirmaydi): bu oy puli
-              keyingi oyda berilgan bo'lishi mumkin (`paidLater`), o'tgan
-              oylarda to'lanmagan qoldiq (`carryHint`; shu oyda ortiqcha
-              oylik bo'lsa — "qayta chiqarmang", 04.10.2026) va oy sanadan
-              farqli (pul qaysi oyning oyligidan ayrilishi). */}
-          {isSalaryPayoutCategory && (periodFuture ? (
-            <div className="-mt-1 text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
-              {t("Kelajak oy uchun avans yoki oylik berilmaydi")}.
-            </div>
-          ) : periodClosed ? (
+          {/* Avans/oylik doim JORIY oyga yoziladi (04.11.2026): sana faqat pul chiqqan kun. */}
+          {isSalaryPayoutCategory && (periodClosed ? (
             <div className="-mt-1 text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
               {t("Yopilgan oy uchun avans yoki oylik berilmaydi")}.
             </div>
-          ) : noteMismatch ? (
-            <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-400">
-              {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
-                note: noteMonthNums.map((m) => months[m - 1]).join(", "),
-                month: monthName(periodMonth),
-              })}{" "}
-              {t("Oy yoki izoh to'g'rilanmaguncha saqlanmaydi.")}
-              {noteTarget && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPeriodMonth(noteTarget);
-                    setPeriodTouched(true);
-                  }}
-                  className="ml-1 font-semibold text-primary hover:underline"
-                >
-                  {t("{month} oyiga o'tkazish", { month: monthName(noteTarget) })}
-                </button>
-              )}
-            </div>
-          ) : (
-            <>
-              {paidLater && (
-                <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-300">
-                  {t("{month} qoldig'idan {amount} {later} oyida {later} yozuvi bo'lib berilgan bo'lishi mumkin — u yerda shuncha ortiqcha oylik bor. Qayta bermang: avval o'sha yozuvning oyini tekshiring.", {
-                    month: monthName(periodMonth),
-                    amount: fmtUZS(paidLater.amount),
-                    later: monthName(paidLater.month),
-                  })}
-                </div>
-              )}
-              {carryHint && pendingMaybePaid > 0 ? (
-                <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-300">
-                  {t("{current} oyida {amount} ortiqcha oylik berilgan — bu {months} puli bo'lishi mumkin. O'sha oydan qayta chiqarmang: avval yozuvning oyini tekshiring.", {
-                    current: monthName(periodMonth),
-                    amount: fmtUZS(pendingMaybePaid),
-                    months: pendingMonths.map((m) => monthName(m.month)).join(", "),
-                  })}
-                </div>
-              ) : carryHint && (
-                <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-400">
-                  {pendingMonths.length === 1
-                    ? t("{month} oyidan {amount} to'lanmagan — u {current} hisobidan emas, {month} oyligidan chiqariladi.", {
-                        month: monthName(pendingMonths[0].month),
-                        amount: fmtUZS(pendingMonths[0].amount),
-                        current: monthName(periodMonth),
-                      })
-                    : t("O'tgan oylardan to'lanmagan: {list} — ular {current} hisobidan emas, har biri o'z oyligidan chiqariladi.", {
-                        list: pendingMonths.map((m) => `${monthName(m.month)} — ${fmtUZS(m.amount)}`).join(", "),
-                        current: monthName(periodMonth),
-                      })}
-                  {pendingTarget && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPeriodMonth(pendingTarget);
-                        setPeriodTouched(true);
-                      }}
-                      className="ml-1 font-semibold text-primary hover:underline"
-                    >
-                      {t("{month} oyiga o'tkazish", { month: monthName(pendingTarget) })}
-                    </button>
-                  )}
-                </div>
-              )}
-              {periodMonth !== dateMonthKey && (
-                <p className="-mt-1 text-[11px] text-amber-600">
-                  {t("To'lov {month} oyiga yoziladi — xodimning o'sha oydagi oyligidan ayriladi.", { month: monthName(periodMonth) })}
-                </p>
-              )}
-            </>
+          ) : nowMonthKey !== dateMonthKey && (
+            <p className="-mt-1 text-[11px] text-amber-600">
+              {t("To'lov {month} oyiga yoziladi — xodimning o'sha oydagi oyligidan ayriladi.", { month: monthName(nowMonthKey) })}
+            </p>
           ))}
 
           <div>
@@ -570,7 +428,7 @@ export default function CashboxAdjustDrawer({
           </button>
           <button
             onClick={save}
-            disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds || periodBlocked || payrollPending || noteMismatch}
+            disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds || periodClosed || payrollPending}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? t("Saqlanmoqda…") : t("Saqlash")}

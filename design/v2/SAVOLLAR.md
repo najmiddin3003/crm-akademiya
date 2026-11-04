@@ -349,6 +349,11 @@ avtomatik qo'shish kerak bo'lsa — alohida ish.
 04.10.2026 qoidasi: o'tgan oyning to'lanmagan qoldig'i keyingi oyda TO'LANMAYDI — faqat izoh
 («Sentyabr: 314 000 →»), o'z oyi sahifasidan chiqariladi.
 *Taxmin:* jadval ostidagi izoh shunga moslandi.
+**04.11.2026 — hal bo'ldi, qoida teskari:** egasi «oylik faqat bitta oydan chiqarilsin, oktabrga to'lov qilinsa noyabr
+oyligiga qo'shilaversin, qancha qo'shilgani ko'rinib tursin» dedi. O'tgan oy qoldig'i joriy oy «Qolgan»iga QO'SHILADI,
+«O'tgan oydan» ustunida qaysi oydan qancha kelgani yoziladi; o'tgan oy sahifasi faqat ko'rish uchun.
+*Taxmin:* oklad, foiz yoki soliq o'zgarsa yangi stavka joriy oydan ishlaydi, o'tgan oylar eski stavkada qoladi — aks holda
+oylik oshirilganda o'tgan oylar farqi ham to'lanib ketardi.
 
 **65. «Qolgan oylik» ustuni nima?** — ochiq
 Rasmda «Qolgan oylik» = kartaga + naqd (jami to'lanadigan). Eski sahifadagi «Qolgan» — faqat kartadan
@@ -690,8 +695,9 @@ soat» shunday chiqadi); bir vaqtga to'g'ri kelgan guruhlar sariq chegarali, ost
 tilidan («Cho», «Pay»; rasmda «Chor», «Pa»).
 
 **128. Oylik kartasi** — taxmin
-Rasmdagi qatorlardan tashqari, qiymati bo'lsa: Soliq va «Berilgan oylik»; «O'tgan oydan» — to'lanadigan + o'z oyidan
-chiqariladigan (oylari yoziladi); kartasi bor xodimda «kartaga · naqd». Qatorlar yig'indisi «Qolgan oylik»ka teng.
+Rasmdagi qatorlardan tashqari, qiymati bo'lsa: Soliq va «Berilgan oylik»; «O'tgan oydan» — o'tgan oylardan shu oyga
+qo'shilgan qoldiq (oylari yoziladi, 04.11.2026 dan); kartasi bor xodimda «kartaga · naqd». Qatorlar yig'indisi «Qolgan
+oylik»ka teng.
 
 **129. Topshiriqlar** — taxmin
 Rasmdagi raqam — muhimlik (1–5); «Namuna» belgisi — dizaynerning izohi deb olindi, ko'rsatilmaydi. 5 tasi,

@@ -15,16 +15,13 @@ import {
   payrollEarned,
   payrollMonthKey,
   payrollPayout,
-  payrollPendingMaybePaid,
   payrollPeriod,
   payrollPeriodOf,
   payrollPlastikLeg,
   payrollTax,
-  pendingMaybePaidByMonth,
   type BranchPayouts,
-  type CarryPendingMonth,
+  type CarryMonth,
   type EmployeePayroll,
-  type PayrollPeriod,
 } from "@/lib/salary";
 import { uzDateIso, uzTimeHm } from "@/lib/uzTime";
 
@@ -52,22 +49,15 @@ export function payrollTuriLabel(tv: string): string {
 }
 
 /**
- * Qatorlarning o'z oyidan chiqariladigan qoldiqlarini (`carryPendingMonths`)
- * OY BO'YICHA jamlaydi, eskidan yangiga. Faqat ko'rsatish uchun — bu summa
- * shu oyda to'lanmaydi (SalaryCreatePage boshidagi "faqat o'z oyidan" izohi).
- *
- * Shu oyda shu oy yozuvi bo'lib berilgan bo'lishi MUMKIN bo'lgan qism
- * (`pendingMaybePaidByMonth`, 04.10.2026 o'tish davri qorovuli) AYRILADI:
- * "o'sha oy sahifasidan chiqariladi" deb aytilmasin — u yerda yana
- * chiqarilsa ikki marta to'lanadi. U qism alohida ogohlantiriladi.
+ * Qatorlarning o'tgan oylardan qo'shilgan MUSBAT qoldiqlarini (`carryMonths`)
+ * OY BO'YICHA jamlaydi, eskidan yangiga — kartochkada qaysi oydan qancha
+ * qo'shilgani ko'rinsin (04.11.2026). Qarzdorlik alohida (`stats.qarzdorlik`).
  */
-export function sumPendingByMonth(rows: readonly EmployeePayroll[], p: PayrollPeriod): CarryPendingMonth[] {
+export function sumCarryByMonth(rows: readonly EmployeePayroll[]): CarryMonth[] {
   const byMonth = new Map<string, number>();
   for (const e of rows) {
-    const covered = pendingMaybePaidByMonth(e, p);
-    for (const pm of e.carryPendingMonths ?? []) {
-      const amount = pm.amount - (covered.find((x) => x.month === pm.month)?.amount ?? 0);
-      if (amount > 0) byMonth.set(pm.month, (byMonth.get(pm.month) ?? 0) + amount);
+    for (const cm of e.carryMonths ?? []) {
+      if (cm.amount > 0) byMonth.set(cm.month, (byMonth.get(cm.month) ?? 0) + cm.amount);
     }
   }
   return [...byMonth.entries()]
@@ -166,20 +156,26 @@ export function usePayroll() {
   const isFutureMonth = monthKey > currentMonthKey;
   // YOPILGAN oy (nol-yopish, 04.10.2026) — ko'riladi, lekin chiqarilmaydi.
   const isClosedMonth = !!closedThrough && monthKey <= closedThrough;
-  // Chiqarish tugmalari bitta sabab bilan o'chadi (kelajak yoki yopilgan oy).
-  const payoutBlockedReason = isFutureMonth
-    ? t("Kelajak oy uchun oylik chiqarilmaydi")
-    : isClosedMonth ? t("Yopilgan oy uchun oylik chiqarilmaydi") : "";
   const monthLabel = `${months[period.month]} ${period.year}`;
   /**
-   * O'z oyidan chiqariladigan qoldiq oyining nomi: "2026-09" → "Sentabr";
-   * sahifadagi oydan boshqa yilniki bo'lsa yil bilan ("Dekabr 2025").
+   * Qoldiq kelgan oyning nomi: "2026-09" → "Sentabr"; sahifadagi oydan boshqa
+   * yilniki bo'lsa yil bilan ("Dekabr 2025").
    */
-  function pendingMonthLabel(key: string): string {
+  function carryMonthLabel(key: string): string {
     const [y, m] = key.split("-").map(Number);
     const name = months[m - 1] ?? key;
     return y === period.year ? name : `${name} ${y}`;
   }
+  // Chiqarish tugmalari bitta sabab bilan o'chadi. O'TGAN OY — faqat ko'rish
+  // uchun (04.11.2026): oylik joriy oydan chiqadi, server ham rad etadi
+  // (app/api/salary-runs/route.ts).
+  const payoutBlockedReason = isFutureMonth
+    ? t("Kelajak oy uchun oylik chiqarilmaydi")
+    : isClosedMonth
+      ? t("Yopilgan oy uchun oylik chiqarilmaydi")
+      : isPastMonth
+        ? t("Oylik faqat joriy oydan chiqariladi — bu oy qoldig'i {month} oyligiga qo'shilgan", { month: carryMonthLabel(currentMonthKey) })
+        : "";
 
   // Kechikkan javob YANGI oyning raqamlarini bosib ketmasin: har so'rovga
   // tartib raqami beriladi va faqat eng oxirgisi holatni yozadi (oy tez-tez
@@ -386,32 +382,32 @@ export function usePayroll() {
       kartaga += payrollPlastikLeg(e, period);
       naqd += payrollCashLeg(e, period);
       qarzdorlik += payrollDebt(e, period);
-      // Faqat SHU OYDA to'lanadigan qism (04.10.2026 dan): nol-yopish
-      // oyining ulushi yoki qarzdorlik.
+      // O'tgan oylardan shu oyga qo'shilgan qoldiq, ishorali.
       otganOydan += e.carryOver;
       // Ushlanadigan soliq (yangi versiyadagi «Soliq» katagi).
       soliq += payrollTax(e, period);
     }
-    // O'tgan oylarda to'lanmagan, lekin shu oyda TO'LANMAYDIGAN qoldiq —
-    // `qolgan` ga ATAYLAB qo'shilmaydi (aks holda u ikki sahifadan
-    // to'lanardi). Kartochkada alohida, oy nomi bilan ko'rinadi.
-    const pendingMonths = sumPendingByMonth(configured, period);
-    const pending = pendingMonths.reduce((s, x) => s + x.amount, 0);
-    // Pending'dan shu oyda shu oy yozuvi bo'lib berilgan bo'lishi mumkin
-    // bo'lgan qism — yuqoridagidan AYRILGAN, alohida ogohlantiriladi.
-    const maybePaid = configured.reduce((s, e) => s + payrollPendingMaybePaid(e, period), 0);
-    return { hisoblangan, qolgan, kartaga, naqd, otganOydan, qarzdorlik, soliq, pending, pendingMonths, maybePaid };
+    // Qaysi oydan qancha qo'shilgani (musbat qism) — to'lanmaguncha `qolgan`
+    // ICHIDA turadi, kartochkada oy nomi bilan ko'rinadi (04.11.2026).
+    const carryMonths = sumCarryByMonth(configured.filter((e) => !e.closedMonth));
+    const carryAdded = carryMonths.reduce((s, x) => s + x.amount, 0);
+    return { hisoblangan, qolgan, kartaga, naqd, otganOydan, qarzdorlik, soliq, carryMonths, carryAdded };
   }, [employees, period]);
 
   /**
    * SOF FOYDA — barcha chiqimlardan keyin o'quv markazda qoladigan pul.
    *
    *     sof foyda = oy tushumi − oy xarajati − qolgan to'lanadigan oylik
+   *                 + o'tgan oylardan qo'shilgan qoldiq
    *
    * XARAJAT ICHIDA allaqachon chiqarilgan avans va oylik BOR (oylik
    * chiqarish ham chiqim yozuvi yaratadi — app/api/salary-runs).
    * Shuning uchun ustiga `stats.qolgan` qo'shiladi, `stats.hisoblangan`
    * emas: aks holda to'langan qism ikki marta ayirilardi.
+   *
+   * O'TGAN OYLARDAN QO'SHILGANI QAYTARILADI (04.11.2026): u o'z oyining
+   * «Qolgan»ida ayrilgan. Yana ayirilsa bitta pul ikki oyning foydasidan
+   * tushardi — to'lansa ham (xarajat ichida), to'lanmasa ham (`qolgan` ichida).
    *
    * Ko'chirmalar bu hisobga KIRMAYDI — server faqat `payIn`/`payOut`
    * yozuvlarini yig'adi, ya'ni rahbar kassaga topshirilgan tushum
@@ -421,7 +417,7 @@ export function usePayroll() {
    * xarajat ham 0 bo'lib keladi. Bunda son KO'RSATILMAYDI: "0 − 0 −
    * oylik" manfiy raqami yolg'on bo'lardi (pul bor, u boshqa kassada).
    */
-  const sofFoyda = cashflow ? cashflow.daromad - cashflow.xarajat - stats.qolgan : 0;
+  const sofFoyda = cashflow ? cashflow.daromad - cashflow.xarajat - stats.qolgan + stats.carryAdded : 0;
   const cashflowNoma = cashflow !== null && !cashflow.hasCashbox;
 
   // Sukut — ro'yxatdagi birinchi faol to'lov turi. Effektda setState
@@ -442,24 +438,17 @@ export function usePayroll() {
     return sum;
   }, [employees, selected, period]);
 
-  // Tanlanganlarning O'TGAN OYLARDA to'lanmagan qoldig'i — bu chiqarishga
-  // KIRMAYDI (04.10.2026, "faqat o'z oyidan"). Tasdiqlash oynasida ochiq
-  // aytiladi, aks holda "sentabr qoldig'i ham shu bilan chiqdi" deb
-  // o'ylanib, o'sha oy sahifasida ochiq qolib ketardi.
-  const selectedPending = useMemo(
-    () => sumPendingByMonth(employees.filter((e) => e.configured && selected.has(e.id)), period),
-    [employees, selected, period],
-  );
-  const selectedPendingTotal = selectedPending.reduce((s, x) => s + x.amount, 0);
-
-  // O'TGAN OY sahifasida: tanlanganlardan bu oy puli JORIY oyda allaqachon
-  // berilgan bo'lishi mumkin bo'lganlari (`maybePaidIn`, 04.10.2026 o'tish
-  // davri qorovuli). Tasdiqlash oynasida ogohlantiriladi va bir bosishda
-  // tanlovdan chiqariladi — chiqarish summasi o'zi O'ZGARMAYDI.
-  const selectedMaybePaid = useMemo(
-    () => employees.filter((e) => e.configured && selected.has(e.id) && e.maybePaidIn && payrollPayout(e, period) > 0),
-    [employees, selected, period],
-  );
+  // Chiqariladigan summaning o'tgan oylardan qo'shilgan qismi — tasdiqlash
+  // oynasida aytiladi (04.11.2026). Xodim shu oyda olib bo'lgan bo'lsa qoldiq
+  // summadan katta bo'lishi mumkin, shu bois chiqadigan pul bilan cheklanadi.
+  const selectedCarryTotal = useMemo(() => {
+    let sum = 0;
+    for (const e of employees) {
+      if (!selected.has(e.id) || !e.configured) continue;
+      sum += Math.min(Math.max(e.carryOver, 0), payrollPayout(e, period));
+    }
+    return sum;
+  }, [employees, selected, period]);
 
   // Ro'yxatda umuman plastik oyligi bor xodim bormi — ikkita qo'shimcha
   // ustun faqat shunda chiziladi.
@@ -603,7 +592,9 @@ export function usePayroll() {
 
   const turiOptions = useMemo(() => {
     const set = new Set<string>();
-    employees.forEach((e) => set.add(e.turi));
+    // Lavozimi bo'sh xodim ro'yxatga kirmaydi: "" qiymat V2Select'da "tanlanmagan"
+    // bilan bir xil — filtr hech narsa tanlanmasa ham faol ko'rinardi.
+    employees.forEach((e) => { if (e.turi) set.add(e.turi); });
     return Array.from(set);
   }, [employees]);
 
@@ -612,7 +603,7 @@ export function usePayroll() {
     employees, loading, loadedAt, given, cashflow, closedThrough, listBranchId,
     // oy va bino
     currentMonthKey, todayIso, monthKey, period, isPastMonth, isFutureMonth, isClosedMonth,
-    payoutBlockedReason, monthLabel, pendingMonthLabel, changeMonth,
+    payoutBlockedReason, monthLabel, carryMonthLabel, changeMonth,
     navBranchId, allowedBranches, buildings, building, changeBuilding, load,
     // filtr
     query, setQuery, turiFilter, setTuriFilter, hisoblash, setHisoblash, filtered, turiOptions,
@@ -625,7 +616,7 @@ export function usePayroll() {
     cashboxId, setCashboxId, activeCashbox, methodKey, setMethod, plastikMethodKey, setPlastikMethod,
     available, plastikAvailable,
     // chiqarish
-    payoutTotal, plastikTotal, naqdTotal, selectedPending, selectedPendingTotal, selectedMaybePaid,
+    payoutTotal, plastikTotal, naqdTotal, selectedCarryTotal,
     sameMethod, notEnough, needsPlastikMethod, shortfall, canPayout,
     kartaRows, kartaTotal, kartaShort, canKarta,
     saving, submitPayout,

@@ -18,13 +18,11 @@
 //   • INVARIANT: kartaga + naqd = chiqariladigan jami = max(qoldiq, 0);
 //     karta qoldiqdan OSHMAYDI (yetmagani keyingi oyga o'tmaydi), naqd
 //     hech qachon manfiy emas.
-//   • O'TGAN OY QOLDIG'I — "FAQAT O'Z OYIDAN" (04.10.2026, N bo'limi):
-//     o'tgan oyning musbat qoldig'i keyingi oyda TO'LANMAYDI (`carryPending`,
-//     faqat ma'lumot), nol-yopish ulushi va qarzdorlik avvalgidek o'tadi;
-//     INVARIANT carryOver + Σ pending = eski chiziqli yig'indi (aniq).
-//     N8 — qadam yig'ish (`carryFoldsByEmployee`: 0 ulushli oy qadam, qatori
-//     yo'q oy emas); N9 — o'tish davri qorovuli (`payrollPendingMaybePaid`:
-//     o'tgan oy puli shu oy yozuvi bo'lib berilgan bo'lishi mumkin).
+//   • O'TGAN OY QOLDIG'I — JORIY OYGA QO'SHILADI (04.11.2026, N bo'limi):
+//     o'tgan oy qoldig'i va oy o'tgandan keyin o'sha oy uchun kelgan
+//     to'lov ulushi keyingi oyning "O'tgan oydan"iga o'tadi; `carryMonths`
+//     qaysi oydan kelganini aytadi; to'langach keyingi oyga o'tmaydi.
+//     N8 — qadam yig'ish (`carryFoldsByEmployee`).
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -51,8 +49,8 @@ const {
   payrollEarned, payrollTax, payrollTaxLines, payrollDue,
   payrollPlastikLeg, payrollCashLeg, payrollCashDue, payrollPayout,
   payrollBase, payrollOkladDays, payrollOkladPart, payrollFoizPart, payrollStartsInPeriod, payrollEndsInPeriod, salaryTypeTag,
-  carryContribution, foldCarryChain, payrollOwedTotal, payrollCarryTotal,
-  carryFoldsByEmployee, payrollPendingMaybePaid, pendingMaybePaidByMonth, applySettledShare, payrollDebt,
+  carryContribution, foldCarryChain, carryNoteOf,
+  carryFoldsByEmployee, applySettledShare, payrollDebt, frozenRateFor,
 } = await import(pathToFileURL(path.resolve(salaryPath)).href);
 
 // Davrlar: 30 kunlik oyning turli kunlari.
@@ -259,99 +257,96 @@ scenario("L2) Oklad + foiz, plastik 1 000 000, soliq 216 000",
   emp({ salaryType: "mixed", fixedSalary: 1000000, percent: 30, collected: 2000000, taxable: true, taxRules: [TAX_216], plastikSalary: 1000000 }), P30,
   { gross: 1600000, tax: 216000, due: 1384000, plastik: 1000000, naqd: 384000 });
 
-// ── O'TGAN OY QOLDIG'I: "FAQAT O'Z OYIDAN" (04.10.2026) ────────────────
-// Foydalanuvchi qarori: o'tgan oyning to'lanmagan (musbat) qoldig'i keyingi
-// oyning to'lanadigan summasiga QO'SHILMAYDI — faqat o'z oyining sahifasidan
-// chiqariladi, keyingi oyda ma'lumot (`carryPending`). Nol-yopish ulushi va
-// qarzdorlik avvalgidek keyingi oyga o'tadi. Zanjir lib/salary.ts →
-// `foldCarryChain`, oy ulushi — `carryContribution` (ikkalasi ham haqiqiy).
+// ── O'TGAN OY QOLDIG'I: JORIY OYGA QO'SHILADI (04.11.2026) ─────────────
+// Foydalanuvchi: "hozir noyabr oyi, agar oktabr oyiga to'lov qilinsa noyabr
+// oyligiga qo'shilaversin, qancha summa qo'shilayotgani ko'rinib tursa
+// bo'ldi". Zanjir lib/salary.ts → `foldCarryChain`, oy ulushi —
+// `carryContribution` (ikkalasi ham haqiqiy).
 const PAUG = { year: 2026, month: 7, day: 31, daysIn: 31 };
 const PSEP = P30;
 const POCT = { year: 2026, month: 9, day: 31, daysIn: 31 };
-const step = (month, contribution, pureClose = false) => ({ month, pureClose, contribution });
+const PNOV = { year: 2026, month: 10, day: 30, daysIn: 30 };
+const step = (month, contribution) => ({ month, contribution });
 const sumC = (steps) => steps.reduce((s, x) => s + x.contribution, 0);
-const sumP = (f) => f.pending.reduce((s, x) => s + x.amount, 0);
-const pendStr = (f) => f.pending.map((x) => `${x.month}:${x.amount}`).join(",");
+const sumM = (f) => f.months.reduce((s, x) => s + x.amount, 0);
+const monStr = (f) => f.months.map((x) => `${x.month}:${x.amount}`).join(",");
 
-console.log("\nN1) Misol: avgust nol-yopish 154 000 + sentabr 160 000 → oktabrda pending");
+console.log("\nN1) Misol: oktabr uchun to'lov noyabrda keldi → noyabr oyligiga qo'shiladi");
+// Foiz 50%: oktabrda 2 000 000 tushum, 1 000 000 berilgan — oy to'liq yopilgan.
+const octClosed = emp({ salaryType: "foiz", percent: 50, collected: 2000000, paidOylik: 1000000 });
+check("oktabr ulushi 0", carryContribution(octClosed, POCT, false), 0);
+check("noyabrga hech narsa o'tmaydi", foldCarryChain([step("2026-10", 0)]).carryOver, 0);
+check("…va oy nomi ham yo'q", monStr(foldCarryChain([step("2026-10", 0)])), "");
+// Noyabrda «Oktabr» tanlab 400 000 to'lov keldi — ustoz ulushi 200 000.
+const octLate = { ...octClosed, collected: 2400000 };
+const cLate = carryContribution(octLate, POCT, false);
+check("kech to'lov ulushi", cLate, 200000);
+const novFold = foldCarryChain([step("2026-10", cLate)]);
+check("noyabrga qo'shiladi", novFold.carryOver, 200000);
+check("qaysi oydan ko'rinadi", monStr(novFold), "2026-10:200000");
+// Noyabrning o'z oyligi 800 000 — jami 1 000 000 chiqadi.
+const novRow = emp({ salaryType: "foiz", percent: 50, collected: 1600000, carryOver: novFold.carryOver, carryMonths: novFold.months });
+check("noyabr Qolgan = o'z oyligi + oktabrdan", payrollDue(novRow, PNOV), 1000000);
+check("chiqariladigan ham shu", payrollPayout(novRow, PNOV), 1000000);
+
+console.log("\nN2) Noyabrda to'langach dekabrga o'tmaydi — ikki marta to'lash yo'q");
+const novPaid = emp({ salaryType: "foiz", percent: 50, collected: 1600000, paidOylik: 1000000 });
+const cNov = carryContribution(novPaid, PNOV, false);
+check("noyabr ulushi = −oktabrdan kelgani", cNov, -200000);
+const decFold = foldCarryChain([step("2026-10", cLate), step("2026-11", cNov)]);
+check("dekabrga 0 o'tadi", decFold.carryOver, 0);
+check("«Oktabr +X, Noyabr −X» shovqini yo'q", monStr(decFold), "");
+// Keyin oktabrga yana to'lov keldi — yana aynan «Oktabr» bo'lib ko'rinadi.
+const decFold2 = foldCarryChain([step("2026-10", cLate + 50000), step("2026-11", cNov)]);
+check("yana kech to'lov: summa", decFold2.carryOver, 50000);
+check("yana kech to'lov: oy", monStr(decFold2), "2026-10:50000");
+
+console.log("\nN3) Berilgan pul eng eski qoldiqni yopadi");
+const f3a = foldCarryChain([step("2026-09", 100000), step("2026-10", 500000), step("2026-11", -300000)]);
+check("sentabr yopildi, oktabrda qoldi", monStr(f3a), "2026-10:300000");
+check("summa", f3a.carryOver, 300000);
+const f3b = foldCarryChain([step("2026-09", 100000), step("2026-10", 500000), step("2026-11", -50000)]);
+check("sentabrdan qisman", monStr(f3b), "2026-09:50000,2026-10:500000");
+const f3c = foldCarryChain([step("2026-09", 100000), step("2026-10", 500000)]);
+check("ikki oy ham ko'rinadi", monStr(f3c), "2026-09:100000,2026-10:500000");
+
+console.log("\nN4) Qarzdorlik keyin musbat oy va teskarisi");
+const f4a = foldCarryChain([step("2026-09", -100000), step("2026-10", 300000)]);
+check("−100k, +300k → oktabrdan 200k", monStr(f4a), "2026-10:200000");
+check("−100k, +300k → carryOver", f4a.carryOver, 200000);
+const f4b = foldCarryChain([step("2026-09", -100000), step("2026-10", 50000)]);
+check("−100k, +50k → sentabr qarzi 50k", monStr(f4b), "2026-09:-50000");
+check("−100k, +50k → carryOver", f4b.carryOver, -50000);
+const f4c = foldCarryChain([step("2026-09", 314000), step("2026-10", -80000)]);
+check("+314k, −80k → sentabrdan 234k", monStr(f4c), "2026-09:234000");
+const f4d = foldCarryChain([step("2026-09", 100000), step("2026-10", -300000)]);
+check("+100k, −300k → oktabr qarzi 200k", monStr(f4d), "2026-10:-200000");
+
+console.log("\nN5) Nol-yopish oyi — ulushi avvalgidek hisoblanadi");
 // Oklad + 50%: nol-yopish oyida FAQAT foiz ulushi o'tadi (oklad yopiq).
 const augRow = emp({ salaryType: "mixed", fixedSalary: 1000000, percent: 50, collected: 308000 });
 const sepRow = emp({ salaryType: "mixed", fixedSalary: 1000000, percent: 50, collected: 320000, paidAvans: 1000000 });
 const cAug = carryContribution(augRow, PAUG, true);
 const cSep = carryContribution(sepRow, PSEP, false);
 check("avgust ulushi (faqat foiz)", cAug, 154000);
-check("sentabr ulushi (1 160 000 − 1 000 000)", cSep, 160000);
-const sepFold = foldCarryChain([step("2026-08", cAug, true)]);
-check("sentabr sahifasi: carryOver", sepFold.carryOver, 154000);
-check("sentabr sahifasi: pending yo'q", sepFold.pending.length, 0);
-const sepPage = { ...sepRow, carryOver: sepFold.carryOver, carryPending: 0 };
-check("sentabr sahifasi: Qolgan", payrollDue(sepPage, PSEP), 314000);
-// Zanjir ORQAGA qurilgani kabi teskari tartibda beriladi — fold o'zi saralaydi.
-const octSteps = [step("2026-09", cSep), step("2026-08", cAug, true)];
-const octFold = foldCarryChain(octSteps);
-check("oktabr: to'lanadigan carryOver", octFold.carryOver, 0);
-check("oktabr: pending", pendStr(octFold), "2026-09:314000");
-check("pending = sentabr sahifasi Qolgan", octFold.pending[0]?.amount, payrollDue(sepPage, PSEP));
-check("INVARIANT: carry + pending = eski", octFold.carryOver + sumP(octFold), sumC(octSteps));
-// Oktabrda o'z ishlagani yo'q — o'tgan oy puli bu yerdan CHIQMAYDI.
-const octIdle = emp({ salaryType: "foiz", percent: 50, collected: 0, carryOver: octFold.carryOver, carryPending: sumP(octFold) });
-check("oktabr: payrollDue (pendingsiz)", payrollDue(octIdle, POCT), 0);
-check("oktabr: chiqariladigan 0", payrollPayout(octIdle, POCT), 0);
-check("oktabr: naqd chegarasi 0", payrollCashLeg(octIdle, POCT), 0);
-check("oktabr: jami qarz (owedTotal)", payrollOwedTotal(octIdle, POCT), 314000);
-check("oktabr: jami carry (carryTotal)", payrollCarryTotal(octIdle), 314000);
-// O'z ishlagani bor bo'lsa — faqat o'shani to'laydi.
-const octWork = emp({ salaryType: "foiz", percent: 50, collected: 1000000, carryOver: octFold.carryOver, carryPending: sumP(octFold) });
-check("oktabr 500 000 ishlagan: chiqariladigan", payrollPayout(octWork, POCT), 500000);
-check("oktabr 500 000 ishlagan: jami qarz", payrollOwedTotal(octWork, POCT), 814000);
-check("eski formula = owedTotal", payrollDue({ ...octWork, carryOver: sumC(octSteps), carryPending: 0 }, POCT), payrollOwedTotal(octWork, POCT));
-
-console.log("\nN2) Sentabr o'z sahifasidan chiqarildi → oktabrda hech narsa qolmaydi");
-const cSepPaid = carryContribution({ ...sepRow, paidOylik: 314000 }, PSEP, false);
-check("sentabr ulushi (chiqarilgandan keyin)", cSepPaid, -154000);
-const octFold2 = foldCarryChain([step("2026-08", cAug, true), step("2026-09", cSepPaid)]);
-check("oktabr: carryOver", octFold2.carryOver, 0);
-check("oktabr: pending yo'q", octFold2.pending.length, 0);
-
-console.log("\nN3) QARZDORLIK — ortiqcha to'langan keyingi oydan ushlanadi");
-const cSepOver = carryContribution({ ...sepRow, paidAvans: 1360000 }, PSEP, false);
-check("sentabr ulushi (ortiqcha avans)", cSepOver, -200000);
-const octFold3 = foldCarryChain([step("2026-08", cAug, true), step("2026-09", cSepOver)]);
-check("oktabr: carryOver (qarzdorlik)", octFold3.carryOver, -46000);
-check("oktabr: pending yo'q", octFold3.pending.length, 0);
-const octDebt = emp({ salaryType: "foiz", percent: 50, collected: 1000000, carryOver: octFold3.carryOver, carryPending: 0 });
-check("oktabr: 500 000 − 46 000", payrollDue(octDebt, POCT), 454000);
-check("oktabr: owedTotal = payrollDue", payrollOwedTotal(octDebt, POCT), 454000);
-
-console.log("\nN4) Ikki oy to'lanmagan — har biri o'z oyida, eskidan yangiga");
-const novFold = foldCarryChain([step("2026-10", 500000), step("2026-08", 154000, true), step("2026-09", 160000)]);
-check("noyabr: carryOver", novFold.carryOver, 0);
-check("noyabr: pending", pendStr(novFold), "2026-09:314000,2026-10:500000");
-check("noyabr: jami pending", sumP(novFold), 814000);
-
-console.log("\nN5) Qarzdorlik keyin musbat oy / pending keyin qarzdorlik");
-const f5a = foldCarryChain([step("2026-09", -100000), step("2026-10", 300000)]);
-check("−100k, +300k → pending", pendStr(f5a), "2026-10:200000");
-check("−100k, +300k → carryOver", f5a.carryOver, 0);
-const f5b = foldCarryChain([step("2026-09", -100000), step("2026-10", 50000)]);
-check("−100k, +50k → carryOver", f5b.carryOver, -50000);
-check("−100k, +50k → pending yo'q", f5b.pending.length, 0);
-const f5c = foldCarryChain([step("2026-09", 314000), step("2026-10", -80000)]);
-check("+314k, −80k → pending", pendStr(f5c), "2026-09:314000");
-check("+314k, −80k → carryOver", f5c.carryOver, -80000);
-
-console.log("\nN6) Nol-yopish oyi chiqarilmaydi — hammasi o'tadi");
-check("musbat nol-yopish → carryOver", foldCarryChain([step("2026-08", 154000, true)]).carryOver, 154000);
-check("manfiy nol-yopish → carryOver", foldCarryChain([step("2026-08", -30000, true)]).carryOver, -30000);
-check("bo'sh zanjir → 0", foldCarryChain([]).carryOver, 0);
-// Nol-yopishdan kelgan musbat qoldiq ulushi 0 bo'lgan oyda ham TURIB QOLADI.
-check("avgust 154k, sentabr 0 → pending", pendStr(foldCarryChain([step("2026-08", 154000, true), step("2026-09", 0)])), "2026-09:154000");
+check("sentabr ulushi", cSep, 160000);
+const octFold = foldCarryChain([step("2026-08", cAug), step("2026-09", cSep)]);
+check("oktabrga ikkalasi o'tadi", octFold.carryOver, 314000);
+check("ikkala oy ko'rinadi", monStr(octFold), "2026-08:154000,2026-09:160000");
 check("sozlanmagan xodim ulushi", carryContribution(emp({ configured: false, fixedSalary: 5000000 }), PSEP, false), 0);
 check("nol-yopishda faqat okladli → 0", carryContribution(emp({ fixedSalary: 5000000, paidAvans: 0 }), PAUG, true), 0);
 check("nol-yopishda okladli avans olgan → 0", carryContribution(emp({ fixedSalary: 5000000, paidAvans: 700000 }), PAUG, true), 0);
+check("bo'sh zanjir → 0", foldCarryChain([]).carryOver, 0);
+
+console.log("\nN6) Qoldiq izohi (carryNoteOf)");
+check("bitta oy", carryNoteOf([{ month: "2026-10", amount: 500000 }], PNOV), "Oktabr oyidan qolgan");
+check("ikki oy", carryNoteOf([{ month: "2026-09", amount: 1 }, { month: "2026-10", amount: 2 }], PNOV), "Sentabr, Oktabr oylaridan qolgan");
+check("qarzdorlik", carryNoteOf([{ month: "2026-10", amount: -500000 }], PNOV), "Oktabr oyidan qarzdorlik");
+check("boshqa yil", carryNoteOf([{ month: "2025-12", amount: 500000 }], PNOV), "Dekabr 2025 oyidan qolgan");
+check("qoldiq yo'q", carryNoteOf([], PNOV), "");
 
 console.log("\nN7) TASODIFIY ZANJIRLAR (2 000 ta) — invariantlar");
-let seed = 20261004;
+let seed = 20261104;
 const rnd = () => {
   // mulberry32 — takrorlanadigan tasodif
   seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
@@ -360,47 +355,39 @@ const rnd = () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 const months = ["2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"];
-const bad = { inv: 0, positive: 0, order: 0, payable: 0, pageDue: 0, shuffle: 0, owed: 0 };
+const bad = { sum: 0, months: 0, sign: 0, order: 0, shuffle: 0, page: 0 };
 for (let i = 0; i < 2000; i++) {
   const len = 1 + Math.floor(rnd() * months.length);
-  const pureFirst = rnd() < 0.5;
-  const steps = months.slice(months.length - len).map((m, j) =>
-    step(m, (Math.floor(rnd() * 1001) - 500) * 1000 * (rnd() < 0.15 ? 0 : 1), pureFirst && j === 0));
+  const steps = months.slice(months.length - len).map((m) =>
+    step(m, (Math.floor(rnd() * 1001) - 500) * 1000 * (rnd() < 0.15 ? 0 : 1)));
   const f = foldCarryChain(steps);
-  // 1) carryOver + Σ pending = chiziqli yig'indi — ANIQ.
-  if (f.carryOver + sumP(f) !== sumC(steps)) bad.inv++;
-  // 2) pending har biri musbat va nol-yopish oyi emas.
-  if (f.pending.some((x) => !(x.amount > 0) || steps.find((s) => s.month === x.month)?.pureClose)) bad.positive++;
-  // 3) pending eskidan yangiga.
-  if (f.pending.some((x, j) => j > 0 && f.pending[j - 1].month >= x.month)) bad.order++;
-  // 4) musbat to'lanadigan qoldiq FAQAT eng yangi oy nol-yopish bo'lsa.
-  if (f.carryOver > 0 && !steps[steps.length - 1].pureClose) bad.payable++;
-  // 5) pending summasi = o'sha oy sahifasidagi qoldiq (o'sha oygacha bo'lgan
-  //    zanjirning carryOver + o'sha oy ulushi).
-  for (const x of f.pending) {
-    const k = steps.findIndex((s) => s.month === x.month);
-    if (foldCarryChain(steps.slice(0, k)).carryOver + steps[k].contribution !== x.amount) { bad.pageDue++; break; }
-  }
-  // 6) kirish tartibi ahamiyatsiz.
+  // 1) carryOver = ulushlar yig'indisi — pul yo'qolmaydi va qo'shilmaydi.
+  if (f.carryOver !== sumC(steps)) bad.sum++;
+  // 2) oylar kesimi yig'indisi = carryOver.
+  if (sumM(f) !== f.carryOver) bad.months++;
+  // 3) hammasi bir xil ishorali, nol yo'q.
+  if (f.months.some((x) => x.amount === 0 || (x.amount > 0) !== (f.months[0].amount > 0))) bad.sign++;
+  // 4) eskidan yangiga.
+  if (f.months.some((x, j) => j > 0 && f.months[j - 1].month >= x.month)) bad.order++;
+  // 5) kirish tartibi ahamiyatsiz.
   const shuffled = [...steps].sort(() => rnd() - 0.5);
   if (JSON.stringify(foldCarryChain(shuffled)) !== JSON.stringify(f)) bad.shuffle++;
-  // 7) eski payrollDue (chiziqli carryOver) = yangi payrollOwedTotal.
+  // 6) o'tgan oy sahifasidagi Qolgan = keyingi oyning «O'tgan oydan»i.
   const base = emp({ salaryType: "foiz", percent: 50, collected: Math.floor(rnd() * 3000) * 1000, paidAvans: Math.floor(rnd() * 1000) * 1000 });
-  const oldDue = payrollDue({ ...base, carryOver: sumC(steps) }, POCT);
-  if (payrollOwedTotal({ ...base, carryOver: f.carryOver, carryPending: sumP(f), carryPendingMonths: f.pending }, POCT) !== oldDue) bad.owed++;
+  const before = foldCarryChain(steps.slice(0, -1));
+  const own = steps[steps.length - 1].contribution;
+  const page = payrollDue({ ...base, collected: 0, paidAvans: -own, carryOver: before.carryOver }, POCT);
+  if (page !== f.carryOver) bad.page++;
 }
-check("INVARIANT carry + pending = eski", bad.inv, 0);
-check("pending > 0, nol-yopish emas", bad.positive, 0);
-check("pending eskidan yangiga", bad.order, 0);
-check("musbat carry faqat nol-yopishdan", bad.payable, 0);
-check("pending = o'sha oy Qolgan", bad.pageDue, 0);
+check("carryOver = Σ ulushlar", bad.sum, 0);
+check("Σ oylar = carryOver", bad.months, 0);
+check("bir xil ishora, nol yo'q", bad.sign, 0);
+check("eskidan yangiga", bad.order, 0);
 check("tartibga bog'liq emas", bad.shuffle, 0);
-check("eski payrollDue = owedTotal", bad.owed, 0);
+check("oy Qolgan = keyingi oy «O'tgan oydan»", bad.page, 0);
 
-// ── N8: QADAM YIG'ISH — lib/salary.ts → carryFoldsByEmployee (04.10.2026) ──
-// loadCarryOver faqat zanjirni quradi va shu funksiyani chaqiradi. Bu yerda
-// sinalmasa, kimdir eski `if (v !== 0)` filtrini qaytarsa avgust ulushi yana
-// oktabrda TO'LANADIGAN bo'lib ketardi, N1–N7 esa yashil qolardi.
+// ── N8: QADAM YIG'ISH — lib/salary.ts → carryFoldsByEmployee ──────────
+// loadCarryOver faqat zanjirni quradi va shu funksiyani chaqiradi.
 console.log("\nN8) Qadam yig'ish (carryFoldsByEmployee)");
 // Qatorlar `carryOver: false` bilan qurilgandek: o'z carryOver'i 0.
 const part = (month, period, pureClose, rows) => ({ month, period, pureClose, rows });
@@ -415,7 +402,7 @@ const e3Aug = emp({ id: 3, fixedSalary: 2000000 });
 const e3Sep = emp({ id: 3, fixedSalary: 2000000, paidOylik: 2000000 });
 // Xodim 4 — sozlanmagan: ulushi doim 0.
 const e4Sep = emp({ id: 4, configured: false, fixedSalary: 5000000 });
-// Xodim 5 — sentabrda ortiqcha olgan (qarzdorlik o'tadi, pending yo'q).
+// Xodim 5 — sentabrda ortiqcha olgan (qarzdorlik o'tadi).
 const e5Sep = emp({ id: 5, fixedSalary: 1000000, paidAvans: 1200000 });
 const folds = carryFoldsByEmployee([
   // Zanjir orqaga qurilgani kabi — avval sentabr, keyin avgust.
@@ -423,57 +410,15 @@ const folds = carryFoldsByEmployee([
   part("2026-08", PAUG, true, [e1Aug, e2Aug, e3Aug]),
 ]);
 const f1 = folds.get(1);
-check("(a) 0 ulushli oy QADAM: carryOver", f1?.carryOver, 0);
-check("(a) 0 ulushli oy QADAM: pending", f1 ? pendStr(f1) : "yo'q", "2026-09:154000");
+check("(a) 0 ulushli oydan keyin ham o'tadi", f1?.carryOver, 154000);
+check("(a) …avgust nomi bilan", f1 ? monStr(f1) : "yo'q", "2026-08:154000");
 const f2 = folds.get(2);
 check("(b) qatori yo'q oy o'tkaziladi", f2?.carryOver, 50000);
-check("(b) …va pending yo'q", f2?.pending.length, 0);
 check("(c) ikkalasi 0 → xaritada yo'q", folds.has(3), false);
-check("(c) carryOver 0 + pending → bor", folds.has(1), true);
 check("(d) sozlanmagan → yo'q", folds.has(4), false);
 check("qarzdorlik o'tadi", folds.get(5)?.carryOver, -200000);
-check("qarzdorlik: pending yo'q", folds.get(5)?.pending.length, 0);
+check("qarzdorlik: oy nomi bilan", monStr(folds.get(5)), "2026-09:-200000");
 check("bo'sh zanjir → bo'sh xarita", carryFoldsByEmployee([]).size, 0);
-// N1 bilan bir xil natija — sof fold va yig'ish bir-biriga mos.
-check("N1 bilan mos (fold)", pendStr(folds.get(1)), pendStr(foldCarryChain([step("2026-08", 154000, true), step("2026-09", 0)])));
-
-// ── N9: O'TISH DAVRI QOROVULI — payrollPendingMaybePaid (04.10.2026) ──
-// 02.10–deploy oralig'ida sentabr puli oktabr yozuvi bo'lib berilgan:
-// oktabr payrollDue < 0, sentabr pending > 0, jami qarz 0. Interfeys
-// "sentabr sahifasidan chiqariladi" demasligi kerak (ikkinchi to'lov).
-console.log("\nN9) O'tgan oy puli shu oy yozuvi bo'lib berilganmi (payrollPendingMaybePaid)");
-const pend = (amount, month = "2026-09") => ({ carryPending: amount, carryPendingMonths: amount > 0 ? [{ month, amount }] : [] });
-// #14 ko'zgu misoli: oktabrda 180 000 «Oylik chiqarish», ishlagani 0.
-const g14 = emp({ salaryType: "foiz", percent: 50, collected: 0, paidOylik: 180000, ...pend(180000) });
-check("#14: oktabr payrollDue", payrollDue(g14, POCT), -180000);
-check("#14: jami qarz 0", payrollOwedTotal(g14, POCT), 0);
-check("#14: shubha = 180 000", payrollPendingMaybePaid(g14, POCT), 180000);
-check("#14: oy bo'yicha", pendingMaybePaidByMonth(g14, POCT).map((x) => `${x.month}:${x.amount}`).join(","), "2026-09:180000");
-// Oy boshida AVANS hisoblangandan oshgan — odatiy, o'tgan oy puli EMAS.
-const adv = emp({ salaryType: "foiz", percent: 50, collected: 200000, paidAvans: 300000, ...pend(500000) });
-check("avans oshgan: payrollDue < 0", payrollDue(adv, POCT), -200000);
-check("avans oshgan: shubha yo'q", payrollPendingMaybePaid(adv, POCT), 0);
-// Shu oy ortiqcha emas — pending bemalol o'z oyidan chiqariladi.
-const ok1 = emp({ salaryType: "foiz", percent: 50, collected: 1000000, paidOylik: 180000, ...pend(180000) });
-check("ortiqcha yo'q: shubha 0", payrollPendingMaybePaid(ok1, POCT), 0);
-// Qisman: ortiqcha 100 000, pending 314 000 → faqat 100 000 shubhali.
-const part1 = emp({ salaryType: "foiz", percent: 50, collected: 160000, paidOylik: 180000, ...pend(314000) });
-check("qisman: shubha = ortiqcha", payrollPendingMaybePaid(part1, POCT), 100000);
-// Pending yo'q — ortiqcha bo'lsa ham shubha yo'q (oddiy qarzdorlik).
-check("pending yo'q: 0", payrollPendingMaybePaid(emp({ paidOylik: 500000 }), POCT), 0);
-check("sozlanmagan: 0", payrollPendingMaybePaid(emp({ configured: false, paidOylik: 500000, ...pend(500000) }), POCT), 0);
-// O'rtadagi oyda ortiqcha to'lov qarzdorlik bo'lib o'tgan (carryOver < 0).
-const mid = emp({ salaryType: "foiz", percent: 50, collected: 0, carryOver: -180000, ...pend(180000) });
-check("o'tgan qarzdorlik: shubha", payrollPendingMaybePaid(mid, POCT), 180000);
-// Ikki pending oy — shubha ENG YANGISIDAN bo'linadi.
-const twoMonths = emp({ salaryType: "foiz", percent: 50, collected: 0, paidOylik: 250000,
-  carryPending: 400000, carryPendingMonths: [{ month: "2026-08", amount: 100000 }, { month: "2026-09", amount: 300000 }] });
-check("ikki oy: shubha", payrollPendingMaybePaid(twoMonths, POCT), 250000);
-check("ikki oy: eng yangisidan", pendingMaybePaidByMonth(twoMonths, POCT).map((x) => `${x.month}:${x.amount}`).join(","), "2026-09:250000");
-const twoMonths2 = { ...twoMonths, paidOylik: 350000 };
-check("ikki oy: oshsa eskisiga", pendingMaybePaidByMonth(twoMonths2, POCT).map((x) => `${x.month}:${x.amount}`).join(","), "2026-08:50000,2026-09:300000");
-// Qorovul faqat ko'rsatadi — chegara/chiqarish o'zgarmaydi.
-check("#14: chiqariladigan baribir 0", payrollPayout(g14, POCT), 0);
 
 // ── QO'LDA BERILGAN ULUSH VA YOPILGAN OY (11.10.2026) ─────────────────
 // Foydalanuvchi: «avgustda qancha tushum bo'lgan, qancha oylik, qancha avans
@@ -510,6 +455,32 @@ check("okladli yopilgan: chiqariladigan 0", payrollPayout({ ...okl, closedMonth:
 // Belgilangan yo'q — o'sha obyekt.
 const plain = emp({ salaryType: "foiz", percent: 50, collected: 1000000 });
 check("belgisiz: o'zgarmaydi", applySettledShare(plain, 0) === plain, true);
+
+// O'TGAN OY STAVKASI (04.11.2026): oy shu oyga yoki undan keyingi eng yaqin,
+// xodim bor nusxa bilan hisoblanadi; nusxa yo'q bo'lsa — bugungi stavka.
+console.log("\nO — o'tgan oy stavkasi nusxasi");
+const rate = (fixedSalary, extra = {}) => ({ fixedSalary, percent: null, plastikSalary: 0, taxIds: [], ...extra });
+const snapOf = (month, employees) => ({ month, employees, taxRules: [{ id: 5, name: month, type: "amount", value: 1 }] });
+const pickRate = (list, m, hasStart = false) => frozenRateFor(list, m, 7, hasStart);
+const oldSnap = snapOf("2026-10", { 7: rate(3000000) });
+const newSnap = snapOf("2026-12", { 7: rate(4000000) });
+check("nusxa yo'q — bugungi stavka", pickRate([], "2026-10"), null);
+check("o'sha oyning nusxasi", pickRate([oldSnap], "2026-10")?.rate.fixedSalary, 3000000);
+check("oldingi oy ham shu nusxa bilan", pickRate([oldSnap], "2026-09")?.rate.fixedSalary, 3000000);
+check("nusxadan keyingi oy — bugungi stavka", pickRate([oldSnap], "2026-11"), null);
+check("eng yaqini tanlanadi", pickRate([newSnap, oldSnap], "2026-09")?.rate.fixedSalary, 3000000);
+check("oraliq oy keyingi nusxadan", pickRate([newSnap, oldSnap], "2026-11")?.rate.fixedSalary, 4000000);
+check("soliq o'sha nusxadan", pickRate([newSnap, oldSnap], "2026-09")?.taxRules[0].name, "2026-10");
+// Nusxadan keyin ochilgan xodim — keyingi nusxada bor bo'lsa o'sha stavka.
+check("nusxada yo'q — keyingisidan", pickRate([snapOf("2026-10", {}), newSnap], "2026-10")?.rate.fixedSalary, 4000000);
+check("hech qaysida yo'q — bugungi", pickRate([snapOf("2026-10", {})], "2026-10"), null);
+// Sozlanmagan: sanasi bor xodimda stavka emas, sanasizda — turadi.
+const unset = snapOf("2026-10", { 7: rate(0) });
+check("sozlanmagan, sana bor — bugungi", pickRate([unset], "2026-10", true), null);
+check("sozlanmagan, sana bor — keyingisidan", pickRate([unset, newSnap], "2026-10", true)?.rate.fixedSalary, 4000000);
+check("sozlanmagan, sana yo'q — turadi", pickRate([unset], "2026-10", false)?.rate.fixedSalary, 0);
+// Arxivdagi xodim sanasi bor bo'lsa ham o'tkazib yuborilmaydi.
+check("arxivda: turadi", pickRate([snapOf("2026-10", { 7: rate(0, { offFrom: "2026-09" }) })], "2026-10", true)?.rate.offFrom, "2026-09");
 
 console.log(`\n${fail === 0 ? "NATIJA: ✅ hamma tekshiruv o'tdi" : `NATIJA: ❌ ${fail} ta xato`}`);
 process.exit(fail === 0 ? 0 : 1);

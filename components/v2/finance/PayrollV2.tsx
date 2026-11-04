@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowLeftRight, ArrowRight, Check, ChevronDown, CreditCard, History, Info, RefreshCw, Search, Users, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, CreditCard, History, Info, RefreshCw, Search, Users, Wallet } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
@@ -32,7 +32,6 @@ import {
   payrollStartsInPeriod,
   payrollTax,
   payrollTaxLines,
-  pendingMaybePaidByMonth,
   type EmployeePayroll,
 } from "@/lib/salary";
 import { isFutureIsoDay } from "@/lib/uzTime";
@@ -90,7 +89,7 @@ export default function PayrollV2() {
   const p = usePayroll();
   const {
     employees, loading, given, cashflow, period, monthKey, currentMonthKey, todayIso,
-    isPastMonth, isFutureMonth, isClosedMonth, payoutBlockedReason, monthLabel, pendingMonthLabel, changeMonth,
+    isPastMonth, isFutureMonth, isClosedMonth, payoutBlockedReason, monthLabel, carryMonthLabel, changeMonth,
     navBranchId, allowedBranches, buildings, building, changeBuilding, load,
     query, setQuery, turiFilter, setTuriFilter, hisoblash, setHisoblash, filtered, turiOptions,
     selected, setSelected, selectable, toggleAll, toggleOne,
@@ -115,7 +114,7 @@ export default function PayrollV2() {
     : isFutureMonth
       ? { cls: "bg-v2-info-bg text-v2-info", text: t("Kelajak oy — oylik chiqarilmaydi") }
       : isPastMonth
-        ? { cls: "bg-v2-warning-bg text-v2-warning", text: t("Tugagan oy — to'liq hisoblanadi") }
+        ? { cls: "bg-v2-warning-bg text-v2-warning", text: t("Tugagan oy — faqat ko'rish uchun") }
         : null;
   const calcSuffix = t(isPastMonth ? "to'liq oy" : isFutureMonth ? "oldindan" : "shu kungacha");
 
@@ -138,7 +137,7 @@ export default function PayrollV2() {
   // «To'langan» va «O'tgan oydan» — qiymati bo'lganda o'zi chiqadi; «Kartaga» —
   // ro'yxatda kartali xodim bo'lsa (eski sahifadek).
   const showPaid = useMemo(() => employees.some((e) => e.paidOylik !== 0), [employees]);
-  const showCarry = useMemo(() => employees.some((e) => e.carryOver !== 0 || (e.carryPendingMonths?.length ?? 0) > 0), [employees]);
+  const showCarry = useMemo(() => employees.some((e) => e.carryOver !== 0), [employees]);
   const visibleCols = columns.shown.filter(
     (c) => (c.key !== "paid" || showPaid) && (c.key !== "carry" || showCarry) && (c.key !== "karta" || anyPlastik),
   );
@@ -230,13 +229,16 @@ export default function PayrollV2() {
 
   const qolganHint = anyPlastik
     ? t("kartaga {kartaga} · naqd {naqd}", { kartaga: fmtNum(stats.kartaga), naqd: fmtNum(stats.naqd) })
-    : stats.otganOydan !== 0
-      ? t("shu jumladan o'tgan oydan: {otganOydan}", { otganOydan: fmtNum(stats.otganOydan) })
-      : t("faqat shu oy hisobidan");
+    : stats.carryAdded > 0
+      ? ""
+      : stats.otganOydan !== 0
+        ? t("shu jumladan o'tgan oydan: {otganOydan}", { otganOydan: fmtNum(stats.otganOydan) })
+        : t("faqat shu oy hisobidan");
 
   const sofTitle = cashflow && !cashflowNoma
     ? t("Sof foyda = tushum {daromad} − xarajat {xarajat}", { daromad: `${fmtNum(cashflow.daromad)} ${t("so'm")}`, xarajat: `${fmtNum(cashflow.xarajat)} ${t("so'm")}` })
       + t(" − qolgan to'lanadigan oylik {qolgan}.", { qolgan: `${fmtNum(stats.qolgan)} ${t("so'm")}` })
+      + (stats.carryAdded > 0 ? t(" O'tgan oylardan qo'shilgan {amount} ayrilmaydi — u o'z oyida ayrilgan.", { amount: `${fmtNum(stats.carryAdded)} ${t("so'm")}` }) : "")
       + " " + t("Xarajat ichida allaqachon berilgan avans va chiqarilgan oylik ham bor.")
       + " " + t("Kassalararo ko'chirmalar va bekor qilingan yozuvlar hisobga olinmaydi.")
     : undefined;
@@ -301,41 +303,21 @@ export default function PayrollV2() {
             })
           : "",
         stats.otganOydan !== 0 && anyPlastik ? t(" Shu jumladan o'tgan oydan: {otganOydan}.", { otganOydan: `${fmtNum(stats.otganOydan)} ${t("so'm")}` }) : "",
-        stats.pending > 0
-          ? t(" O'tgan oylarda to'lanmagan {amount} bu summaga kirmaydi — har oyniki o'z oyining sahifasidan chiqariladi: {list}.", {
-              amount: `${fmtNum(stats.pending)} ${t("so'm")}`,
-              list: stats.pendingMonths.map((pm) => `${pendingMonthLabel(pm.month)} ${fmtNum(pm.amount)}`).join(", "),
-            })
-          : "",
       ].join("").trim() || undefined,
       hint: loading ? undefined : (
         <>
-          <span className="block">{qolganHint}</span>
+          {qolganHint && <span className="block">{qolganHint}</span>}
           {/* Xodimlar qarzi — alohida yig'iladi (bir xodimning qarzi boshqasiga
               to'lanadigan pulni «yemasin»), summaga kirmaydi. */}
           {stats.qarzdorlik > 0 && <span className="block truncate">{t("xodim qarzi: {qarzdorlik}", { qarzdorlik: fmtNum(stats.qarzdorlik) })}</span>}
-          {/* O'TGAN OYLARDA TO'LANMAGAN (04.10.2026) — bu summaga KIRMAYDI; oy nomi
-              bosilsa oy tanlagichi o'sha oyga o'tadi va pul o'sha sahifadan chiqariladi. */}
-          {stats.pending > 0 && (
+          {/* O'TGAN OYLARDAN QO'SHILGANI (04.11.2026) — bu summaning ichida, qaysi
+              oydan qancha ekani ko'rinib turadi. */}
+          {stats.carryAdded > 0 && (
             <span className="mt-0.5 block text-v2-warning">
-              {t("o'tgan oylardan {amount}", { amount: fmtNum(stats.pending) })}
-              {stats.pendingMonths.map((pm) => (
-                <button
-                  key={pm.month}
-                  type="button"
-                  onClick={() => changeMonth(pm.month)}
-                  title={t("{month} oyiga o'tish — to'lanmagan {amount} o'sha sahifadan chiqariladi", { month: pendingMonthLabel(pm.month), amount: `${fmtNum(pm.amount)} ${t("so'm")}` })}
-                  className="ml-1.5 inline-flex items-center gap-0.5 font-medium underline underline-offset-2 hover:no-underline"
-                >
-                  {pendingMonthLabel(pm.month)}
-                  <ArrowRight className="size-3" strokeWidth={2} aria-hidden />
-                </button>
-              ))}
-            </span>
-          )}
-          {stats.maybePaid > 0 && (
-            <span className="mt-0.5 block text-v2-danger">
-              {t("{amount} ehtimol shu oyda berilgan — o'z oyidan qayta chiqarmang", { amount: fmtNum(stats.maybePaid) })}
+              {t("o'tgan oylardan qo'shildi: {amount}", { amount: fmtNum(stats.carryAdded) })}
+              <span className="block">
+                {stats.carryMonths.map((pm) => `${carryMonthLabel(pm.month)} ${fmtNum(pm.amount)}`).join(", ")}
+              </span>
             </span>
           )}
         </>
@@ -448,53 +430,14 @@ export default function PayrollV2() {
   }
 
   function carryCell(e: EmployeePayroll) {
-    const maybePaid = pendingMaybePaidByMonth(e, period);
+    if (e.carryOver === 0) return zero;
+    const parts = e.carryMonths ?? [];
     return (
       <>
-        {e.carryOver !== 0 ? (
-          <>
-            <div className={`tabular-nums ${e.carryOver < 0 ? "font-medium text-v2-warning" : "text-v2-text"}`}>{signed(e.carryOver)}</div>
-            {e.carryNote && sub(e.carryNote)}
-          </>
-        ) : (
-          zero
-        )}
-        {(e.carryPendingMonths ?? []).map((pm) => {
-          // Shu oyda ortiqcha oylik bor va u shu oy puli bo'lishi mumkin — o'sha
-          // sahifaga YO'NALTIRILMAYDI (u yerda yana chiqarilsa ikki marta to'lanadi).
-          const covered = maybePaid.find((x) => x.month === pm.month)?.amount ?? 0;
-          if (covered > 0) {
-            return (
-              <div
-                key={pm.month}
-                title={t("{month} qoldig'idan {amount} {current} oyida {current} yozuvi bo'lib berilgan bo'lishi mumkin — shu oyda ortiqcha oylik bor. {month} sahifasidan qayta chiqarmang: avval o'sha yozuvning oyini tekshiring.", {
-                  month: pendingMonthLabel(pm.month), amount: `${fmtNum(covered)} ${t("so'm")}`, current: pendingMonthLabel(monthKey),
-                })}
-                className="mt-1 cursor-help whitespace-nowrap text-v2-caption font-normal text-v2-danger"
-              >
-                {`${pendingMonthLabel(pm.month)}: ${fmtNum(pm.amount)}`}
-                <span className="ml-1 inline-flex items-center gap-1 rounded-v2-sm bg-v2-danger-bg px-1 font-medium">
-                  <AlertTriangle className="size-3" strokeWidth={2} aria-hidden />
-                  {t("Qayta chiqarmang")}
-                </span>
-              </div>
-            );
-          }
-          return (
-            <button
-              key={pm.month}
-              type="button"
-              onClick={() => changeMonth(pm.month)}
-              title={t("{month} oyidan to'lanmagan {amount} — bu oyda to'lanmaydi, faqat {month} sahifasidan chiqariladi. Bosing: {month} oyiga o'tish.", {
-                month: pendingMonthLabel(pm.month), amount: `${fmtNum(pm.amount)} ${t("so'm")}`,
-              })}
-              className="mt-1 flex w-full items-center justify-end gap-0.5 whitespace-nowrap text-v2-caption font-normal text-v2-warning hover:underline"
-            >
-              {`${pendingMonthLabel(pm.month)}: ${fmtNum(pm.amount)}`}
-              <ArrowRight className="size-3" strokeWidth={2} aria-hidden />
-            </button>
-          );
-        })}
+        <div className={`tabular-nums ${e.carryOver < 0 ? "font-medium text-v2-warning" : "text-v2-text"}`}>{signed(e.carryOver)}</div>
+        {parts.length === 1
+          ? sub(t(e.carryOver < 0 ? "{month} oyidan qarzdorlik" : "{month} oyidan", { month: carryMonthLabel(parts[0].month) }))
+          : parts.map((pm) => <div key={pm.month}>{sub(`${carryMonthLabel(pm.month)}: ${signed(pm.amount)}`)}</div>)}
       </>
     );
   }
@@ -954,20 +897,6 @@ export default function PayrollV2() {
                             {sub(t("qarzdor"))}
                           </>
                         )}
-                        {/* O'TGAN OY sahifasi: shu qoldiqning bir qismi joriy oyda joriy oy
-                            yozuvi bo'lib berilgan bo'lishi mumkin (04.10.2026). */}
-                        {e.configured && e.maybePaidIn && (
-                          <span
-                            className="mt-1 inline-flex cursor-help items-center gap-1 whitespace-nowrap rounded-v2-sm bg-v2-danger-bg px-1.5 py-0.5 text-v2-caption text-v2-danger"
-                            title={t("Shu oy qoldig'idan {amount} {month} oyida {month} yozuvi bo'lib berilgan bo'lishi mumkin — u yerda shuncha ortiqcha oylik bor. Qayta chiqarilsa xodim uni ikki marta oladi: avval o'sha yozuvning oyini tekshiring.", {
-                              amount: `${fmtNum(e.maybePaidIn.amount)} ${t("so'm")}`,
-                              month: pendingMonthLabel(e.maybePaidIn.month),
-                            })}
-                          >
-                            <AlertTriangle className="size-3" strokeWidth={2} aria-hidden />
-                            {t("Qayta chiqarmang")}
-                          </span>
-                        )}
                       </td>
                     </tr>
                   );
@@ -1000,7 +929,7 @@ export default function PayrollV2() {
       <p className="flex shrink-0 items-start gap-2 text-v2-caption font-normal text-v2-text-2">
         <Info className="mt-px size-4 shrink-0 text-v2-text-3" strokeWidth={1.75} aria-hidden />
         <span>
-          {t("Oklad oy kunlariga bo'linib hisoblanadi. Kartaga avval xodimning rasmiy (plastik) oyligi o'tadi, qolgani naqd beriladi. Soliq xodimga biriktirilgan qoidalar bo'yicha hisoblangan oylikdan ushlanadi (Sozlamalar). O'tgan oyning to'lanmagan qoldig'i keyingi oyda izoh bo'lib turadi va o'z oyi sahifasidan chiqariladi. «To'langan» va «O'tgan oydan» ustunlari qiymati bo'lganda o'zi chiqadi.")}
+          {t("Oklad oy kunlariga bo'linib hisoblanadi. Kartaga avval xodimning rasmiy (plastik) oyligi o'tadi, qolgani naqd beriladi. Soliq xodimga biriktirilgan qoidalar bo'yicha hisoblangan oylikdan ushlanadi (Sozlamalar). Oylik faqat joriy oydan chiqariladi: o'tgan oyning to'lanmagan qoldig'i joriy oy oyligiga qo'shiladi. «To'langan» va «O'tgan oydan» ustunlari qiymati bo'lganda o'zi chiqadi.")}
         </span>
       </p>
 

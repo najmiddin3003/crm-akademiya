@@ -277,7 +277,7 @@ console.log("\n— amallar");
   check("summa ko'rinishi", fmtSum(1250000) === "1 250 000 so'm");
   const km = allowedMonths("kirim");
   const pm = allowedMonths("payout");
-  check("oylar: kirim 3 ta (o'tgan·shu·keyingi), oylik 2 ta", km.months.length === 3 && km.months[1] === km.current && pm.months.length === 2 && pm.months[1] === pm.current);
+  check("oylar: kirim 3 ta (o'tgan·shu·keyingi), oylik faqat shu oy", km.months.length === 3 && km.months[1] === km.current && pm.months.length === 1 && pm.months[0] === pm.current);
   const doc = { id: "a1", kind: "kirim", status: "draft", fields: [], payload: {}, draftUntil: new Date(Date.now() - 1000) };
   check("muddati o'tgan qoralama — expired", viewOf(doc).status === "expired" && viewOf({ ...doc, draftUntil: new Date(Date.now() + 60_000) }).status === "draft");
   const notes = historyWithActionNotes(
@@ -1344,12 +1344,11 @@ console.log("\n— Ko'rib chiqish tuzatishlari (qoralama kaliti, ogohlantirish t
 }
 {
   const { translate } = await import("@/lib/i18n");
-  const paidLater = translate("en", "Oktyabr oyida bu oy qoldig'idan 180 000 so'm berilgan bo'lishi mumkin — qayta bermang, avval o'sha yozuvni tekshiring.");
   const saved = translate("en", "Shu amal 09.10.2026 | 14:05 da allaqachon saqlangan (#708) — ikkinchi marta yozilmasin.");
   check(
     "kartadagi qizil ogohlantirishlar inglizchaga o'giriladi (teskari moslash)",
-    paidLater.startsWith("Up to") && paidLater.includes("October") && saved.startsWith("This operation was already saved") && saved.includes("#708"),
-    JSON.stringify({ paidLater, saved }),
+    saved.startsWith("This operation was already saved") && saved.includes("#708"),
+    JSON.stringify({ saved }),
   );
 }
 

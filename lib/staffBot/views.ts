@@ -6,7 +6,6 @@ import type { BotCashbox } from "@/lib/staffBot/auth";
 import type { KassamView, TodayEntry } from "@/lib/staffBot/data";
 import { lessonDaysLabel, parseLessonDays } from "@/lib/ordersData";
 import type { ChiqimDraft, KirimDraft, LeadDraft, TransferDraft } from "@/lib/staffBot/session";
-import { payrollMonthKey, payrollPeriod, prevMonthKey } from "@/lib/salary";
 import type { TransferPendingInfo } from "@/lib/staffBot/notify";
 import { STATUS_LABEL, durParts, ms, uzDateOf, uzTimeOf, type StaffTaskStatus } from "@/lib/staffTasks";
 import type { StaffTaskDoc } from "@/lib/staffTasksServer";
@@ -363,27 +362,11 @@ export function kirimTypeUnsupported(typeName: string): string {
 const ROLE_LABEL: Record<string, string> = { teacher: "o'qituvchi", moderator: "moderator", admin: "admin" };
 
 /**
- * Xodimning oylik hisobi — kartada va summa qadamida. Oy bosqichidan
- * (04.10.2026) keyin hisob TANLANGAN oyniki (tepasida "Oy:" satri): oy hali
- * tanlanmaguncha `salary` yuklanmagan — satr chizilmaydi, aks holda
- * "ro'yxatda yo'q" deb yolg'on ko'rinardi.
+ * Xodimning JORIY OYDAGI oylik hisobi — kartada va summa qadamida (tepasida
+ * "Oy:" satri).
  */
-/**
- * Botdagi Avans/Oylik OY TUGMALARI — O'TGAN va SHU oy ("YYYY-MM"). KELAJAK
- * yo'q — server ham rad etadi. "Shu oy" TOSHKENT vaqti bo'yicha
- * (`payrollPeriod`) — server kelajak oyni aynan shu bilan tekshiradi.
- * Bitta manba: tugmalar (lib/staffBot/chiqim.ts → payoutMonthOptions) ham,
- * pending ko'rsatmasidagi "(Oy: «…»)" ham shundan (04.10.2026) — ko'rsatma
- * botda YO'Q tugmaga yo'naltirmasin.
- */
-export function payoutMonthKeys(): string[] {
-  const p = payrollPeriod();
-  return [prevMonthKey(p), payrollMonthKey(p)];
-}
-
 function salaryLines(d: ChiqimDraft): string[] {
   if (!d.salaryPayout) return [];
-  if (d.step === "month") return [];
   const s = d.salary;
   if (!s) return ["Oylik: <i>ro'yxatda yo'q — chegara qo'llanmaydi</i>"];
   if (!s.configured) return ["Oylik: <i>ish haqi sozlanmagan — chegara qo'llanmaydi</i>"];
@@ -391,37 +374,16 @@ function salaryLines(d: ChiqimDraft): string[] {
   if (s.tax > 0) parts.push(`soliq ${fmtUZS(s.tax)}`);
   if (s.karta > 0) parts.push(`karta ${fmtUZS(s.karta)}`);
   if (s.paid > 0) parts.push(`olingan ${fmtUZS(s.paid)}`);
-  // "o'tgan oydan" — faqat SHU OYDA to'lanadigan qism (nol-yopish ulushi
-  // yoki qarzdorlik); chegara ham shundan.
+  // "o'tgan oydan" — o'tgan oylardan shu oyga qo'shilgan qoldiq; chegara ham
+  // shu bilan (04.11.2026).
   if (s.carryOver !== 0) parts.push(`o'tgan oydan ${fmtUZS(s.carryOver)}`);
   const lines = [
     `Oylik: ${parts.join(" · ")}`,
     `Chiqarish mumkin: naqd <b>${fmtUZS(Math.max(0, s.naqd))}</b> · plastik <b>${fmtUZS(Math.max(0, s.jami))}</b>`,
   ];
-  // O'TISH DAVRI QOROVULI (04.10.2026): tanlangan O'TGAN oyning puli joriy
-  // oyda joriy oy yozuvi bo'lib berilgan bo'lishi mumkin — qayta bermasin.
-  if (s.paidLater) {
-    lines.push(`⚠️ Bu oy qoldig'idan <b>${so(s.paidLater.amount)}</b> ${monthLabel(s.paidLater.month)} oyida (o'sha oy yozuvi bo'lib) berilgan bo'lishi mumkin — qayta bermang, avval o'sha yozuvni tekshiring.`);
-  }
-  // ...va teskarisi: shu oyda ORTIQCHA OYLIK bor, u pending oy puli bo'lishi
-  // mumkin — "o'sha oydan chiqariladi" deyilmaydi (u yerda yana chiqarilsa
-  // ikki marta to'lanadi).
-  for (const pm of s.pendingMaybePaid ?? []) {
-    lines.push(`⚠️ ${monthLabel(pm.month)} oyidan <b>${so(pm.amount)}</b> shu oyda (shu oy yozuvi bo'lib) berilgan bo'lishi mumkin — ${monthLabel(pm.month)} oyidan qayta chiqarmang, avval yozuvni tekshiring.`);
-  }
-  // O'tgan oylarda to'lanmagan qoldiq (04.10.2026, "faqat o'z oyidan
-  // chiqarilsin") — bu oy chegarasiga KIRMAYDI. Kassir uni ko'rmasa
-  // "sentabr puli qayoqqa ketdi" deb o'ylardi; o'sha oyni tanlab chiqaradi.
-  // Oy botdagi tugmalarda bo'lmasa (o'tgan oydan eski) — web'ga yo'naltiriladi:
-  // bot uni tanlatmaydi (chiqim.ts eskirgan tugmani rad etadi).
-  // `pending` 04.10 dan oldingi qoralamada yo'q — `?? []`.
-  const inBot = new Set(payoutMonthKeys());
-  for (const pm of s.pending ?? []) {
-    const where = inBot.has(pm.month)
-      ? `(Oy: «${monthLabel(pm.month)}»)`
-      : `— web'dagi Oylik hisob-kitob sahifasidan (${monthLabel(pm.month)})`;
-    lines.push(`ℹ️ ${monthLabel(pm.month)} oyidan <b>${so(pm.amount)}</b> to'lanmagan — bu oyga kirmaydi, o'z oyidan chiqariladi ${where}`);
-  }
+  // Qaysi oydan qancha qo'shilgani. `carryMonths` eski qoralamada yo'q — `?? []`.
+  const carry = (s.carryMonths ?? []).map((x) => `${monthLabel(x.month)}: <b>${fmtUZS(x.amount)}</b>`);
+  if (carry.length > 0) lines.push(`ℹ️ O'tgan oydan qo'shilgan — ${carry.join(" · ")}`);
   return lines;
 }
 
@@ -438,8 +400,8 @@ function chiqimHeader(d: ChiqimDraft, cashbox: BotCashbox): string {
     if (d.target === "student") {
       lines.push(`Balans: ${so(d.studentBalance ?? 0)}${d.refundTeacher ? ` · ustoz ${esc(d.refundTeacher)}` : ""}`);
     }
-    // Avans/Oylik qaysi oy uchun (04.10.2026) — oylik hisobi satrlaridan
-    // OLDIN: pastdagi raqamlar aynan shu oyniki.
+    // Avans/Oylik qaysi oy uchun — oylik hisobi satrlaridan OLDIN: pastdagi
+    // raqamlar aynan shu oyniki.
     if (d.periodMonth) lines.push(`Oy: <b>${monthLabel(d.periodMonth)}</b>`);
     lines.push(...salaryLines(d));
   }
@@ -476,20 +438,6 @@ export function chiqimQueryTooShort(d: ChiqimDraft, cashbox: BotCashbox): string
   return `${chiqimHeader(d, cashbox)}\n✏️ Kamida 2 ta belgi yozing.`;
 }
 
-/**
- * Avans/Oylik qaysi oy uchun (04.10.2026). Sana o'zgarmaydi (pul bugun
- * chiqadi) — oy faqat qaysi oyning oyligidan ayrilishini aytadi. Ishora
- * aynan foydalanuvchi muammosi uchun: oktabrda berilgan sentabr oyligi
- * oktabrga yozilib, keyin sentabr "Oylikni chiqarish"da yana to'lanardi.
- */
-export function chiqimMonthPrompt(d: ChiqimDraft, cashbox: BotCashbox, prevMonth: string): string {
-  return [
-    chiqimHeader(d, cashbox),
-    `👉 ${esc(d.typeName ?? "To'lov")} <b>qaysi oy</b> uchun?`,
-    `<i>O'tgan oyning oyligi yoki avansi berilayotgan bo'lsa — «${monthLabel(prevMonth)}» ni tanlang: pul o'sha oy hisobidan ayriladi. Sana baribir bugungi kun bo'ladi.</i>`,
-  ].join("\n");
-}
-
 export function chiqimMethodPrompt(d: ChiqimDraft, cashbox: BotCashbox): string {
   return `${chiqimHeader(d, cashbox)}\n👉 Qaysi to'lov turidan chiqariladi? (qavsda kassadagi qoldiq)`;
 }
@@ -500,12 +448,7 @@ export function chiqimNoBalance(d: ChiqimDraft, cashbox: BotCashbox): string {
 
 /** Chegara/qoldiq tugagan — sabab AYNAN aytiladi (web va server bilan bir xil matn). */
 export function chiqimSalaryExhausted(d: ChiqimDraft, cashbox: BotCashbox, message: string): string {
-  // Oy tanlangan bo'lsa (04.10.2026) — qoldiq boshqa oyda bo'lishi mumkin:
-  // to'lov turi tugmalari tagida «📅 Oyni o'zgartirish» bor.
-  const next = d.salaryPayout && d.periodMonth
-    ? "Boshqa to'lov turini tanlang, «📅 Oyni o'zgartirish» ni bosing yoki bekor qiling."
-    : "Boshqa to'lov turini tanlang yoki bekor qiling.";
-  return `${chiqimHeader(d, cashbox)}\n⛔ ${esc(message)}\n\n${next}`;
+  return `${chiqimHeader(d, cashbox)}\n⛔ ${esc(message)}\n\nBoshqa to'lov turini tanlang yoki bekor qiling.`;
 }
 
 export interface ChiqimAmountHint {

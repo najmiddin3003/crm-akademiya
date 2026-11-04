@@ -320,11 +320,9 @@ export const proposeChiqim: AiTool = {
       ...PERSON_PARAMS,
       amount: { type: "integer", description: "Exact amount in so'm, as the user said it." },
       method: { type: "string", description: "Payment method name (e.g. Naqd, Plastik)." },
-      month: { type: "string", description: "Salary/advance: which month it is for, YYYY-MM (previous or current)." },
-      paidLaterChecked: {
-        type: "boolean",
-        description:
-          "true only after the user checked the journal and confirmed that the possibly already paid part (possiblyAlreadyPaid) was NOT this salary.",
+      month: {
+        type: "string",
+        description: "Salary/advance: leave empty. It is paid only from the current month; what stayed unpaid in past months is already added to it.",
       },
       note: { type: "string" },
       cashboxId: { type: "integer", description: "Administrators only: another cashbox." },

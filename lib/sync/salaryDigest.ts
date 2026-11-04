@@ -8,12 +8,10 @@ import {
   payrollPaid,
   payrollPayout,
   payrollPlastikLeg,
-  payrollPendingMaybePaid,
   payrollPeriod,
   payrollTax,
-  pendingMaybePaidByMonth,
   salaryTypeTag,
-  type CarryPendingMonth,
+  type CarryMonth,
   type EmployeePayroll,
   type PayrollPeriod,
   type SalaryType,
@@ -107,28 +105,13 @@ interface Line {
   cashDue: number;
   payout: number;
   /**
-   * O'TGAN OYLARDA TO'LANMAGAN, shu oyda TO'LANMAYDIGAN qoldiq (04.10.2026,
-   * "faqat o'z oyidan chiqarilsin"): `pendingMonths` — oy bo'yicha, `pending`
-   * — yig'indisi. FAQAT MA'LUMOT: `due`/`payout`/"To'lanishi kerak" ga
-   * KIRMAYDI (u kassadan shu oyda chiqadigan summa bo'lib qoladi).
-   * NIMA NOTO'G'RI EDI: xulosa faqat shu oyda to'lanadiganini ko'rardi —
-   * oktabr xulosasida sentabrning to'lanmagani (Uchqo'rg'on butun filiali)
-   * hech qayerda ko'rinmasdi, shu oyda harakati yo'q, faqat o'tgan oy
-   * qoldig'i bor xodim esa ro'yxatdan butunlay tushib qolardi.
-   * Shu oyda shu oy yozuvi bo'lib berilgan bo'lishi mumkin qism (`maybePaid`,
-   * o'tish davri qorovuli — lib/salary.ts → payrollPendingMaybePaid)
-   * `pendingMonths` dan AYRILGAN va alohida ogohlantiriladi.
+   * O'tgan oylardan shu oyga qo'shilgan qoldiq, oy bo'yicha (04.11.2026) —
+   * `due`/`payout` ichida, bu yerda faqat qaysi oydan qancha ekani aytiladi.
    */
-  pending: number;
-  pendingMonths: CarryPendingMonth[];
-  maybePaid: number;
+  carryMonths: CarryMonth[];
 }
 
 function lineOf(e: EmployeePayroll, p: PayrollPeriod): Line {
-  const covered = pendingMaybePaidByMonth(e, p);
-  const pendingMonths = (e.carryPendingMonths ?? [])
-    .map((x) => ({ month: x.month, amount: x.amount - (covered.find((c) => c.month === x.month)?.amount ?? 0) }))
-    .filter((x) => x.amount > 0);
   return {
     name: e.name,
     turi: e.turi,
@@ -141,14 +124,12 @@ function lineOf(e: EmployeePayroll, p: PayrollPeriod): Line {
     plastik: payrollPlastikLeg(e, p),
     cashDue: payrollCashDue(e, p),
     payout: payrollPayout(e, p),
-    pending: pendingMonths.reduce((s, x) => s + x.amount, 0),
-    pendingMonths,
-    maybePaid: payrollPendingMaybePaid(e, p),
+    carryMonths: e.carryMonths ?? [],
   };
 }
 
 /** "2026-09" → "sentabr" (boshqa yilniki bo'lsa "dekabr 2025"). */
-function pendingMonthName(key: string, year: number): string {
+function carryMonthName(key: string, year: number): string {
   const [y, m] = key.split("-").map(Number);
   const name = UZ_MONTHS[m - 1] ?? key;
   return y === year ? name : `${name} ${y}`;
@@ -175,8 +156,7 @@ export async function digestLines(db: Db, at: Date): Promise<{ teachers: Line[];
   const lines = rows
     .filter((e) => e.configured)
     .map((e) => lineOf(e, p))
-    // Faqat o'tgan oy qoldig'i bor xodim ham tushadi (04.10.2026).
-    .filter((l) => l.earned !== 0 || l.paid !== 0 || l.due !== 0 || l.pending > 0 || l.maybePaid > 0)
+    .filter((l) => l.earned !== 0 || l.paid !== 0 || l.due !== 0)
     .sort((a, b) => b.due - a.due);
   return {
     teachers: lines.filter((l) => l.turi === "teacher"),
@@ -198,14 +178,13 @@ function itemsOf(lines: Line[], year: number): string[] {
     // 0), plastigi yo'qda oddiy qoldiq; manfiy — ortiqcha olgan. Karta
     // alohida qatorda, faqat plastigi bor xodimda — aks holda har qatorga
     // so'z qo'shilib xabar uzayardi.
-    // O'tgan oylardan to'lanmagan — "qolgan"ga KIRMAYDI, o'z oyidan
-    // chiqariladi (04.10.2026); shubhali qism alohida.
+    // O'tgan oylardan qo'shilgani — "qolgan" ICHIDA (04.11.2026), bu yerda
+    // faqat qaysi oydan qancha ekani.
     const qolgan = `<b>qolgan ${money(l.cashDue)}</b>` +
       (l.plastik > 0 ? `\n   ↳ kartaga ${money(l.plastik)}` : "") +
-      (l.pending > 0
-        ? `\n   ↳ o'tgan oylardan: ${l.pendingMonths.map((x) => `${pendingMonthName(x.month, year)} ${money(x.amount)}`).join(", ")} — o'z oyidan`
-        : "") +
-      (l.maybePaid > 0 ? `\n   ↳ ⚠️ ${money(l.maybePaid)} — o'tgan oy puli shu oyda berilgan bo'lishi mumkin` : "");
+      (l.carryMonths.length > 0
+        ? `\n   ↳ o'tgan oydan qo'shilgan: ${l.carryMonths.map((x) => `${carryMonthName(x.month, year)} ${money(x.amount)}`).join(", ")}`
+        : "");
     out.push(
       `• <b>${esc(l.name)}</b> (${tag})\n` +
       `   hisoblangan ${money(l.earned)}${tax} · olingan ${money(l.paid)} · ${qolgan}`,
@@ -231,8 +210,9 @@ export function digestMessages(period: DigestPeriod, data: { teachers: Line[]; o
   const jamiKartaga = all.reduce((s, l) => s + l.plastik, 0);
   const jamiOlingan = all.reduce((s, l) => s + l.paid, 0);
   const qarzdor = all.filter((l) => l.due < 0).length;
-  // "To'lanishi kerak"ga QO'SHILMAYDI — u shu oyda kassadan chiqadigan summa.
-  const jamiPending = all.reduce((s, l) => s + l.pending, 0);
+  // "To'lanishi kerak" ICHIDA — faqat qancha qismi o'tgan oylardan ekani.
+  // Xodim qarzi (manfiy) boshqa xodimnikidan ayrilmaydi — sahifadagi kartochka bilan bir xil.
+  const jamiOtgan = all.reduce((s, l) => s + Math.max(Math.min(l.carryMonths.reduce((c, x) => c + x.amount, 0), l.payout), 0), 0);
 
   const head = [
     `🧾 <b>Xodimlar oyligi</b>`,
@@ -244,7 +224,7 @@ export function digestMessages(period: DigestPeriod, data: { teachers: Line[]; o
     `💰 To'lanishi kerak: <b>${money(jamiQolgan)} so'm</b>` +
       (jamiKartaga > 0 ? ` (kartaga ${money(jamiKartaga)} · naqd ${money(jamiQolgan - jamiKartaga)})` : ""),
     `✅ Shu oyda berilgan: <b>${money(jamiOlingan)} so'm</b>`,
-    ...(jamiPending > 0 ? [`📌 O'tgan oylarda to'lanmagan: <b>${money(jamiPending)} so'm</b> — har biri o'z oyidan chiqariladi`] : []),
+    ...(jamiOtgan > 0 ? [`📌 Shundan o'tgan oylardan qo'shilgan: <b>${money(jamiOtgan)} so'm</b>`] : []),
     ...(qarzdor > 0 ? [`⚠️ ${qarzdor} xodimda ortiqcha olingan (manfiy qoldiq)`] : []),
   ];
 

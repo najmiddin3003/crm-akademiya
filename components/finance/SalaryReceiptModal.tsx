@@ -247,6 +247,10 @@ export default function SalaryReceiptModal({
                   label={(r.carryOver ?? 0) > 0 ? t("O'tgan oydan qolgan") : t("O'tgan oydan qarzdorlik")}
                   value={`${(r.carryOver ?? 0) > 0 ? "+" : "−"}${t(fmtSum(Math.abs(r.carryOver ?? 0)))}`}
                   tone={(r.carryOver ?? 0) > 0 ? "plus" : "minus"}
+                  // Qaysi oydan qancha kelgani — eski cheklarda bu maydon yo'q.
+                  hint={(r.carryMonths ?? [])
+                    .map((m) => `${monthKeyLabel(m.month, months)}: ${m.amount > 0 ? "+" : "−"}${t(fmtSum(Math.abs(m.amount)))}`)
+                    .join(" · ") || undefined}
                 />
               )}
 
