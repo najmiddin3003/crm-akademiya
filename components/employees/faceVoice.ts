@@ -7,6 +7,10 @@ import type { Lang } from "@/lib/i18n";
 // Ovoz TAYYOR FAYLLAR: Android WebView'da speechSynthesis yo'q, telefonlarda
 // o'zbek ovozi o'rnatilmagan. Iboralar public/xodim/face-voice da (Mini App'da
 // sessiya yo'q, proxy.ts sessiyasiz statik faylni faqat /xodim ostida beradi).
+// Ovoz Microsoft Madina (uz-UZ-MadinaNeural), tezlik -10% — egasi Edge'da
+// tinglab tanlagan «Mayin» ohangi. Fayllar edge-tts bilan olingan (Edge'ning
+// bepul norasmiy xizmati, egasi 04.11 shu yo'lni tanladi; rasmiy yo'l Azure
+// Speech, ovoz o'sha), oxiridagi ~0.75 s jimlik kesilgan.
 //
 // Telefon ovozni faqat BOSISH ichida ochadi: tugma bosilganda unlockFaceVoice
 // SINXRON chaqiriladi. AudioContext modulda yashaydi — qayta urinishda
@@ -16,12 +20,6 @@ import type { Lang } from "@/lib/i18n";
 // Faqat o'zbek tilida: inglizchada ovoz ham, ortiqcha bosish ham yo'q.
 
 export type VoiceCue = "noFace" | "many" | "closer" | "farther" | "center" | "blink" | "turn" | "look" | "straight" | "done";
-
-/**
- * Ibora fayllari public/xodim/face-voice ga qo'yilgandagina true. false bo'lsa
- * hammasi ovozsiz ishlaydi: ortiqcha tugma ham, ovoz tugmasi ham chiqmaydi.
- */
-const CLIPS_READY = false;
 
 const CUES: readonly VoiceCue[] = ["noFace", "many", "closer", "farther", "center", "blink", "turn", "look", "straight", "done"];
 const CLIP_DIR = "/xodim/face-voice";
@@ -82,7 +80,7 @@ export function setFaceVoiceMuted(next: boolean): void {
 }
 
 export function faceVoiceAvailable(lang: Lang): boolean {
-  return CLIPS_READY && lang !== "en" && contextClass() !== null;
+  return lang !== "en" && contextClass() !== null;
 }
 
 /** Ovozni ochish uchun alohida bosish kerakmi (o'chirib qo'yilgan bo'lsa — kerak emas). */
