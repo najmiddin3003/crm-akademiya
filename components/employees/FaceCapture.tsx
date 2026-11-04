@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/components/shared/Language";
+import FaceGuide, { type FaceDemo } from "./FaceGuide";
 
 // FACE ID — old kamera orqali yuzni olish (30.10.2026, lib/staffFace.ts).
 //
@@ -36,6 +37,9 @@ import { useT } from "@/components/shared/Language";
 // Keyin yuz to'g'ri va ko'zlar ochiq kadrlardan izlar olinadi: ro'yxatga
 // olishda 5 ta (server ularning bir odamligini tekshiradi), tekshiruvda 3 ta.
 // Aniqlash, iz va surat — hammasi bitta kadr nusxasidan (canvas).
+//
+// Doira ustidagi yuz maketi (FaceGuide) so'ralgan harakatni ko'rsatadi, odam
+// unga qarab takrorlaydi.
 
 type FaceApi = typeof import("@vladmandic/face-api/dist/face-api.esm.js");
 type Pt = { x: number; y: number };
@@ -105,6 +109,12 @@ const FRONTAL_LOW = 0.4;
 const FRONTAL_HIGH = 0.6;
 /** Yuz shuncha vaqt ko'rinmasa — kuzatuv uzildi, hammasi boshidan. */
 const TRACK_GAP_MS = 600;
+/**
+ * Maket shuncha vaqt harakatini davom ettiradi yuz ko'rinmay qolsa ham: bosh
+ * burilganda yuz bir-ikki kadrga yo'qoladi, animatsiya esa har safar boshidan
+ * boshlanib sakrardi.
+ */
+const DEMO_HOLD_MS = 1_200;
 /**
  * Jonlilikdan keyingi har iz oldingi kadrdagidan shuncha uzoq bo'lsa — kadrdagi
  * yuz almashtirildi (boshqa odam yoki rasm). Ketma-ket kadrlarda bir odamniki
@@ -344,6 +354,8 @@ interface View {
   cue: CueId;
   good: boolean;
   progress: number;
+  /** Maket nima qilib ko'rsatadi. */
+  demo?: FaceDemo;
 }
 
 interface Debug {
@@ -394,7 +406,7 @@ export default function FaceCapture({
     let last: View = { phase: "loading", cue: "camera", good: false, progress: 0 };
     const show = (v: View) => {
       if (cancelled) return;
-      if (v.phase === last.phase && v.cue === last.cue && v.good === last.good && v.progress === last.progress) return;
+      if (v.phase === last.phase && v.cue === last.cue && v.good === last.good && v.progress === last.progress && v.demo === last.demo) return;
       last = v;
       setView(v);
     };
@@ -635,6 +647,7 @@ export default function FaceCapture({
           cue,
           good: face !== null,
           progress: live === null ? 0 : shots.length / need,
+          demo: live !== null || !liveSince || now - lastGoodAt > DEMO_HOLD_MS ? null : turnMode ? "turn" : "blink",
         });
         if (debug && now - lastDbgAt > 200) {
           lastDbgAt = now;
@@ -672,12 +685,14 @@ export default function FaceCapture({
           ? "ring-emerald-400"
           : "ring-amber-400";
   const showVideo = view.phase !== "error" && view.phase !== "done";
+  const showGuide = view.phase === "align" || view.phase === "live" || view.phase === "capture";
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className={`relative size-[240px] overflow-hidden rounded-full bg-black ring-4 ${ring} transition-colors`}>
+      <div className={`relative aspect-square w-full max-w-[280px] overflow-hidden rounded-full bg-black ring-4 ${ring} transition-colors`}>
         {/* Ko'zgudek — odam o'zini shunday ko'rishga o'rgangan. */}
         <video ref={videoRef} playsInline muted autoPlay className={`size-full scale-x-[-1] object-cover ${showVideo ? "" : "opacity-0"}`} />
+        {showGuide && <FaceGuide demo={view.demo ?? null} />}
         {view.phase === "loading" && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="size-10 animate-spin rounded-full border-4 border-white/30 border-t-white" />

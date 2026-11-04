@@ -1,0 +1,111 @@
+/* YUZ MAKETI (FaceGuide.tsx).
+
+   Faqat transform va opacity, har a'zo alohida qatlam: yuz aniqlash telefonda
+   asosiy oqimni yuzlab ms band qiladi, shuning uchun harakat kompozitorda
+   yurishi kerak — JS yoki <svg> ichidagi animatsiya shu paytda qotib qolardi.
+
+   prefers-reduced-motion da ham o'chmaydi: bu bezak emas, ko'rsatma. */
+
+.guide {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: guideIn .3s ease-out;
+}
+@keyframes guideIn { from { opacity: 0; } }
+
+/* Maket harakatlanganda kadr xiralashadi: harakat odamning o'z yuzi ustida yo'qolib ketmasin. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / .42);
+  opacity: 0;
+  transition: opacity .25s;
+}
+.guide[data-demo] .scrim { opacity: 1; }
+
+.features {
+  position: absolute;
+  inset: 0;
+  opacity: .55;
+  transition: opacity .25s;
+}
+.guide[data-demo] .features { opacity: 1; }
+
+.part {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.halo { stroke: rgb(15 23 42 / .5); stroke-width: 6.5; }
+.line { stroke: #fff; stroke-width: 3; }
+.eyeWhite { fill: #fff; stroke: rgb(15 23 42 / .5); stroke-width: 1.5; }
+.iris { fill: #0f172a; }
+
+/* Qatlam 240×240: foizlar shu o'lchovda, ya'ni a'zoning markazi. */
+.eyeL, .browL { transform-origin: 36.25% 45%; }
+.eyeR, .browR { transform-origin: 63.75% 45%; }
+.mouth { transform-origin: 50% 75%; }
+.lids { opacity: 0; }
+
+/* KO'Z YUMISH. Ko'z 0.7 s yumuq turadi: sekin telefonda ham bir necha kadr
+   ko'rishi uchun odam shu sur'atda takrorlashi kerak, va butun harakat
+   FaceCapture'dagi BLINK_MAX_MS (3 s) dan ancha qisqa. */
+.guide[data-demo="blink"] .eyeL,
+.guide[data-demo="blink"] .eyeR { animation: eyeBlink 2.8s ease-in-out infinite; }
+.guide[data-demo="blink"] .lids { animation: lidBlink 2.8s ease-in-out infinite; }
+
+@keyframes eyeBlink {
+  0%, 36% { transform: none; opacity: 1; }
+  47% { transform: scaleY(.2); opacity: 1; }
+  48%, 73% { transform: scaleY(.2); opacity: 0; }
+  74% { transform: scaleY(.2); opacity: 1; }
+  85%, 100% { transform: none; opacity: 1; }
+}
+@keyframes lidBlink {
+  0%, 46% { opacity: 0; }
+  48%, 73% { opacity: 1; }
+  75%, 100% { opacity: 0; }
+}
+
+/* BOSH BURISH: avval chapga, keyin o'ngga. A'zolar bosh yuzasi bo'ylab siljiydi:
+   uzoqlashgan ko'z torayadi, burun hammadan ko'p suriladi. Burilish burchagi
+   TURN_LOW/TURN_HIGH dan o'tadigan darajada. */
+.guide[data-demo="turn"] .head { animation: turnHead 4.4s ease-in-out infinite; }
+.guide[data-demo="turn"] .eyeL,
+.guide[data-demo="turn"] .browL { animation: turnSideL 4.4s ease-in-out infinite; }
+.guide[data-demo="turn"] .eyeR,
+.guide[data-demo="turn"] .browR { animation: turnSideR 4.4s ease-in-out infinite; }
+.guide[data-demo="turn"] .nose { animation: turnNose 4.4s ease-in-out infinite; }
+.guide[data-demo="turn"] .mouth { animation: turnMouth 4.4s ease-in-out infinite; }
+
+@keyframes turnHead {
+  0%, 5%, 50%, 95%, 100% { transform: none; }
+  24%, 36% { transform: translateX(-1.5%) scaleX(.97); }
+  64%, 76% { transform: translateX(1.5%) scaleX(.97); }
+}
+@keyframes turnSideL {
+  0%, 5%, 50%, 95%, 100% { transform: none; }
+  24%, 36% { transform: translateX(-8.3%) scaleX(.66); }
+  64%, 76% { transform: translateX(13.3%) scaleX(1.08); }
+}
+@keyframes turnSideR {
+  0%, 5%, 50%, 95%, 100% { transform: none; }
+  24%, 36% { transform: translateX(-13.3%) scaleX(1.08); }
+  64%, 76% { transform: translateX(8.3%) scaleX(.66); }
+}
+@keyframes turnNose {
+  0%, 5%, 50%, 95%, 100% { transform: none; }
+  24%, 36% { transform: translateX(-15%); }
+  64%, 76% { transform: translateX(15%); }
+}
+@keyframes turnMouth {
+  0%, 5%, 50%, 95%, 100% { transform: none; }
+  24%, 36% { transform: translateX(-8.3%) scaleX(.8); }
+  64%, 76% { transform: translateX(8.3%) scaleX(.8); }
+}
