@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useT } from "@/components/shared/Language";
 import FaceCapture, { type FaceCaptureResult } from "./FaceCapture";
+import { sayFaceCue, unlockFaceVoice } from "./faceVoice";
 
 // FACE ID SINOVI (/xodim/yuz-sinov, 30.10.2026). Kamera, yuz aniqlash va
 // jonlilik shu telefonda ishlaydimi — va ikki surat orasidagi masofa
@@ -32,7 +33,7 @@ function spread(list: readonly (readonly number[])[]): number {
 const fmt = (n: number) => n.toFixed(3);
 
 export default function FaceTestPage({ liveness }: { liveness: boolean }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [results, setResults] = useState<FaceCaptureResult[]>([]);
   const [running, setRunning] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -54,6 +55,7 @@ export default function FaceTestPage({ liveness }: { liveness: boolean }) {
             liveness={liveness}
             debug
             onCaptured={(r) => {
+              sayFaceCue("done");
               setResults((prev) => [...prev, r]);
               setRunning(false);
             }}
@@ -64,6 +66,7 @@ export default function FaceTestPage({ liveness }: { liveness: boolean }) {
       <button
         type="button"
         onClick={() => {
+          unlockFaceVoice(lang);
           setAttempt((a) => a + 1);
           setRunning(true);
         }}

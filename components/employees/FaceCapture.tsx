@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import FaceGuide, { type FaceDemo } from "./FaceGuide";
+import { faceVoiceAvailable, faceVoiceMuted, setFaceVoiceMuted, unlockFaceVoice, useFaceVoice, type VoiceCue } from "./faceVoice";
 
 // FACE ID — old kamera orqali yuzni olish (30.10.2026, lib/staffFace.ts).
 //
@@ -38,8 +40,8 @@ import FaceGuide, { type FaceDemo } from "./FaceGuide";
 // olishda 5 ta (server ularning bir odamligini tekshiradi), tekshiruvda 3 ta.
 // Aniqlash, iz va surat — hammasi bitta kadr nusxasidan (canvas).
 //
-// Doira ustidagi yuz maketi (FaceGuide) so'ralgan harakatni ko'rsatadi, odam
-// unga qarab takrorlaydi.
+// Doira chetidagi qahramon (FaceGuide) so'ralgan harakatni ko'rsatadi, ovoz
+// (faceVoice) aytib turadi, odam ularga qarab takrorlaydi.
 
 type FaceApi = typeof import("@vladmandic/face-api/dist/face-api.esm.js");
 type Pt = { x: number; y: number };
@@ -110,7 +112,7 @@ const FRONTAL_HIGH = 0.6;
 /** Yuz shuncha vaqt ko'rinmasa — kuzatuv uzildi, hammasi boshidan. */
 const TRACK_GAP_MS = 600;
 /**
- * Maket shuncha vaqt harakatini davom ettiradi yuz ko'rinmay qolsa ham: bosh
+ * Qahramon shuncha vaqt harakatini davom ettiradi yuz ko'rinmay qolsa ham: bosh
  * burilganda yuz bir-ikki kadrga yo'qoladi, animatsiya esa har safar boshidan
  * boshlanib sakrardi.
  */
@@ -354,8 +356,14 @@ interface View {
   cue: CueId;
   good: boolean;
   progress: number;
-  /** Maket nima qilib ko'rsatadi. */
+  /** Qahramon nima qilib ko'rsatadi. */
   demo?: FaceDemo;
+}
+
+/** Ovoz faqat odam bajaradigan ko'rsatmani aytadi; «Tayyor» — server tasdiqlagach (chaqiruvchi). */
+function spokenCue({ phase, cue }: View): VoiceCue | null {
+  if (phase === "loading" || phase === "error" || phase === "done") return null;
+  return cue === "camera" || cue === "models" || cue === "wait" || cue === "done" ? null : cue;
 }
 
 interface Debug {
@@ -387,12 +395,16 @@ export default function FaceCapture({
   /** Sinov sahifasi: ko'z ochiqligi, burilish, tezlik raqamlari. */
   debug?: boolean;
 }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const onCapturedRef = useRef(onCaptured);
   const [view, setView] = useState<View>({ phase: "loading", cue: "camera", good: false, progress: 0 });
   const [error, setError] = useState<ErrorId | null>(null);
   const [dbg, setDbg] = useState<Debug | null>(null);
+  const [muted, setMuted] = useState(faceVoiceMuted);
+  const voice = faceVoiceAvailable(lang);
+
+  useFaceVoice(voice ? spokenCue(view) : null);
 
   useEffect(() => {
     onCapturedRef.current = onCaptured;
@@ -685,24 +697,41 @@ export default function FaceCapture({
           ? "ring-emerald-400"
           : "ring-amber-400";
   const showVideo = view.phase !== "error" && view.phase !== "done";
-  const showGuide = view.phase === "align" || view.phase === "live" || view.phase === "capture";
+  const toggleVoice = () => {
+    setMuted(!muted);
+    setFaceVoiceMuted(!muted);
+    if (muted) unlockFaceVoice(lang);
+  };
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className={`relative aspect-square w-full max-w-[280px] overflow-hidden rounded-full bg-black ring-4 ${ring} transition-colors`}>
-        {/* Ko'zgudek — odam o'zini shunday ko'rishga o'rgangan. */}
-        <video ref={videoRef} playsInline muted autoPlay className={`size-full scale-x-[-1] object-cover ${showVideo ? "" : "opacity-0"}`} />
-        {showGuide && <FaceGuide demo={view.demo ?? null} />}
-        {view.phase === "loading" && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="size-10 animate-spin rounded-full border-4 border-white/30 border-t-white" />
-          </div>
-        )}
-        {view.phase === "done" && <div className="absolute inset-0 flex items-center justify-center text-[56px]">✅</div>}
-        {view.phase === "capture" && view.progress > 0 && (
-          <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/40">
-            <div className="h-full bg-emerald-400 transition-[width]" style={{ width: `${Math.round(view.progress * 100)}%` }} />
-          </div>
+      {/* Qahramon va ovoz tugmasi doira burchaklarida, doiradan biroz chiqib turadi. */}
+      <div className="relative mt-3 aspect-square w-full max-w-[280px]">
+        <div className={`absolute inset-0 overflow-hidden rounded-full bg-black ring-4 ${ring} transition-colors`}>
+          {/* Ko'zgudek — odam o'zini shunday ko'rishga o'rgangan. */}
+          <video ref={videoRef} playsInline muted autoPlay className={`size-full scale-x-[-1] object-cover ${showVideo ? "" : "opacity-0"}`} />
+          {view.phase === "loading" && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="size-10 animate-spin rounded-full border-4 border-white/30 border-t-white" />
+            </div>
+          )}
+          {view.phase === "done" && <div className="absolute inset-0 flex items-center justify-center text-[56px]">✅</div>}
+          {view.phase === "capture" && view.progress > 0 && (
+            <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/40">
+              <div className="h-full bg-emerald-400 transition-[width]" style={{ width: `${Math.round(view.progress * 100)}%` }} />
+            </div>
+          )}
+        </div>
+        {showVideo && <FaceGuide demo={view.demo ?? null} className="absolute -right-3 -top-3 w-[41%]" />}
+        {showVideo && voice && (
+          <button
+            type="button"
+            onClick={toggleVoice}
+            aria-label={muted ? t("Ovozni yoqish") : t("Ovozni o'chirish")}
+            className="absolute -left-1 -top-1 flex size-10 items-center justify-center rounded-full border border-border bg-card hover:bg-secondary"
+          >
+            {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+          </button>
         )}
       </div>
 

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/components/shared/Language";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import FaceCapture, { type FaceCaptureResult } from "./FaceCapture";
+import FaceGuide from "./FaceGuide";
+import { faceVoiceNeedsTap, sayFaceCue, unlockFaceVoice } from "./faceVoice";
 import { readLocation, useTelegramWebApp, type LocationResult } from "./useTelegramWebApp";
 
 // XODIMLAR BOTI — «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i
@@ -44,6 +46,8 @@ type FaceGate =
   | { s: "checking" }
   | { s: "off" }
   | { s: "intro" }
+  /** Har kungi tekshiruv: telefon ovozni faqat bosish ichida ochadi (faceVoice). */
+  | { s: "ready" }
   | { s: "capture"; enroll: boolean; attempt: number }
   | { s: "sending"; enroll: boolean }
   | { s: "failed"; enroll: boolean; message: string; attempt: number }
@@ -51,7 +55,7 @@ type FaceGate =
   | { s: "error"; message: string };
 
 export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { app, initData, error: sdkError } = useTelegramWebApp();
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -87,12 +91,13 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
       if (!d.required) {
         passRef.current = null;
         setGate({ s: "off" });
-      } else if (d.enrolled) setGate({ s: "capture", enroll: false, attempt: 0 });
-      else setGate({ s: "intro" });
+      } else if (!d.enrolled) setGate({ s: "intro" });
+      else if (faceVoiceNeedsTap(lang)) setGate({ s: "ready" });
+      else setGate({ s: "capture", enroll: false, attempt: 0 });
     } catch {
       setGate({ s: "error", message: t("Tarmoq xatosi — qayta urinib ko'ring") });
     }
-  }, [initData, t]);
+  }, [initData, lang, t]);
 
   const submit = useCallback(
     async (loc: LocationResult) => {
@@ -181,6 +186,7 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
           passRef.current = { pass: d.pass, at: Date.now() };
           setGate({ s: "passed", enrolled: d.enrolled === true });
           app?.HapticFeedback?.notificationOccurred?.("success");
+          sayFaceCue("done");
           void start();
           return;
         }
@@ -286,7 +292,10 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
         </div>
         <button
           type="button"
-          onClick={() => setGate({ s: "capture", enroll: true, attempt: 0 })}
+          onClick={() => {
+            unlockFaceVoice(lang);
+            setGate({ s: "capture", enroll: true, attempt: 0 });
+          }}
           className="h-12 w-full rounded-xl bg-primary text-white text-[15px] font-semibold hover:opacity-90"
         >
           {t("Roziman, boshlash")}
@@ -295,8 +304,34 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
       </div>
     );
   }
+  if (gate.s === "ready") {
+    return (
+      <div className="mx-auto max-w-md p-5 space-y-4">
+        {header}
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-3 text-center">
+          <FaceGuide demo={null} className="relative mx-auto w-28" />
+          <p className="text-[16px] font-bold">{t("Yuzingizni tasdiqlang")}</p>
+          <p className="text-[13px] text-muted-foreground">{t("Ovozni tinglang, rasmga qarab takrorlang.")}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            unlockFaceVoice(lang);
+            setGate({ s: "capture", enroll: false, attempt: 0 });
+          }}
+          className="h-12 w-full rounded-xl bg-primary text-white text-[15px] font-semibold hover:opacity-90"
+        >
+          {t("Boshlash")}
+        </button>
+        {closeButton}
+      </div>
+    );
+  }
   if (gate.s === "capture" || gate.s === "failed") {
-    const retry = () => setGate({ s: "capture", enroll: gate.enroll, attempt: gate.attempt + 1 });
+    const retry = () => {
+      unlockFaceVoice(lang);
+      setGate({ s: "capture", enroll: gate.enroll, attempt: gate.attempt + 1 });
+    };
     return (
       <div className="mx-auto max-w-md p-5 space-y-4">
         {header}
