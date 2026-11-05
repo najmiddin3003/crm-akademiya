@@ -288,15 +288,19 @@ export async function onAttendanceChanged(db: Db, e: AttendanceEvent): Promise<A
  * Davomat route'i uchun (app/api/groups/[id]/attendance): modul yoqilgan va
  * sana boshlanishdan keyin bo'lsa — joriy xodimning holatni o'zgartirish
  * huquqi (TZ 7). `active: false` — gamifikatsiya bu darsga tegmaydi.
+ *
+ * `given` — sessiyasiz chaqiruvchi (xodimlar botining Mini App'i,
+ * lib/teacherLessons.ts) amal egasini o'zi beradi; berilmasa sessiyadan.
  */
 export async function attendanceGuard(
   db: Db,
   group: { teacher?: unknown; branchId?: unknown },
   date: string,
+  given?: GamActor | null,
 ): Promise<{ active: boolean; denial: string | null; staff: TxActor | null }> {
   const settings = await loadSettings(db);
   if (!gamActiveFor(settings, date)) return { active: false, denial: null, staff: null };
-  const actor = await getGamActor(db);
+  const actor = given === undefined ? await getGamActor(db) : given;
   const g = {
     teacher: String(group.teacher ?? "").trim(),
     branchId: Number.isFinite(Number(group.branchId)) && group.branchId !== null ? Number(group.branchId) : 1,

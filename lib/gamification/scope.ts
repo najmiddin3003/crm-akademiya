@@ -22,7 +22,7 @@ export interface GamGroup {
   status: string;
 }
 
-const normName = (s: unknown) => String(s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+export const normName = (s: unknown) => String(s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 
 /** Guruh shu ustozniki (ism bo'yicha). */
 export function isOwnGroup(actor: Pick<GamActor, "role" | "name">, g: Pick<GamGroup, "teacher">): boolean {

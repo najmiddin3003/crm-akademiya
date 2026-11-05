@@ -80,6 +80,15 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
   sababsiz: "Sababsiz",
 };
 
+/** Davomat xabari sarlavhasi (05.11.2026, egasi: «darsga keldi deb belgilandingiz … kelmadingiz»). */
+const ATTENDANCE_PUSH_TITLE: Record<AttendanceStatus, string> = {
+  keldi: "Darsga keldi deb belgilandingiz",
+  kechikdi: "Darsga kechikib keldi deb belgilandingiz",
+  birinchi: "Darsga keldi deb belgilandingiz",
+  sababli: "Darsga kelmadingiz (sababli)",
+  sababsiz: "Darsga kelmadingiz",
+};
+
 /** Bo'lim sarlavhasi ostidagi "kim haqida" qatori — har bir ekranda takrorlanadi. */
 function whoLine(pupil: Pupil): string {
   return `<i>${esc(pupilFullName(pupil))}</i>`;
@@ -615,7 +624,7 @@ export function attendancePush(
   opts: { date: string; status: AttendanceStatus; grade: number | null; reason: string | null; groupName: string },
 ): string {
   const lines = [
-    `${STATUS_EMOJI[opts.status]} <b>Davomat: ${STATUS_LABEL[opts.status]}</b>`,
+    `${STATUS_EMOJI[opts.status]} <b>${ATTENDANCE_PUSH_TITLE[opts.status]}</b>`,
     "",
     `👤 ${esc(pupilFullName(pupil))}`,
     `📅 ${dmy(opts.date)}`,

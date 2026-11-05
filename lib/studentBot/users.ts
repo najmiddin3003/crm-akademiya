@@ -238,6 +238,11 @@ export async function chatsForPupil(db: Db, pupilId: number): Promise<number[]> 
   return rows.map((r) => Number(r.chatId)).filter((n) => Number.isFinite(n));
 }
 
+/** O'quvchiga bog'langan, lekin botni bloklagan suhbat bormi (`chatsForPupil` ularni tashlaydi). */
+export async function pupilHasBlockedChat(db: Db, pupilId: number): Promise<boolean> {
+  return (await db.collection(BOT_USERS).countDocuments({ "links.pupilId": pupilId, blocked: true }, { limit: 1 })) > 0;
+}
+
 /** Joriy tanlangan farzandning bog'lanishi (roli bilan). */
 export function activeLink(user: StudentBotUser): BotUserLink | null {
   return user.links.find((l) => l.pupilId === user.activePupilId) ?? user.links[0] ?? null;

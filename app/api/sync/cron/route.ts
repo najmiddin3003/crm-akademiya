@@ -8,6 +8,7 @@ import { runDueReminders } from "@/lib/studentBot/notify";
 import { runGamificationNightly } from "@/lib/gamification/competition";
 import { runAutomation } from "@/lib/staffTasksServer";
 import { runTaskReminders } from "@/lib/staffTaskReminders";
+import { runDayReminders } from "@/lib/staffBot/dayReminders";
 
 // GET /api/sync/cron — kunlik tekshiruv (sutkasiga bir marta).
 //
@@ -84,6 +85,15 @@ async function handle(req: Request) {
     const moved = await runAutomation(db, { force: true });
     const reminders = await runTaskReminders(db);
     return NextResponse.json({ ok: true, tasks: moved, reminders });
+  }
+
+  // `?only=lessons` — HAR DAQIQADA (05.11.2026, deploy/cron-lessons.sh): xodimlar
+  // botidagi 08:00 «Ishga keldim» eslatmasi va darsdan 10 daqiqa oldingi «Davomatni
+  // boshlang» xabari (lib/staffBot/dayReminders.ts). 10 daqiqalik cron bu aniqlikka
+  // yetmaydi; ish esa yengil — aktiv guruhlardan bitta so'rov.
+  if (new URL(req.url).searchParams.get("only") === "lessons") {
+    const db = await ensureIndexes();
+    return NextResponse.json({ ok: true, ...(await runDayReminders(db)) });
   }
 
   // `?preview=digest` — oyliklar xulosasini YUBORMASDAN ko'rish.

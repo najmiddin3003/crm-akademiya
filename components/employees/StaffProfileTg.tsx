@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/components/shared/Language";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { EmployeeProfileView } from "./EmployeeProfilePage";
+import { LessonSheetView, LessonsCard } from "./StaffLessonsTg";
 import { useTelegramWebApp } from "./useTelegramWebApp";
 
 // XODIMLAR BOTI — «👤 Profilim» Mini App qobig'i (28.09.2026).
@@ -14,15 +15,20 @@ import { useTelegramWebApp } from "./useTelegramWebApp";
 // /api/xodim/data orqali ketadi — u javobni xodimning o'z ma'lumotigacha
 // kesadi. Xodim id'si klientdan olinmaydi: server uni botdagi kirishdan
 // topadi (lib/staffBot/webapp.ts).
+//
+// O'QITUVCHI DAVOMATI (05.11.2026): profil tepasida bugungi darslar, bosilsa
+// o'sha guruhning davomati (StaffLessonsTg.tsx). `guruh` — «Davomatni boshlang»
+// xabaridagi tugma shu guruhni to'g'ridan-to'g'ri ochib keladi.
 
 /** Mini App'da tranzaksiya turlari katalogi yuklanmaydi — filtr yozuvlardagi nomlardan. */
 const NO_TX_TYPES: string[] = [];
 
-export default function StaffProfileTg() {
+export default function StaffProfileTg({ guruh = null }: { guruh?: number | null }) {
   const { t } = useT();
-  const { initData, error: sdkError } = useTelegramWebApp();
+  const { app, initData, error: sdkError } = useTelegramWebApp();
   const [me, setMe] = useState<{ id: number; name: string } | null>(null);
   const [error, setError] = useState("");
+  const [sheetId, setSheetId] = useState<number | null>(guruh);
 
   useEffect(() => {
     if (!initData) return;
@@ -63,5 +69,13 @@ export default function StaffProfileTg() {
     );
   }
   if (!me) return <SpinnerBlock />;
-  return <EmployeeProfileView id={me.id} txTypeNames={NO_TX_TYPES} readOnly getJson={getJson} />;
+  if (sheetId !== null) {
+    return <LessonSheetView groupId={sheetId} initData={initData ?? ""} app={app} onBack={() => setSheetId(null)} />;
+  }
+  return (
+    <>
+      <LessonsCard initData={initData ?? ""} onOpen={setSheetId} />
+      <EmployeeProfileView id={me.id} txTypeNames={NO_TX_TYPES} readOnly getJson={getJson} />
+    </>
+  );
 }

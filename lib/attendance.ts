@@ -104,7 +104,45 @@ export interface AttendanceMark {
   reason?: string | null;
   /** Erkin izoh matni. */
   note?: string | null;
+  /** O'quvchiga bot xabari ketdimi (lib/studentBot/notify.ts → notifyAttendance). */
+  botNotice?: AttendanceBotNotice;
 }
+
+/**
+ * Davomat xabari taqdiri — `attendance.botNotice`. Egasi (05.11.2026): «bazaga
+ * yozilsin yuborilgan yuborilmagani». `reason`:
+ *   sent       — kamida bitta suhbatga yetdi;
+ *   not_linked — o'quvchi (va ota-onasi) botga ulanmagan;
+ *   push_off   — avtomatik xabarlar o'chiq (STUDENT_BOT_PUSH_ENABLED);
+ *   no_bot     — bot kaliti sozlanmagan;
+ *   no_pupil   — o'quvchi kartasi topilmadi;
+ *   blocked    — hamma suhbat botni bloklagan;
+ *   failed     — Telegram xatosi.
+ */
+export interface AttendanceBotNotice {
+  sent: boolean;
+  reason: "sent" | "not_linked" | "push_off" | "no_bot" | "no_pupil" | "blocked" | "failed";
+  /** O'quvchiga bog'langan suhbatlar soni (o'zi, onasi, otasi). */
+  chats: number;
+  /** Shulardan nechtasiga yetdi. */
+  delivered: number;
+  /** Xabar qaysi holat haqida edi. */
+  status: AttendanceStatus;
+  /** ISO lahza. */
+  at: string;
+}
+
+/** «Keldi» hisoblanadigan holatlar (kechikib kelgan va birinchi darsi ham). */
+export const cameStatus = (s: AttendanceStatus | null | undefined): boolean => s === "keldi" || s === "kechikdi" || s === "birinchi";
+
+/**
+ * Dars ro'yxatiga kirmaydigan o'quvchi (muzlatilgan / arxiv) — guruh sahifasidagi
+ * «Bugungi dars» va xodimlar botidagi davomat (lib/teacherLessons.ts) uchun bitta qoida.
+ */
+export const isFrozenPupil = (status: unknown): boolean => {
+  const s = String(status ?? "Aktiv");
+  return s === "Muzlatilgan" || s === "Arxiv";
+};
 
 // JS `getDay()`: 0=Yakshanba, 1=Dushanba ... 6=Shanba.
 const DU = 1, SE = 2, CH = 3, PA = 4, JU = 5, SH = 6, YA = 0;

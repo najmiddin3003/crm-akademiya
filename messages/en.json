@@ -6657,5 +6657,11 @@
   "Tugagan oy — faqat ko'rish uchun": "Month is over — view only",
   "{month} oyidan": "from {month}",
   "{month} oyidan qarzdorlik": "debt from {month}",
-  " O'tgan oylardan qo'shilgan {amount} ayrilmaydi — u o'z oyida ayrilgan.": " The {amount} added from previous months is not deducted — it was deducted in its own month."
+  " O'tgan oylardan qo'shilgan {amount} ayrilmaydi — u o'z oyida ayrilgan.": " The {amount} added from previous months is not deducted — it was deducted in its own month.",
+  "Bugungi darslar": "Today's lessons",
+  "Bugun darsingiz yo'q": "You have no lessons today",
+  "Darslar yuklanmadi": "Lessons failed to load",
+  "Davomat yuklanmadi": "Attendance failed to load",
+  "Bu guruh sizga biriktirilmagan": "This group is not assigned to you",
+  "Bu guruhda bugun dars yo'q": "This group has no lesson today"
 }

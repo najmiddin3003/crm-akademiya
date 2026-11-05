@@ -1,6 +1,6 @@
 import type { InlineButton, InlineKeyboard, ReplyKeyboard } from "@/lib/telegramApi";
 import type { BotCashbox } from "@/lib/staffBot/auth";
-import { staffCheckinUrl, staffProfileUrl } from "@/lib/staffBot/config";
+import { staffCheckinUrl, staffLessonUrl, staffProfileUrl } from "@/lib/staffBot/config";
 
 // Tugmalar va ular ortidagi KALITLAR.
 //
@@ -145,7 +145,12 @@ export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checko
   };
 }
 
-/** Eski QR havolasi ochilganda — «Ishga keldim» tugmasiga yo'naltirish. */
+/** «Davomatni boshlang» xabari (lib/staffBot/dayReminders.ts) — Mini App shu guruhni ochadi. */
+export function lessonPushKeyboard(groupId: number): InlineKeyboard {
+  return { inline_keyboard: [[{ text: "📋 Davomatni boshlash", web_app: { url: staffLessonUrl(groupId) } }]] };
+}
+
+/** Eski QR havolasi va 08:00 eslatmasi — «Ishga keldim» tugmalari. */
 export function checkinKeyboard(checkoutEnabled: boolean): InlineKeyboard {
   return { inline_keyboard: [checkinRow(checkoutEnabled), [btn("🏠 Bosh menyu", CB.menu)]] };
 }

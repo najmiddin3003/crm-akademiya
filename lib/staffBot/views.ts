@@ -951,6 +951,47 @@ export function taskNeedsPassword(): string {
   return "🔑 Tasdiqlash va qaytarish uchun parol bilan kiring — bosh menyudagi «Parol bilan kirish».";
 }
 
+// Kunlik eslatmalar (lib/staffBot/dayReminders.ts, 05.11.2026).
+
+export function checkinReminderPush(name: string): string {
+  return [
+    `☀️ <b>Xayrli tong, ${esc(name)}!</b>`,
+    "",
+    "Ishga kelganingizda davomatni belgilashni unutmang — pastdagi tugmani bosing.",
+  ].join("\n");
+}
+
+export interface LessonReminder {
+  name: string;
+  group: string;
+  level: string;
+  day: string;
+  time: string;
+  /** Dars boshlanishi, "HH:MM". */
+  start: string;
+  room: string;
+  branch: string;
+  pupils: number;
+}
+
+export function lessonReminderPush(r: LessonReminder): string {
+  const lines = [
+    "🔔 <b>Davomatni boshlang</b>",
+    "",
+    `Hurmatli <b>${esc(r.name)}</b>, darsingiz <b>${esc(r.start)}</b> da boshlanadi.`,
+    "",
+    `👥 Guruh: <b>${esc(r.group)}</b>`,
+  ];
+  if (r.level) lines.push(`📈 Daraja: ${esc(r.level)}`);
+  if (r.day) lines.push(`📅 Kunlar: ${esc(r.day)}`);
+  lines.push(`🕐 Vaqti: ${esc(r.time)}`);
+  if (r.room) lines.push(`🚪 Xona: ${esc(r.room)}`);
+  if (r.branch) lines.push(`🏢 Filial: ${esc(r.branch)}`);
+  lines.push(`👨‍🎓 O'quvchilar: ${r.pupils} ta`);
+  lines.push("", "Davomatni pastdagi tugmadan belgilang.");
+  return lines.join("\n");
+}
+
 // Push xabarlar (lib/staffBot/taskNotify.ts) — tizim o'zi yozadi.
 
 export function taskNewPush(t: StaffTaskDoc, nowMs: number): string {

@@ -13,6 +13,7 @@ uchun to'plam:
 | `nginx.conf.template` | Teskari proksi; `tizimli24.uz` → `www.tizimli24.uz` |
 | `cron.sh` | Kunlik `/api/sync/cron` (Vercel Cron o'rniga) |
 | `cron-tasks.sh` | Har 10 daqiqa `/api/sync/cron?only=tasks` — topshiriq avtomatikasi va botdagi muddat eslatmalari |
+| `cron-lessons.sh` | Har daqiqa `/api/sync/cron?only=lessons` — botdagi 08:00 «Ishga keldim» eslatmasi va darsdan 10 daqiqa oldingi xabar |
 
 Server: 2 yadro / 4 GB / 80 GB NVMe — `next build` uchun 2 GB swap
 qo'shiladi, ilovaga 1,5 GB chegara. Barcha buyruqlar Toshkentdagi
@@ -191,6 +192,20 @@ Topshiriq avtomatikasi (muddati o'tdi, jarima) va xodimlar botidagi muddat
 eslatmalari (lib/staffTaskReminders.ts) CRM'ni hech kim ochmagan paytda ham
 yursin. Muvaffaqiyatda log yozilmaydi. Qo'lda sinov:
 `bash /var/www/crm/shared/cron-tasks.sh && echo ok`.
+
+**Kunlik eslatmalar (05.11.2026)** — uchinchi qator, HAR DAQIQADA
+(`deploy/cron-lessons.sh`, deploy.sh uni `shared/` ga o'zi ko'chiradi; standalone
+markaz serverida `shared/` ga qo'lda qo'yiladi — deploy-standalone.sh cron
+skriptlarini ko'chirmaydi):
+
+```
+* * * * * /var/www/crm/shared/cron-lessons.sh >> /var/www/crm/shared/logs/cron-lessons.log 2>&1
+```
+
+Xodimlar botida har kuni 08:00 da «Ishga keldim» eslatmasi va har guruh darsidan
+10 daqiqa oldin ustozga «Davomatni boshlang» (lib/staffBot/dayReminders.ts). Bu
+qatorsiz eslatmalar umuman ketmaydi. Xabar bir marta ketadi: `staff_bot_reminders`
+noyob kaliti. Muvaffaqiyatda log yozilmaydi.
 
 ## 11. Vercel'ni to'xtatish
 

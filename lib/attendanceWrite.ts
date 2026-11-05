@@ -9,6 +9,7 @@ import {
 } from "./attendance";
 import { withBranch, type BranchScope } from "./branchScope";
 import type { AdjustDeps } from "./cashboxAdjust";
+import type { GamActor } from "./gamification/actor";
 import { attendanceGuard, onAttendanceChanged, type AttendanceEvent } from "./gamification/attendance";
 import type { Group } from "./groups";
 import { notifyAttendance } from "./studentBot/notify";
@@ -75,6 +76,9 @@ export async function attendanceGamEvent(db: Db, e: AttendanceEvent): Promise<vo
  *
  * `deps.defer` — o'quvchilar botining "davomat belgilandi" xabari (route'da
  * `after`): bir darsda 15-20 o'quvchi belgilanadi, hech biri kutmasin.
+ *
+ * `actor` — sessiyasiz chaqiruvchi (xodimlar botining Mini App'i,
+ * lib/teacherLessons.ts) cheklov kimga qarab yechilishini o'zi beradi.
  */
 export async function saveAttendanceMark(
   db: Db,
@@ -82,6 +86,7 @@ export async function saveAttendanceMark(
   input: AttendanceInput,
   author: string,
   deps: AdjustDeps,
+  actor?: GamActor | null,
 ): Promise<AttendanceOutcome> {
   const { groupId, pupilId, date } = input;
   const status = input.status ?? null;
@@ -112,17 +117,26 @@ export async function saveAttendanceMark(
   const key = { groupId, pupilId, date };
   const col = db.collection<AttendanceMark>("attendance");
 
-  const guard = await attendanceGuard(db, group as Group & { branchId?: number }, date);
+  const guard = await attendanceGuard(db, group as Group & { branchId?: number }, date, actor);
   if (guard.active && guard.denial) {
     const existing = await col.findOne(key, { projection: { _id: 0, status: 1 } });
     if ((existing?.status ?? null) !== status) return { ok: false, error: guard.denial, status: 403 };
   }
 
   // Har bir o'zgarish tarixga yoziladi ("Tarixi" bo'limi) — eskisi o'chmaydi.
+  // `id` noyob: bir paytda ikki ustoz saqlasa (dars boshlanishi, botdan) ikkalasi
+  // bir raqamni olishi mumkin — ikkinchisi keyingi raqam bilan qayta urinadi.
   const writeHistory = async (entry: Omit<AttendanceHistoryEntry, "id" | "author" | "createdAt">) => {
     const hist = db.collection("attendance_history");
-    const last = await hist.find({}).sort({ id: -1 }).limit(1).toArray();
-    await hist.insertOne({ id: (last[0]?.id ?? 0) + 1, author: author || "Noma'lum", createdAt: fmtNow(new Date()), ...entry });
+    for (let attempt = 0; ; attempt++) {
+      const last = await hist.find({}).sort({ id: -1 }).limit(1).toArray();
+      try {
+        await hist.insertOne({ id: (last[0]?.id ?? 0) + 1, author: author || "Noma'lum", createdAt: fmtNow(new Date()), ...entry });
+        return;
+      } catch (e) {
+        if (attempt >= 4 || (e as { code?: number } | null)?.code !== 11000) throw e;
+      }
+    }
   };
 
   if (status === null) {
@@ -153,6 +167,7 @@ export async function saveAttendanceMark(
   // uyg'otadi. `notifyAttendance` o'zi hech qachon otmaydi.
   deps.defer(() =>
     notifyAttendance(db, {
+      groupId,
       pupilId,
       date,
       status,

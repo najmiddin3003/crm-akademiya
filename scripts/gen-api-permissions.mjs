@@ -74,6 +74,9 @@ const PUBLIC = [
   // Face ID (30.10.2026) — o'sha Mini App'da yuzni ro'yxatga olish/tekshirish
   // (app/api/xodim/yuz, lib/staffFace.ts); xodim initData'dan.
   "/api/xodim/yuz",
+  // O'qituvchi davomati (05.11.2026) — o'sha Mini App'da bugungi darslar va
+  // belgilash (app/api/xodim/dars, lib/teacherLessons.ts); xodim initData'dan.
+  "/api/xodim/dars",
   // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
   // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
   // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).

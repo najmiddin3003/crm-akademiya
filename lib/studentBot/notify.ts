@@ -1,13 +1,13 @@
 import type { Db } from "mongodb";
-import type { AttendanceStatus } from "@/lib/attendance";
+import type { AttendanceBotNotice, AttendanceStatus } from "@/lib/attendance";
 import { sendToStudent } from "@/lib/studentBot/api";
-import { isStudentBotReady, loadStudentBotConfig, studentBotPushEnabled } from "@/lib/studentBot/config";
+import { isStudentBotReady, loadStudentBotConfig, studentBotPushEnabled, type StudentBotConfig } from "@/lib/studentBot/config";
 import type { Group } from "@/lib/groups";
 import { logSms } from "@/lib/smsLog";
 import { loadPupil } from "@/lib/studentBot/data";
 import { currentPeriodMonth, linkedPupilsOwing } from "@/lib/studentBot/dues";
 import { pupilFullName } from "@/lib/pupilsData";
-import { chatsForPupil, markBlocked, type NotifyKind } from "@/lib/studentBot/users";
+import { chatsForPupil, markBlocked, pupilHasBlockedChat, type NotifyKind } from "@/lib/studentBot/users";
 import * as V from "@/lib/studentBot/views";
 import { uzNow } from "@/lib/uzTime";
 
@@ -29,6 +29,30 @@ import { uzNow } from "@/lib/uzTime";
 //    hech narsa yuborilmaydi — bot ishga tushgan zahoti minglab
 //    o'quvchiga xabar yog'ilib ketmasin (lib/studentBot/config.ts).
 
+/** Suhbatlar ro'yxatiga yuboradi: nechtasiga yetdi, nechtasi bloklagan. */
+async function sendToChats(
+  db: Db,
+  cfg: StudentBotConfig,
+  chats: number[],
+  kind: NotifyKind,
+  html: string,
+): Promise<{ sent: number; blocked: number }> {
+  const out = { sent: 0, blocked: 0 };
+  for (const chatId of chats) {
+    const res = await sendToStudent(cfg, chatId, html);
+    if (res.ok) {
+      out.sent++;
+    } else if (res.blocked) {
+      // Bloklagan odamga har davomatda qayta urinish bekorga so'rov.
+      out.blocked++;
+      await markBlocked(db, chatId);
+    } else {
+      console.error(`[student-bot] push (${kind}, chat ${chatId}):`, res.error);
+    }
+  }
+  return out;
+}
+
 /**
  * Bitta o'quvchiga bog'langan HAMMA chatga yuboradi (o'zi, onasi, otasi).
  *
@@ -38,24 +62,11 @@ import { uzNow } from "@/lib/uzTime";
 async function fanOut(db: Db, pupilId: number, kind: NotifyKind, html: string): Promise<number> {
   const cfg = loadStudentBotConfig();
   if (!isStudentBotReady(cfg)) return 0;
-
-  const chats = await chatsForPupil(db, pupilId);
-  let sent = 0;
-  for (const chatId of chats) {
-    const res = await sendToStudent(cfg, chatId, html);
-    if (res.ok) {
-      sent++;
-    } else if (res.blocked) {
-      // Bloklagan odamga har davomatda qayta urinish bekorga so'rov.
-      await markBlocked(db, chatId);
-    } else {
-      console.error(`[student-bot] push (${kind}, chat ${chatId}):`, res.error);
-    }
-  }
-  return sent;
+  return (await sendToChats(db, cfg, await chatsForPupil(db, pupilId), kind, html)).sent;
 }
 
 export interface AttendanceNotice {
+  groupId: number;
   pupilId: number;
   /** "YYYY-MM-DD" */
   date: string;
@@ -65,15 +76,43 @@ export interface AttendanceNotice {
   groupName: string;
 }
 
-/** Davomat belgilanganda — o'quvchiga xabar. */
+type NoticeOutcome = Pick<AttendanceBotNotice, "reason" | "chats" | "delivered">;
+
+/** Xabarni yuboradi va NIMA BO'LGANINI qaytaradi — yuborilmagani ham sababi bilan. */
+async function deliverAttendance(db: Db, notice: AttendanceNotice): Promise<NoticeOutcome> {
+  const list = await chatsForPupil(db, notice.pupilId);
+  const chats = list.length;
+  if (chats === 0) return { reason: (await pupilHasBlockedChat(db, notice.pupilId)) ? "blocked" : "not_linked", chats, delivered: 0 };
+  if (!studentBotPushEnabled()) return { reason: "push_off", chats, delivered: 0 };
+  const cfg = loadStudentBotConfig();
+  if (!isStudentBotReady(cfg)) return { reason: "no_bot", chats, delivered: 0 };
+  const pupil = await loadPupil(db, notice.pupilId);
+  if (!pupil) return { reason: "no_pupil", chats, delivered: 0 };
+  const { sent, blocked } = await sendToChats(db, cfg, list, "attendance", V.attendancePush(pupil, notice));
+  return { reason: sent > 0 ? "sent" : blocked === chats ? "blocked" : "failed", chats, delivered: sent };
+}
+
+/**
+ * Davomat belgilanganda — o'quvchiga xabar. Natija shu belgining o'ziga
+ * yoziladi (`attendance.botNotice`, 05.11.2026, egasi: «bazaga yozilsin
+ * yuborilgan yuborilmagani»): bot hali o'quvchilarda yo'q, ya'ni ko'pchiligi
+ * «not_linked» bo'ladi, lekin ulanganlar yetib-yetmagani ko'rinib turadi.
+ * Belgi o'chirilgan bo'lsa yangilash hech narsa qilmaydi.
+ */
 export async function notifyAttendance(db: Db, notice: AttendanceNotice): Promise<void> {
+  let outcome: NoticeOutcome = { reason: "failed", chats: 0, delivered: 0 };
   try {
-    if (!studentBotPushEnabled()) return;
-    const pupil = await loadPupil(db, notice.pupilId);
-    if (!pupil) return;
-    await fanOut(db, notice.pupilId, "attendance", V.attendancePush(pupil, notice));
+    outcome = await deliverAttendance(db, notice);
   } catch (e) {
     console.error("[student-bot] davomat xabari:", e instanceof Error ? e.message : e);
+  }
+  try {
+    const botNotice: AttendanceBotNotice = { sent: outcome.reason === "sent", ...outcome, status: notice.status, at: new Date().toISOString() };
+    await db
+      .collection("attendance")
+      .updateOne({ groupId: notice.groupId, pupilId: notice.pupilId, date: notice.date }, { $set: { botNotice } });
+  } catch (e) {
+    console.error("[student-bot] davomat xabari natijasi yozilmadi:", e instanceof Error ? e.message : e);
   }
 }
 

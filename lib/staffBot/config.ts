@@ -103,6 +103,14 @@ export function staffCheckinUrl(kind: "in" | "out"): string {
   return `${staffProfileUrl()}/keldim${kind === "out" ? "?k=out" : ""}`;
 }
 
+/**
+ * «Davomatni boshlang» xabaridagi tugma (05.11.2026) — «👤 Profilim» Mini App'i
+ * shu guruhning bugungi davomatini ochib keladi (app/xodim/page.tsx).
+ */
+export function staffLessonUrl(groupId: number): string {
+  return `${staffProfileUrl()}?guruh=${groupId}`;
+}
+
 export function isStaffBotReady(cfg: StaffBotConfig): boolean {
   return cfg.token.length > 0;
 }

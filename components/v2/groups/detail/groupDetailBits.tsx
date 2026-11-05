@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Minus, X, type LucideIcon } from "lucide-react";
-import { lessonDates, parsePeriod, type AttendanceMark, type AttendanceStatus } from "@/lib/attendance";
+import { cameStatus, lessonDates, parsePeriod, type AttendanceMark, type AttendanceStatus } from "@/lib/attendance";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import { toUz } from "@/lib/uzTime";
@@ -20,7 +20,7 @@ export type Member = Pupil & { joinedAt?: string | null; status?: string };
 export type DayStatus = "keldi" | "sababsiz" | "sababli";
 
 /** «Keldi» hisoblanadigan holatlar (kechikib kelgan va birinchi darsi ham). */
-export const cameStatus = (s: AttendanceStatus | null | undefined): boolean => s === "keldi" || s === "kechikdi" || s === "birinchi";
+export { cameStatus };
 
 /** Bazadagi holat → uch tugmadan biri; kechikdi / birinchi dars — «Keldi». */
 export function dayStatusOf(s: AttendanceStatus | null | undefined): DayStatus | null {
@@ -37,10 +37,7 @@ export const DAY_STATUS_UI: Record<DayStatus, { label: string; icon: LucideIcon;
 export const DAY_STATUSES: DayStatus[] = ["keldi", "sababsiz", "sababli"];
 
 /** O'quvchi ishlamaydigan holat (muzlatilgan / arxiv) — dars ro'yxatiga kirmaydi. */
-export const isFrozenPupil = (status: unknown): boolean => {
-  const s = String(status ?? "Aktiv");
-  return s === "Muzlatilgan" || s === "Arxiv";
-};
+export { isFrozenPupil } from "@/lib/attendance";
 
 export const memberName = (p: Pick<Pupil, "firstName" | "lastName">) => `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
 
