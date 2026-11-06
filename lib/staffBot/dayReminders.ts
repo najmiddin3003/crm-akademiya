@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { alertCovers, alertRecipients, loadAttendanceAlert, MISSED_ALERT_AFTER_MIN, sinceMinute } from "@/lib/attendanceAlert";
 import { QR_SOURCE } from "@/lib/attendanceCheck";
 import { loadAttendanceSettings } from "@/lib/attendanceQr";
 import { branchNames, normName } from "@/lib/gamification/scope";
@@ -8,8 +9,9 @@ import { isStaffBotReady, loadStaffBotConfig, type StaffBotConfig } from "@/lib/
 import { checkinKeyboard, lessonPushKeyboard } from "@/lib/staffBot/keyboards";
 import { markBlocked, STAFF_BOT_USERS, type StaffBotUser } from "@/lib/staffBot/session";
 import * as V from "@/lib/staffBot/views";
+import { formatPhone, phoneKey } from "@/lib/studentBot/phone";
 import { telegramMuted, type InlineKeyboard } from "@/lib/telegramApi";
-import { describeLesson, LESSON_GROUP_FIELDS, lessonsStartingSoon, uzClock, type LessonGroup, type UzClock } from "@/lib/teacherLessons";
+import { describeLesson, LESSON_GROUP_FIELDS, lessonBranchId, lessonsEndedBy, lessonsStartingSoon, uzClock, type LessonGroup, type UzClock } from "@/lib/teacherLessons";
 
 // XODIMLAR BOTI — KUNLIK ESLATMALAR (05.11.2026). Egasi: «har kuni soat 8:00 da
 // bot davomat habarnomasini eslatsin va habar pastida tugmada ishga keldim shu
@@ -19,6 +21,10 @@ import { describeLesson, LESSON_GROUP_FIELDS, lessonsStartingSoon, uzClock, type
 //   08:00 — botga kirgan HAMMA xodimga, har kuni. Shu kuni ishga kelganini
 //           belgilagan bo'lsa yozilmaydi.
 //   −10 daqiqa — guruh ustoziga (ism bo'yicha, ismdoshlarning ikkalasiga ham).
+//   +10 daqiqa — dars tugab, davomat belgilanmagan bo'lsa rahbarga (sozlama yoqilgan
+//           bo'lsa, lib/attendanceAlert.ts). Bir paytda muddati kelgan guruhlar bitta
+//           xabarda: hozircha kuniga 40 tagacha guruh chiqadi, har biriga alohida xabar
+//           suhbatni to'ldirardi.
 //
 // HAR DAQIQADA yuradi: /api/sync/cron?only=lessons (deploy/cron-lessons.sh),
 // topshiriqlarning 10 daqiqalik cron'i bunday aniqlikka yetmaydi. Shu bois ish
@@ -36,11 +42,11 @@ export const STAFF_BOT_REMINDERS = "staff_bot_reminders";
 const MORNING_FROM_MIN = 8 * 60;
 const MORNING_TO_MIN = 10 * 60;
 
-type ReminderReason = "sent" | "blocked" | "checked_in" | "no_access";
+type ReminderReason = "sent" | "blocked" | "checked_in" | "no_access" | "marked" | "no_pupil";
 
 interface ReminderDoc {
   _id: string;
-  kind: "checkin" | "lesson";
+  kind: "checkin" | "lesson" | "missed";
   day: string;
   chatId: number;
   groupId?: number;
@@ -60,6 +66,7 @@ export interface DayRemindersReport {
   skipped?: "muted" | "no_bot" | "busy";
   checkin: Tally;
   lessons: Tally;
+  missed: Tally;
 }
 
 const tally = (): Tally => ({ sent: 0, blocked: 0, failed: 0, skipped: 0 });
@@ -83,22 +90,23 @@ async function claim(db: Db, c: Claim, reason: ReminderReason | null): Promise<b
   }
 }
 
-/** Egallaydi va yuboradi. Natija shu yozuvda qoladi. */
-async function deliver(db: Db, cfg: StaffBotConfig, c: Claim, html: string, keyboard: InlineKeyboard, out: Tally): Promise<void> {
-  if (!(await claim(db, c, null))) return;
+/** Egallangan eslatmalar bitta xabarda (hammasi bitta suhbatga). Natija shu yozuvlarda qoladi. */
+async function sendClaimed(db: Db, cfg: StaffBotConfig, claims: Claim[], html: string, keyboard: InlineKeyboard | undefined, out: Tally): Promise<void> {
+  const { chatId } = claims[0];
+  const mine = { _id: { $in: claims.map((c) => c._id) } };
   const col = reminders(db);
   let error: unknown;
   try {
-    const res = await sendToStaff(cfg, c.chatId, html, keyboard);
+    const res = await sendToStaff(cfg, chatId, html, keyboard);
     if (res.ok) {
-      await col.updateOne({ _id: c._id }, { $set: { sent: true, reason: "sent" } });
-      out.sent += 1;
+      await col.updateMany(mine, { $set: { sent: true, reason: "sent" } });
+      out.sent += claims.length;
       return;
     }
     if (res.blocked) {
-      await col.updateOne({ _id: c._id }, { $set: { reason: "blocked" } });
-      await markBlocked(db, c.chatId);
-      out.blocked += 1;
+      await col.updateMany(mine, { $set: { reason: "blocked" } });
+      await markBlocked(db, chatId);
+      out.blocked += claims.length;
       return;
     }
     error = res.error;
@@ -106,9 +114,14 @@ async function deliver(db: Db, cfg: StaffBotConfig, c: Claim, html: string, keyb
     error = e instanceof Error ? e.message : e;
   }
   // Vaqtinchalik xato — egallash bo'shatiladi, keyingi daqiqada qayta uriniladi.
-  await col.deleteOne({ _id: c._id });
-  out.failed += 1;
-  console.error(`[staff-bot] eslatma ketmadi (${c._id}):`, error);
+  await col.deleteMany(mine);
+  out.failed += claims.length;
+  console.error(`[staff-bot] eslatma ketmadi (${claims[0]._id}):`, error);
+}
+
+/** Egallaydi va yuboradi. */
+async function deliver(db: Db, cfg: StaffBotConfig, c: Claim, html: string, keyboard: InlineKeyboard, out: Tally): Promise<void> {
+  if (await claim(db, c, null)) await sendClaimed(db, cfg, [c], html, keyboard, out);
 }
 
 /** Sababi bilan o'tkazib yuboriladi — bugun qayta tekshirilmasin. */
@@ -146,8 +159,7 @@ async function sendCheckinReminders(db: Db, cfg: StaffBotConfig, clock: UzClock,
   }
 }
 
-async function sendLessonReminders(db: Db, cfg: StaffBotConfig, clock: UzClock, out: Tally): Promise<void> {
-  const active = await db.collection<LessonGroup>("groups").find({ status: "active" }, { projection: LESSON_GROUP_FIELDS }).toArray();
+async function sendLessonReminders(db: Db, cfg: StaffBotConfig, clock: UzClock, active: LessonGroup[], out: Tally): Promise<void> {
   const soon = lessonsStartingSoon(active, clock);
   if (!soon.length) return;
 
@@ -194,11 +206,68 @@ async function sendLessonReminders(db: Db, cfg: StaffBotConfig, clock: UzClock, 
   }
 }
 
+/** Dars tugadi, davomat yo'q — rahbarga. Bir paytda muddati kelgan guruhlar bitta xabarda. */
+async function sendMissedAttendance(db: Db, cfg: StaffBotConfig, clock: UzClock, active: LessonGroup[], out: Tally): Promise<void> {
+  const settings = await loadAttendanceAlert(db);
+  if (!settings.enabled) return;
+  const due = lessonsEndedBy(active, clock, MISSED_ALERT_AFTER_MIN, sinceMinute(settings, clock));
+  if (!due.length) return;
+
+  const keyOf = (groupId: number, chatId: number) => `missed:${clock.iso}:${groupId}:${chatId}`;
+  const recipients = await alertRecipients(db, settings);
+  const pairs = recipients.flatMap((r) => due.filter((g) => alertCovers(r, lessonBranchId(g))).map((g) => ({ r, g })));
+  if (!pairs.length) return;
+  const handled = await handledKeys(db, pairs.map((p) => keyOf(p.g.id, p.r.chatId)));
+  const todo = pairs.filter((p) => !handled.has(keyOf(p.g.id, p.r.chatId)));
+  if (!todo.length) return;
+
+  // /nazorat-missed-groups qoidasi: guruhda shu kuni birorta belgi bo'lsa — davomat qilingan.
+  const groups = [...new Map(todo.map((p) => [p.g.id, p.g])).values()];
+  const marked = new Set(
+    (await db.collection("attendance").distinct("groupId", { date: clock.iso, groupId: { $in: groups.map((g) => g.id) } })).map(Number),
+  );
+  const [employees, branches] = await Promise.all([
+    db.collection("hr_employees").find({}, { projection: { _id: 0, name: 1, phone: 1 } }).toArray(),
+    branchNames(db),
+  ]);
+  const phones = new Map<string, string>();
+  for (const e of employees) {
+    const key = phoneKey(e.phone);
+    if (key && !phones.has(normName(e.name))) phones.set(normName(e.name), key);
+  }
+  const rows = new Map<number, V.MissedLessonRow>();
+  for (const g of groups) {
+    if (marked.has(g.id)) continue;
+    const lesson = await describeLesson(db, g, clock.iso, branches);
+    if (lesson.pupils === 0) continue;
+    const teacher = String(g.teacher ?? "").trim();
+    const phone = phones.get(normName(teacher));
+    rows.set(g.id, { ...lesson, group: lesson.title, teacher, phone: phone ? `+998 ${formatPhone(phone)}` : "" });
+  }
+
+  for (const r of recipients) {
+    const access = await resolveAccess(db, r.user);
+    const send: (V.MissedLessonRow & { claim: Claim })[] = [];
+    for (const { g } of todo.filter((p) => p.r.chatId === r.chatId)) {
+      const c: Claim = { _id: keyOf(g.id, r.chatId), kind: "missed", day: clock.iso, chatId: r.chatId, groupId: g.id };
+      const row = rows.get(g.id);
+      if (row && access.ok) send.push({ ...row, claim: c });
+      else await skip(db, c, marked.has(g.id) ? "marked" : !row ? "no_pupil" : "no_access", out);
+    }
+    send.sort((a, b) => a.start.localeCompare(b.start));
+    for (const batch of V.missedAttendanceBatches(send)) {
+      const mine: typeof batch = [];
+      for (const row of batch) if (await claim(db, row.claim, null)) mine.push(row);
+      if (mine.length) await sendClaimed(db, cfg, mine.map((row) => row.claim), V.missedAttendancePush(mine, clock.iso), undefined, out);
+    }
+  }
+}
+
 let running = false;
 
 /** Har daqiqada chaqiriladi. Hech qachon xabarni ikki marta yubormaydi. */
 export async function runDayReminders(db: Db, nowMs: number = Date.now()): Promise<DayRemindersReport> {
-  const report: DayRemindersReport = { checkin: tally(), lessons: tally() };
+  const report: DayRemindersReport = { checkin: tally(), lessons: tally(), missed: tally() };
   if (telegramMuted()) return { ...report, skipped: "muted" };
   const cfg = loadStaffBotConfig();
   if (!isStaffBotReady(cfg)) return { ...report, skipped: "no_bot" };
@@ -206,9 +275,11 @@ export async function runDayReminders(db: Db, nowMs: number = Date.now()): Promi
   running = true;
   try {
     const clock = uzClock(nowMs);
+    const active = await db.collection<LessonGroup>("groups").find({ status: "active" }, { projection: LESSON_GROUP_FIELDS }).toArray();
     // Dars xabari aniq daqiqaga bog'liq — avval u.
-    await sendLessonReminders(db, cfg, clock, report.lessons);
+    await sendLessonReminders(db, cfg, clock, active, report.lessons);
     await sendCheckinReminders(db, cfg, clock, report.checkin);
+    await sendMissedAttendance(db, cfg, clock, active, report.missed);
   } finally {
     running = false;
   }

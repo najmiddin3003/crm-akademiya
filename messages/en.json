@@ -5527,7 +5527,6 @@
   "Jarima va muddatlar": "Fines and deadlines",
   "Tanga qoidalari": "Coin rules",
   "Nazorat qoidalari": "Control rules",
-  "Nazorat qoidalari sozlamasi hali yo'q": "Control rule settings aren't available yet",
   "Hali yo'q": "Not available yet",
   "{n} ta lid": "{n} leads",
   "{n} ta o'qituvchi": "{n} teachers",
@@ -6690,5 +6689,16 @@
   "xodim ish vaqti": "staff working hours",
   "Guruh vaqti bo'yicha": "By group time",
   "{n} ta o'qituvchiga guruh vaqti qo'yildi": "Group time set for {n} teachers",
-  "{n} tasida aktiv guruh yo'q, ular o'zgarmadi": "{n} have no active group and were left unchanged"
+  "{n} tasida aktiv guruh yo'q, ular o'zgarmadi": "{n} have no active group and were left unchanged",
+  "Rahbarga avtomatik xabarlar.": "Automatic messages to managers.",
+  "Dars tugagach {n} daqiqa o'tib ham davomat belgilanmasa, xodimlar botida xabar keladi: guruh, ustoz va telefoni, vaqti, xonasi, filiali, o'quvchilar soni.": "If attendance is still not marked {n} minutes after a lesson ends, a message arrives in the staff bot: group, teacher and phone, time, room, branch and number of students.",
+  "Kimga yuboriladi": "Who receives it",
+  "Ro'yxatda botga kirgan xodimlar bor, o'qituvchilarsiz. Admin hamma filialni, boshqalar o'z filialini oladi.": "The list shows staff signed in to the bot, without teachers. Admins get all branches, others get their own.",
+  "Botga kirgan rahbar yo'q — avval xodimlar botiga kirsin.": "No manager is signed in to the bot yet. Sign in to the staff bot first.",
+  "Hech kim tanlanmagan — xabar bormaydi.": "Nobody is selected, so no message will be sent.",
+  "Xodimlar boti sozlanmagan — xabar bormaydi.": "The staff bot is not configured, so no message will be sent.",
+  "Bu sinov sayti: bu yerdan bot hech kimga yozmaydi.": "This is the test site: the bot sends nothing from here.",
+  "Botni to'xtatgan": "Stopped the bot",
+  "Xabar yoqildi": "Messages turned on",
+  "Xabar o'chirildi": "Messages turned off"
 }

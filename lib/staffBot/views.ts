@@ -992,6 +992,62 @@ export function lessonReminderPush(r: LessonReminder): string {
   return lines.join("\n");
 }
 
+export interface MissedLessonRow {
+  group: string;
+  level: string;
+  teacher: string;
+  /** "+998 94 111 88 55"; xodim topilmasa bo'sh. */
+  phone: string;
+  time: string;
+  /** Dars boshlanishi, "HH:MM" — xabardagi tartib shundan. */
+  start: string;
+  day: string;
+  room: string;
+  branch: string;
+  pupils: number;
+}
+
+/** Telegram chegarasi 4096 belgi; sarlavha va HTML teglari uchun zaxira qoladi. */
+const MISSED_MESSAGE_MAX = 3500;
+
+function missedBlock(r: MissedLessonRow): string {
+  const lines = [`👥 <b>${esc(r.group)}</b>`];
+  if (r.level) lines.push(`📈 Daraja: ${esc(r.level)}`);
+  lines.push(`👤 Ustoz: ${r.teacher ? esc(r.teacher) : "biriktirilmagan"}${r.phone ? ` · ${esc(r.phone)}` : ""}`);
+  lines.push(`🕐 Vaqti: ${esc(r.time)}`);
+  if (r.day) lines.push(`📅 Kunlar: ${esc(r.day)}`);
+  if (r.room) lines.push(`🚪 Xona: ${esc(r.room)}`);
+  if (r.branch) lines.push(`🏢 Filial: ${esc(r.branch)}`);
+  lines.push(`👨‍🎓 O'quvchilar: ${r.pupils} ta`);
+  return lines.join("\n");
+}
+
+/** Bitta xabarga sig'adigan to'plamlar. */
+export function missedAttendanceBatches<R extends MissedLessonRow>(rows: readonly R[]): R[][] {
+  const out: R[][] = [];
+  let size = 0;
+  for (const r of rows) {
+    const len = missedBlock(r).length + 2;
+    if (!out.length || size + len > MISSED_MESSAGE_MAX) {
+      out.push([]);
+      size = 0;
+    }
+    out[out.length - 1].push(r);
+    size += len;
+  }
+  return out;
+}
+
+/** Rahbarga: dars tugadi, davomat belgilanmadi (lib/attendanceAlert.ts). */
+export function missedAttendancePush(rows: readonly MissedLessonRow[], iso: string): string {
+  return [
+    "⚠️ <b>Davomat qilinmagan guruhlar</b>",
+    `📅 ${iso.split("-").reverse().join(".")} · ${rows.length} ta guruh`,
+    "",
+    rows.map(missedBlock).join("\n\n"),
+  ].join("\n");
+}
+
 // Push xabarlar (lib/staffBot/taskNotify.ts) — tizim o'zi yozadi.
 
 export function taskNewPush(t: StaffTaskDoc, nowMs: number): string {

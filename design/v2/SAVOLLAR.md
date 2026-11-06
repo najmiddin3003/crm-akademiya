@@ -631,6 +631,7 @@ Sotuv → Lidlar), Jarima va muddatlar (Topshiriqlar → Sozlamalar, faqat direk
 Sabablar). TIZIMDA YO'Q — menyuda o'chiq: Bildirishnomalar, Imtihon fanlari, Bonus sabablari, Referal dasturi,
 Nazorat qoidalari. Ichki menyu hozircha faqat Kurslarda: eski /settings-* sahifalarida o'z tab menyusi bor (ikki
 yonma-yon menyu bo'lardi) — ular dizayni kelganda shu ramkaga o'tadi. Yon menyudagi «Sozlamalar» o'zgarmadi.
+06.11.2026: «Nazorat qoidalari» ochildi — davomat qilinmagan guruhlar haqida rahbarga bot xabari (faqat admin).
 
 **113. Kurs holati «Faol / Nofaol»** — taxmin
 Rasmda hammasi «Faol». Yangi `active` maydoni: «⋯ → Nofaol qilish» — kurs YANGI lid, guruh va xodim

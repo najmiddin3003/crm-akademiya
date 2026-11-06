@@ -69,7 +69,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
   },
   {
     title: "Nazorat",
-    items: [{ label: "Nazorat qoidalari", note: "Nazorat qoidalari sozlamasi hali yo'q" }],
+    items: [{ label: "Nazorat qoidalari", href: "/settings-academic?tab=nazorat", adminOnly: true }],
   },
 ];
 

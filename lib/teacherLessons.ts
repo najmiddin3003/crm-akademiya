@@ -84,6 +84,28 @@ export function lessonsStartingSoon<G extends Pick<LessonGroup, "status" | "day"
   });
 }
 
+/** Kun oxiri: 23:55 da tugagan darsning muddati ertangi kunga o'tib ketmasin. */
+const LAST_MINUTE = 23 * 60 + 59;
+
+/**
+ * Darsi tugab, ustiga `afterMin` daqiqa o'tgan guruhlar. Muddati `sinceMin` daqiqasigacha
+ * kelib bo'lganlari kirmaydi (lib/attendanceAlert.ts → `since`).
+ */
+export function lessonsEndedBy<G extends Pick<LessonGroup, "status" | "day" | "startDate" | "endDate" | "period" | "time">>(
+  groups: readonly G[],
+  clock: UzClock,
+  afterMin: number,
+  sinceMin: number = -1,
+): G[] {
+  return groups.filter((g) => {
+    if (!lessonExpectedOn(g, clock.iso, clock.weekday)) return false;
+    const range = parseTimeRange(g.time);
+    if (!range) return false;
+    const due = Math.min(range[1] + afterMin, LAST_MINUTE);
+    return clock.nowMin >= due && due > sinceMin;
+  });
+}
+
 const hm = (n: number) => String(n).padStart(2, "0");
 
 /** "14:00 - 15:30" → "14:00"; vaqt kiritilmagan bo'lsa "". */
@@ -98,6 +120,9 @@ function groupScope(g: { branchId?: number | null }): BranchScope {
   const branchId = g.branchId !== null && g.branchId !== undefined && Number.isFinite(n) ? n : 1;
   return { branchId, allowed: [branchId], isAdmin: false };
 }
+
+/** Guruh filiali (bazada bo'sh bo'lsa — 1-filial). */
+export const lessonBranchId = (g: { branchId?: number | null }): number => groupScope(g).branchId;
 
 type SavedMark = Pick<AttendanceMark, "status" | "grade" | "reason" | "note">;
 
