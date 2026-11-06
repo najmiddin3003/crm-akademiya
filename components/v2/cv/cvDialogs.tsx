@@ -364,7 +364,7 @@ export function CvHireDialog({
     kurs: teacher && !kurs ? t("Yo'nalishni tanlang") : "",
     oklad: salaryType !== "foiz" && !(okladNum > 0) ? t("Okladni kiriting") : "",
     percent: salaryType !== "fixed" && !(Number.isFinite(pctNum) && pctNum > 0 && pctNum <= 100) ? t("Foizni kiriting — 1 dan 100 gacha") : "",
-    work: !workTime.ok ? t(workTime.error) : !workTime.workStart ? t("Ish vaqtini kiriting") : "",
+    work: !workTime.ok ? t(workTime.error) : !teacher && !workTime.workStart ? t("Ish vaqtini kiriting") : "",
   };
   const hasErr = Object.values(errs).some(Boolean);
 

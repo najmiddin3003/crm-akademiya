@@ -3,8 +3,9 @@
 // Bitta xodimga bitta vaqt: kun bo'yicha farqi yo'q. Boshqaruv → «Ish jadvali»
 // bilan aralashtirilmasin — u faqat nom (`scheduleId`), vaqti yo'q.
 //
-// Kiritiladigan joylar: Xodim qo'shish oynasi va «Ishga olish» (yangi xodimda majburiy —
-// mijoz tekshiradi; server bo'shini qabul qiladi, Excel import va eski mijoz uchun),
+// Kiritiladigan joylar: Xodim qo'shish oynasi va «Ishga olish» (yangi xodimda majburiy, o'qituvchidan
+// tashqari: unda hali guruh yo'q, vaqti keyin guruhidan olinadi — mijoz tekshiradi; server bo'shini
+// qabul qiladi, Excel import va eski mijoz uchun),
 // xodim kartasi, /vaqtinchalik → «Ish vaqtini belgilash» (hammasi bitta oynada; o'qituvchiga
 // «Guruh vaqti bo'yicha» — lib/workTimeFromGroups.ts).
 //

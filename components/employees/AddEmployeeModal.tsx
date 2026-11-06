@@ -224,6 +224,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   const endConfirm = useFutureEndDateConfirm(salaryEnd, setSalaryEnd);
   // Ish vaqti (lib/workTime.ts): yangi xodimda majburiy, tahrirda yo'q — eski
   // xodimlarda hali kiritilmagan, boshqa maydonni tuzatishga xalaqit bermasin.
+  // Yangi o'qituvchida ham yo'q: unda hali guruh yo'q, vaqti keyin guruhidan olinadi.
   const [workStart, setWorkStart] = useState(employee?.workStart ?? "");
   const [workEnd, setWorkEnd] = useState(employee?.workEnd ?? "");
   const [comment, setComment] = useState(employee?.comment ?? "");
@@ -582,7 +583,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       showError(t(workTime.error));
       return;
     }
-    if (!editing && !workTime.workStart) {
+    if (!editing && !isTeacher && !workTime.workStart) {
       showError(t("Ish vaqtini kiriting"));
       return;
     }
@@ -885,11 +886,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               (lib/attendanceCheck.ts → expectationFor). */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className={labelCls}>{t("Ish boshlanishi")}{!editing && <span className="text-rose-500">*</span>}</label>
+              <label className={labelCls}>{t("Ish boshlanishi")}{!editing && !isTeacher && <span className="text-rose-500">*</span>}</label>
               <TimeField value={workStart} onChange={setWorkStart} variant="form" placeholder="09:00" />
             </div>
             <div>
-              <label className={labelCls}>{t("Ish tugashi")}{!editing && <span className="text-rose-500">*</span>}</label>
+              <label className={labelCls}>{t("Ish tugashi")}{!editing && !isTeacher && <span className="text-rose-500">*</span>}</label>
               <TimeField value={workEnd} onChange={setWorkEnd} variant="form" placeholder="18:00" />
             </div>
             <p className="self-end text-[11.5px] text-muted-foreground pb-1">
