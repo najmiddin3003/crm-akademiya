@@ -119,6 +119,27 @@ export function filterByPermissions(items: SidebarItem[], permissions: string[] 
 }
 
 /**
+ * Faqat adminga ko'rinadigan ichki bandlar, `after` bandidan keyin turadi. constants/sidebar.js da
+ * EMAS: u yerdagi har ichki band ruxsatlar daraxtiga (Boshqaruv → Rollar) tushadi, bular esa rolga
+ * berilmaydi. Ro'yxat oxirida emas: yangi menyuda pastki blok 50vh bilan kesiladi, oxirgi band
+ * aylantirmasdan ko'rinmaydi. Haqiqiy to'siq sahifaning o'zida.
+ */
+const ADMIN_MENU_ITEMS: Record<string, { label: string; href: string; after: string }[]> = {
+  settings: [{ label: "Nazorat qoidalari", href: "/settings-nazorat", after: "/settings-academic" }],
+};
+
+function withAdminItems(item: SidebarItem): SidebarItem {
+  const extra = ADMIN_MENU_ITEMS[item.key];
+  if (!extra || !item.menu?.items) return item;
+  const items = [...item.menu.items];
+  for (const { label, href, after } of extra) {
+    // `after` bandi ro'yxatda bo'lmasa (nomi o'zgarsa) band yo'qolmaydi — oxiriga tushadi.
+    items.splice(items.findIndex((it) => it.href === after) + 1 || items.length, 0, { label, href });
+  }
+  return { ...item, menu: { ...item.menu, items } };
+}
+
+/**
  * Xodim ko'ra oladigan bo'limlar. Bu FAQAT ko'rinish: haqiqiy to'siq
  * app/(app)/layout.tsx da (va `adminOnly` bo'limlar uchun sahifaning
  * o'zida), server tomonda.
@@ -133,10 +154,11 @@ export function visibleSidebarItems(
   features: Record<string, boolean> | undefined,
 ): SidebarItem[] {
   const gamOn = !!features?.gamification;
-  return filterByPermissions(
+  const visible = filterByPermissions(
     ITEMS.filter((i) => (!i.adminOnly || isAdmin) && (!i.feature || isAdmin || (i.feature === "gamification" && gamOn))),
     permissions,
   );
+  return isAdmin ? visible.map(withAdminItems) : visible;
 }
 
 // Faqat shu sahifalar hali kod bilan qurilgan (tegishli app/(app)/<href>/page.tsx

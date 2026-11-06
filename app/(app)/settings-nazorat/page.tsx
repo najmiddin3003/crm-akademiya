@@ -7,13 +7,20 @@ import { currentUiVersion } from "@/lib/uiVersionServer";
 // «Sozlamalar → Nazorat qoidalari» (06.11.2026) — davomat qilinmagan guruhlar haqida rahbarga xabar.
 // FAQAT ADMIN: sahifa ruxsatlar daraxtida yo'q, cheklovsiz rol uchun yagona to'siq shu tekshiruv
 // (/amallar-jurnali bilan bir xil). API ham o'zi tekshiradi (app/api/attendance-alert/route.ts).
-// Yon menyudagi bandi faqat yangi versiyada (components/v2/shell/sidebarSections.ts → V2_INSERTED_ITEMS).
+// Yon menyudagi bandi ikkala versiyada (components/shared/sidebarModel.ts → ADMIN_MENU_ITEMS).
 export default async function Page() {
   if (!(await requireAdmin())) redirect("/home");
-  if ((await currentUiVersion()) !== "v2") redirect("/settings-general");
+  if ((await currentUiVersion()) === "v2") {
+    return (
+      <SettingsFrameV2 current="/settings-nazorat">
+        <AttendanceAlertV2 />
+      </SettingsFrameV2>
+    );
+  }
+  // Eski versiya: yangi sozlamalar ramkasi yo'q, karta o'zi. v2 tokenlari faqat shu belgi ichida ishlaydi.
   return (
-    <SettingsFrameV2 current="/settings-nazorat">
+    <div data-ui="v2" className="text-v2-text">
       <AttendanceAlertV2 />
-    </SettingsFrameV2>
+    </div>
   );
 }

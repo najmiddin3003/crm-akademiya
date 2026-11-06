@@ -53,7 +53,7 @@ import {
   type StudentHit,
 } from "@/lib/globalSearch";
 import { useCreate } from "./CreateContext";
-import { HOME_KEY, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_LABELS, V2_LABELS, withV2Inserted } from "./sidebarSections";
+import { HOME_KEY, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_LABELS, V2_LABELS } from "./sidebarSections";
 
 // «CTRL K QIDIRUV» OYNASI (21-qism · Yuqori panel, rasmlar «Ctrl K qidiruv · Yorug'/Qorong'i»
 // va «Qidiruv natijasi «madina»», 02.11.2026).
@@ -232,8 +232,8 @@ interface PageEntry {
 /** Dizayn qoidasi — interfeysda emoji yo'q (SidebarV2 dagi bilan bir xil). */
 const noEmoji = (s: string) => s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").trim();
 
-/** SidebarV2 dagi nomlar bilan: `V2_LABELS`, `V2_ITEM_LABELS`, `V2_EXTRA_ITEMS`, `withV2Inserted`; qurilmagan sahifa — yo'q. */
-function buildPages(items: SidebarItem[], t: TFn, isAdmin: boolean): PageEntry[] {
+/** SidebarV2 dagi nomlar bilan: `V2_LABELS`, `V2_ITEM_LABELS`, `V2_EXTRA_ITEMS`; qurilmagan sahifa — yo'q. */
+function buildPages(items: SidebarItem[], t: TFn): PageEntry[] {
   const out: PageEntry[] = [];
   const seen = new Set<string>();
   const push = (href: string | undefined, title: string, parent: string, iconKey: string) => {
@@ -245,7 +245,7 @@ function buildPages(items: SidebarItem[], t: TFn, isAdmin: boolean): PageEntry[]
   for (const item of items) {
     const parent = noEmoji(t(V2_LABELS[item.key] ?? item.label));
     const subs = item.menu?.items ?? item.menu?.columns?.flatMap((c) => c.items) ?? [];
-    const all = subs.length > 0 ? [...(V2_EXTRA_ITEMS[item.key] ?? []), ...withV2Inserted(item.key, subs, isAdmin)] : [];
+    const all = subs.length > 0 ? [...(V2_EXTRA_ITEMS[item.key] ?? []), ...subs] : [];
     if (all.length === 0) push(item.href, parent, "", item.key);
     for (const it of all) push(it.href, noEmoji(t(V2_ITEM_LABELS[it.href] ?? it.label)), parent, item.key);
   }
@@ -426,7 +426,7 @@ function Palette({ onClose, permissions, isAdmin, features, recentsKey }: Comman
   const activeChip: ChipKey = chips.some((c) => c.key === chip) ? chip : "all";
 
   // ── Sahifalar ──
-  const pages = useMemo(() => buildPages(visibleSidebarItems(permissions, isAdmin, features), t, isAdmin), [permissions, isAdmin, features, t]);
+  const pages = useMemo(() => buildPages(visibleSidebarItems(permissions, isAdmin, features), t), [permissions, isAdmin, features, t]);
   const pageHits = searching
     ? rankTop(
         pages

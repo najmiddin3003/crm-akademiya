@@ -84,25 +84,6 @@ export const V2_EXTRA_ITEMS: Record<string, { label: string; href: string }[]> =
   reports: [{ label: "Barcha hisobotlar", href: "/reports" }],
 };
 
-/**
- * Tekis ichki menyuga qo'shiladigan, faqat yangi versiyadagi bandlar: `after` bandidan keyin turadi.
- * Ro'yxat oxirida emas: pastki blok 50vh bilan kesiladi, oxirgi band aylantirmasdan ko'rinmaydi.
- * `adminOnly` — sahifa ruxsatlar daraxtida yo'q, faqat adminga ko'rinadi (to'siq sahifaning o'zida).
- */
-const V2_INSERTED_ITEMS: Record<string, { label: string; href: string; after: string; adminOnly?: boolean }[]> = {
-  settings: [{ label: "Nazorat qoidalari", href: "/settings-nazorat", after: "/settings-academic", adminOnly: true }],
-};
-
-/** `after` bandi ro'yxatda bo'lmasa (nomi o'zgarsa) band yo'qolmaydi — oxiriga tushadi. */
-export function withV2Inserted<T extends { label: string; href: string }>(key: string, items: T[], isAdmin: boolean) {
-  const out: (T | { label: string; href: string })[] = [...items];
-  for (const { label, href, after, adminOnly } of V2_INSERTED_ITEMS[key] ?? []) {
-    if (adminOnly && !isAdmin) continue;
-    out.splice(out.findIndex((it) => it.href === after) + 1 || out.length, 0, { label, href });
-  }
-  return out;
-}
-
 export const V2_ITEM_LABELS: Record<string, string> = {
   "/groups": "Guruhlar",
   // 7-qism rasmlari (20.10.2026): «Sozlamalar → O'quv → Kurslar», Boshqaruv → «Rollar va huquqlar».
