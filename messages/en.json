@@ -6687,5 +6687,8 @@
   "{name} — ish vaqti olib tashlandi": "{name} — working hours removed",
   "Ikkalasini bo'sh qoldirsangiz, ish vaqti olib tashlanadi.": "Leave both empty to remove the working hours.",
   "O'qituvchi kechikishi darsidan, boshqa xodimniki shu vaqtdan o'lchanadi.": "Teachers' lateness is measured from their lesson, other staff from this time.",
-  "xodim ish vaqti": "staff working hours"
+  "xodim ish vaqti": "staff working hours",
+  "Guruh vaqti bo'yicha": "By group time",
+  "{n} ta o'qituvchiga guruh vaqti qo'yildi": "Group time set for {n} teachers",
+  "{n} tasida aktiv guruh yo'q, ular o'zgarmadi": "{n} have no active group and were left unchanged"
 }

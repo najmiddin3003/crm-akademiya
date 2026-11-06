@@ -22,6 +22,11 @@ import type { TempStaffRow } from "@/app/api/temp-staff/route";
 // bir bosishda qo'yiladi, farqlilari qatorida tuzatiladi. Saqlash — oxirida,
 // bitta so'rov (PUT /api/temp-staff/work-time); o'zgarmagan qator yuborilmaydi.
 //
+// «Guruh vaqti bo'yicha» ko'rinib turgan o'qituvchilarga guruhlari dars vaqtini qo'yadi
+// (lib/workTimeFromGroups.ts). Faqat `turi: "teacher"`: bir guruhga dars beradigan moderatorning
+// ish kuni guruhidan uzun, kechikishi ham o'z vaqtidan o'lchanadi. Bu ham qoralama — ko'rib,
+// tuzatib saqlanadi. Guruh jadvali keyin o'zgarsa, ish vaqti o'zi o'zgarmaydi.
+//
 // «Faqat kiritilmaganlar» SAQLANGAN qiymatga qaraydi: yozilayotgan qator
 // ro'yxatdan yo'qolib ketmasin.
 
@@ -48,6 +53,8 @@ export default function WorkTimeModal({
   const [branchFilter, setBranchFilter] = useState("");
   const [onlyEmpty, setOnlyEmpty] = useState(false);
   const [quick, setQuick] = useState<Times>({ start: "", end: "" });
+  /** Oxirgi «Guruh vaqti bo'yicha» natijasi: nechtasiga qo'yildi, nechtasida guruh yo'q. */
+  const [groupApplied, setGroupApplied] = useState<{ done: number; missing: number } | null>(null);
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -77,6 +84,7 @@ export default function WorkTimeModal({
 
   const quickParsed = parseWorkTime(quick.start, quick.end);
   const quickReady = quickParsed.ok && quickParsed.workStart !== null;
+  const visibleTeachers = visible.filter((r) => r.turi === "teacher");
 
   function applyQuick() {
     if (!quickReady) return;
@@ -85,6 +93,16 @@ export default function WorkTimeModal({
       for (const r of visible) next.set(r.id, { ...quick });
       return next;
     });
+  }
+
+  function applyGroupTime() {
+    const withGroup = visibleTeachers.flatMap((r) => (r.groupTime ? [{ id: r.id, time: r.groupTime }] : []));
+    setDrafts((prev) => {
+      const next = new Map(prev);
+      for (const { id, time } of withGroup) next.set(id, time);
+      return next;
+    });
+    setGroupApplied({ done: withGroup.length, missing: visibleTeachers.length - withGroup.length });
   }
 
   async function save() {
@@ -160,14 +178,28 @@ export default function WorkTimeModal({
             type="button"
             onClick={applyQuick}
             disabled={!quickReady || visible.length === 0}
-            className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {t("Ko'rinib turgan {n} xodimga qo'yish", { n: visible.length })}
+          </button>
+          <button
+            type="button"
+            onClick={applyGroupTime}
+            disabled={!visibleTeachers.some((r) => r.groupTime)}
+            className="h-9 rounded-lg border border-border bg-card px-3 text-sm font-medium hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {t("Guruh vaqti bo'yicha")}
           </button>
           {!quickParsed.ok && quick.start !== "" && quick.end !== "" && (
             <span className="text-[12px] text-rose-600">{t(quickParsed.error)}</span>
           )}
         </div>
+        {groupApplied && (
+          <p className="text-[12px] text-muted-foreground">
+            {t("{n} ta o'qituvchiga guruh vaqti qo'yildi", { n: groupApplied.done })}
+            {groupApplied.missing > 0 && ` · ${t("{n} tasida aktiv guruh yo'q, ular o'zgarmadi", { n: groupApplied.missing })}`}
+          </p>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

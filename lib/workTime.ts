@@ -5,7 +5,8 @@
 //
 // Kiritiladigan joylar: Xodim qo'shish oynasi va «Ishga olish» (yangi xodimda majburiy —
 // mijoz tekshiradi; server bo'shini qabul qiladi, Excel import va eski mijoz uchun),
-// xodim kartasi, /vaqtinchalik → «Ish vaqtini belgilash» (hammasi bitta oynada).
+// xodim kartasi, /vaqtinchalik → «Ish vaqtini belgilash» (hammasi bitta oynada; o'qituvchiga
+// «Guruh vaqti bo'yicha» — lib/workTimeFromGroups.ts).
 //
 // Kechikishda faqat `workStart` ishlatiladi va faqat o'qituvchidan boshqa xodimga:
 // o'qituvchi birinchi darsiga qarab o'lchanadi (lib/attendanceCheck.ts → expectationFor).

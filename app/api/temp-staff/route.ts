@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/adminOnly";
 import { normalizePhone } from "@/lib/eskiz";
+import { normName } from "@/lib/gamification/scope";
+import { uzDateIso } from "@/lib/uzTime";
+import { groupTimesByTeacher, type GroupTime, type GroupTimeRow } from "@/lib/workTimeFromGroups";
 import { MAX_BATCH } from "./invite/route";
 
 // "Vaqtinchalik tugma" sahifasining backend'i (app/(app)/vaqtinchalik).
@@ -37,6 +40,8 @@ export interface TempStaffRow {
   /** Ish vaqti, "HH:MM" (lib/workTime.ts); `null` — kiritilmagan. */
   workStart: string | null;
   workEnd: string | null;
+  /** Guruhlari dars vaqtidan (lib/workTimeFromGroups.ts); aktiv guruhi yo'q bo'lsa `null`. */
+  groupTime: GroupTime | null;
   /** "Ikki bosqichli tasdiqlash" talab qilinganmi (`hr_employees.twoFactor`). */
   twoFactor: boolean;
   /**
@@ -61,7 +66,7 @@ export async function GET() {
   }
   const db = await ensureIndexes();
 
-  const [rows, branchRows, userRows] = await Promise.all([
+  const [rows, branchRows, userRows, groupRows] = await Promise.all([
     db.collection("hr_employees").find({}).sort({ id: -1 }).toArray(),
     db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1 } }).sort({ id: 1 }).toArray(),
     // Telefon bo'yicha bog'lanadi, `hrEmployeeId` bo'yicha emas: importda
@@ -69,7 +74,12 @@ export async function GET() {
     // hisobda esa `hrEmployeeId` bo'lmasligi mumkin. Raqamni BAND QILADIGAN
     // narsa — aynan `users.phone`.
     db.collection("users").find({}, { projection: { _id: 0, phone: 1, status: 1, adminApproval: 1 } }).toArray(),
+    db
+      .collection("groups")
+      .find({ status: "active" }, { projection: { _id: 0, status: 1, teacher: 1, assistant: 1, time: 1, startDate: 1, endDate: 1, period: 1 } })
+      .toArray(),
   ]);
+  const groupTimes = groupTimesByTeacher(groupRows as GroupTimeRow[], uzDateIso());
 
   // Kalit NORMALLASHTIRILGAN raqam. Bugungi bazada ikkala kolleksiya ham
   // 12 xonali shaklda (o'lchandi: 57 xodimdan 0 tasi farq qilmadi), lekin
@@ -99,6 +109,7 @@ export async function GET() {
     created: String(r.created ?? ""),
     workStart: typeof r.workStart === "string" ? r.workStart : null,
     workEnd: typeof r.workEnd === "string" ? r.workEnd : null,
+    groupTime: groupTimes.get(normName(r.name)) ?? null,
     twoFactor: Boolean(r.twoFactor),
     accountStatus: statusByPhone.get(key) ?? null,
     approval: (approvalByPhone.get(key) ?? "") as TempStaffRow["approval"],
