@@ -9,7 +9,7 @@ import V2Checkbox from "@/components/v2/ui/V2Checkbox";
 import type { AlertCandidate } from "@/lib/attendanceAlert";
 import { ApiError, fetchJson } from "@/lib/fetchJson";
 
-// SOZLAMALAR → NAZORAT → «NAZORAT QOIDALARI» (`/settings-academic?tab=nazorat`, 06.11.2026).
+// SOZLAMALAR → «NAZORAT QOIDALARI» (`/settings-nazorat`, 06.11.2026).
 // Davomat qilinmagan guruhlar haqida rahbarga bot xabari: yoqish/o'chirish va kimga borishi.
 // Qoida va sabablari — lib/attendanceAlert.ts, yuborish — lib/staffBot/dayReminders.ts.
 //
