@@ -1,5 +1,6 @@
 "use client";
 
+import { workTimeLabel } from "@/lib/workTime";
 import { useEffect, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import {
@@ -969,7 +970,7 @@ export function EmployeeProfileView({
               Ilgari bu qiymatlar hech qayerda saqlanmasdi ham, ko'rinmasdi
               ham. Bo'sh bo'lsa karta umuman chizilmaydi — bo'sh "—" lar
               qatorini ko'rsatishdan ma'no yo'q. */}
-          {(emp.birthDate || emp.salaryStartDate || emp.salaryEndDate || emp.comment || Object.keys(emp.customFields ?? {}).length > 0) && (
+          {(emp.birthDate || emp.workStart || emp.salaryStartDate || emp.salaryEndDate || emp.comment || Object.keys(emp.customFields ?? {}).length > 0) && (
             <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("Qo'shimcha ma'lumot")}
@@ -978,6 +979,12 @@ export function EmployeeProfileView({
                 <div>
                   <div className="text-[11px] text-muted-foreground">{t("Tug'ilgan sanasi")}</div>
                   <div className="text-[13px] tabular-nums">{fmtBirthDate(emp.birthDate)}</div>
+                </div>
+              )}
+              {emp.workStart && (
+                <div>
+                  <div className="text-[11px] text-muted-foreground">{t("Ish vaqti")}</div>
+                  <div className="text-[13px] tabular-nums">{workTimeLabel(emp)}</div>
                 </div>
               )}
               {/* Oklad shu kundan hisoblanadi — "Ish haqi" oynasida o'zgaradi. */}

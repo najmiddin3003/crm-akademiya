@@ -19,6 +19,7 @@ import { checkEmployeeGrant, type Access } from "@/lib/permissionGrant";
 import { employeePermissions } from "@/lib/rolePermissions";
 import { branchIdsErrorText, branchNameMap, pruneAssignments, resolvePayrollBranch, validateBranchIds } from "@/lib/employeeBranches";
 import { logSms } from "@/lib/smsLog";
+import { parseWorkTime } from "@/lib/workTime";
 
 // YANGI XODIM YARATISH — bitta joyda (25.10.2026, 13-qism). Ilgari bu mantiq faqat
 // POST /api/hr-employees ichida edi; endi «Ishga qabul (CV) → Ishga olish» oynasi ham
@@ -79,6 +80,9 @@ export async function createHrEmployee(
   if (!name) return { ok: false, error: "Ism va familiyani kiriting", status: 400 };
   if (!isValidPhone(body.phone)) return { ok: false, error: "Telefon raqami noto'g'ri", status: 400 };
   const phone = normalizePhone(body.phone!);
+  // Bo'sh qabul qilinadi (lib/workTime.ts): majburiyligi oynalarda.
+  const workTime = parseWorkTime(body.workStart, body.workEnd);
+  if (!workTime.ok) return { ok: false, error: workTime.error, status: 400 };
 
   // «O'quv markazidagi vazifasi» — Rollar'dagi rol yoki lavozim (lib/roles.ts).
   const roleChoice = await resolveCenterRole(db, body);
@@ -186,6 +190,8 @@ export async function createHrEmployee(
     salaryStartDate: sanitizeSalaryStartDate(body.salaryStartDate),
     // Yangi xodimda odatda bo'sh (hali ishlayapti).
     salaryEndDate: sanitizeSalaryEndDate(body.salaryEndDate),
+    workStart: workTime.workStart,
+    workEnd: workTime.workEnd,
   };
   if (employee.salaryStartDate && employee.salaryEndDate && employee.salaryEndDate < employee.salaryStartDate) {
     return { ok: false, error: "Ishdan ketgan sana ishga kirgan sanadan oldin bo'lishi mumkin emas", status: 400 };

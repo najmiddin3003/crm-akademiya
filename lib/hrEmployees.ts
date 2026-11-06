@@ -167,6 +167,9 @@ export interface HrEmployee {
    * `null`/yo'q — hali ishlayapti (cheklov yo'q).
    */
   salaryEndDate?: string | null;
+  /** Ish vaqti, "HH:MM" (06.11.2026, lib/workTime.ts). `null`/yo'q — kiritilmagan. */
+  workStart?: string | null;
+  workEnd?: string | null;
 }
 
 /**

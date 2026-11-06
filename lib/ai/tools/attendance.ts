@@ -303,6 +303,8 @@ export interface StaffMember {
   id: number;
   name: string;
   turi: string;
+  /** O'z ish vaqti (lib/workTime.ts); yo'q bo'lsa filialniki. */
+  workStart?: string | null;
 }
 
 export interface LessonGroupRow {
@@ -319,8 +321,8 @@ export interface LessonGroupRow {
 
 /**
  * Bir kunda kutilgan, lekin «Ishga keldim» belgilamagan xodimlar (sof
- * hisob). O'qituvchi — o'sha kuni birinchi darsi; boshqasi — filialning
- * ish boshlanishi (kiritilmagan bo'lsa kutilmaydi). Bugun va vaqti hali
+ * hisob). O'qituvchi — o'sha kuni birinchi darsi; boshqasi — o'z ish vaqti,
+ * bo'lmasa filialniki (ikkalasi ham yo'q — kutilmaydi). Bugun va vaqti hali
  * kelmagan bo'lsa `notYetDue`.
  */
 export function missingCheckIns(input: {
@@ -355,9 +357,15 @@ export function missingCheckIns(input: {
           why = `«${g.label}» guruhi darsi`;
         }
       }
-    } else if (work !== null) {
-      at = work;
-      why = "filial ish vaqti";
+    } else {
+      const own = timeToMinutes(String(e.workStart ?? ""));
+      if (own !== null) {
+        at = own;
+        why = "xodim ish vaqti";
+      } else if (work !== null) {
+        at = work;
+        why = "filial ish vaqti";
+      }
     }
     if (at === null) continue;
     out.push({
@@ -441,7 +449,7 @@ export const staffAttendance: AiTool = {
           .collection("hr_employees")
           .find(
             { $or: [{ archReason: { $exists: false } }, { archReason: null }, { archReason: "" }] },
-            { projection: { _id: 0, id: 1, name: 1, turi: 1, branchIds: 1 } },
+            { projection: { _id: 0, id: 1, name: 1, turi: 1, branchIds: 1, workStart: 1 } },
           )
           .toArray(),
         ctx.db
@@ -473,7 +481,7 @@ export const staffAttendance: AiTool = {
           if ((own.length ? own : [allIds[0] ?? 1]).includes(branchId)) return true;
           return String(r.turi ?? "") === "teacher" && teachesHere.has(norm(String(r.name ?? "")));
         })
-        .map((r) => ({ id: Number(r.id), name: String(r.name ?? "").trim(), turi: String(r.turi ?? "") }))
+        .map((r) => ({ id: Number(r.id), name: String(r.name ?? "").trim(), turi: String(r.turi ?? ""), workStart: r.workStart as string | null | undefined }))
         .filter((e) => e.name && (!q || norm(e.name).includes(q)));
       const nowHm = timeToMinutes(uzTimeHm()) ?? 0;
       notCheckedIn = missingCheckIns({

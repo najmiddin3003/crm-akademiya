@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Archive, ArchiveRestore, Check, Pencil, Search, Send, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Clock, Pencil, Search, Send, Trash2, X } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
@@ -13,12 +13,14 @@ import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { collapseBranchPools, sameBranchPool } from "@/lib/branchPools";
+import { workTimeLabel } from "@/lib/workTime";
+import WorkTimeModal from "./WorkTimeModal";
 
 // "Vaqtinchalik tugma" (sidebar → Sozlamalardan keyin, faqat admin).
 //
 // VAQTINCHA turadigan bo'lim — nima uchun kerakligi
 // app/(app)/vaqtinchalik/page.tsx da yozilgan. Butun modul ATAYLAB
-// o'z-o'ziga yetarli: sahifa + shu komponent + /api/temp-staff. Kerak
+// o'z-o'ziga yetarli: sahifa + shu papka + /api/temp-staff. Kerak
 // bo'lmay qolganda shu uchtasini va constants/sidebar.js dagi bir bandni
 // o'chirish kifoya, boshqa hech qayerda izi qolmaydi.
 //
@@ -121,6 +123,8 @@ export default function TempStaffPage() {
   const [archiveTarget, setArchiveTarget] = useState<TempStaffRow | null>(null);
   const [archReason, setArchReason] = useState(EMP_LEAVE_REASONS[0]);
   const [archDate, setArchDate] = useState(todayIso());
+
+  const [workTimeOpen, setWorkTimeOpen] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<TempStaffRow | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -508,6 +512,14 @@ export default function TempStaffPage() {
               Tanlanganlarga SMS
               {selected.size > 0 && <span className="tabular-nums">({selected.size})</span>}
             </button>
+            <button
+              onClick={() => setWorkTimeOpen(true)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-40"
+            >
+              <Clock className="w-4 h-4" />
+              {t("Ish vaqtini belgilash")}
+            </button>
             {selected.size > maxBatch && (
               <span className="text-[12px] text-rose-600">
                 Bir marta {maxBatch} tagacha — belgilanganini kamaytiring
@@ -539,6 +551,7 @@ export default function TempStaffPage() {
                 <th className="px-5 py-3 text-left">{t("Telefon")}</th>
                 <th className="px-5 py-3 text-left">{t("Vazifasi")}</th>
                 <th className="px-5 py-3 text-left">{t("Filiallar")}</th>
+                <th className="px-5 py-3 text-left whitespace-nowrap">{t("Ish vaqti")}</th>
                 <th className="px-5 py-3 text-left">{t("Hisob")}</th>
                 <th className="px-5 py-3 text-left">{t("Holat")}</th>
                 <th className="px-5 py-3 text-right pr-5 w-40" />
@@ -571,6 +584,9 @@ export default function TempStaffPage() {
                       {r.branchIds.length === 0
                         ? "-"
                         : [...new Set(r.branchIds.map((id) => branchName.get(id) ?? `Filial ${id}`))].join(", ")}
+                    </td>
+                    <td className="px-5 py-3 text-[13px] tabular-nums whitespace-nowrap">
+                      {workTimeLabel(r) || <span className="text-muted-foreground">{t("Kiritilmagan")}</span>}
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -675,7 +691,7 @@ export default function TempStaffPage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={10} className="px-5 py-10 text-center text-sm text-muted-foreground">
                     {loading ? <SpinnerBlock size={22} /> : "Ma'lumotlar topilmadi"}
                   </td>
                 </tr>
@@ -684,6 +700,8 @@ export default function TempStaffPage() {
           </table>
         </div>
       </div>
+
+      {workTimeOpen && <WorkTimeModal rows={rows} branches={branches} onClose={() => setWorkTimeOpen(false)} onSaved={reload} />}
 
       {editTarget && (
         <Dialog onClose={() => !saving && setEditTarget(null)} width="max-w-md">

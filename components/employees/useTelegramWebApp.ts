@@ -43,44 +43,73 @@ export interface TelegramWebApp {
   HapticFeedback?: { notificationOccurred?: (type: "success" | "error" | "warning") => void };
 }
 
-export type LocationResult =
-  | { ok: true; lat: number; lng: number; acc: number | null; at: number }
-  | { ok: false; reason: "denied" | "unavailable" | "timeout" };
+/** O'qish qayerdan kelgani — urinishlar jurnaliga yoziladi (lib/attendanceAttempts.ts). */
+export type LocationSource = "telegram" | "network" | "gps";
 
-const LOCATION_TIMEOUT_MS = 20_000;
+export type LocationFix = {
+  ok: true;
+  lat: number;
+  lng: number;
+  acc: number | null;
+  at: number;
+  source: LocationSource;
+  /** Qurilma o'lchagandan beri o'tgan vaqt, ms; Telegram aytmaydi — null. */
+  ageMs: number | null;
+};
+export type LocationFailure = { ok: false; reason: "denied" | "unavailable" | "timeout" };
+export type LocationResult = LocationFix | LocationFailure;
 
-function browserLocation(): Promise<LocationResult> {
+/** Birinchi so'rovda Telegram ruxsat oynasini ochishi mumkin — shu bois uzunroq. */
+const TELEGRAM_FIRST_MS = 20_000;
+const TELEGRAM_AGAIN_MS = 8_000;
+/** Tarmoq (Wi-Fi, minora) — tez, lekin ba'zan yetarlicha aniq emas. */
+const NETWORK_FIX_MS = 7_000;
+/** GPS — aniq, lekin bino ichida sekin yoki umuman chiqmaydi. */
+const GPS_FIX_MS = 12_000;
+/** Brauzer `timeout`i ruxsat oynasi vaqtini sanamaydi: oyna ochiq qolsa sahifa osilib qolmasin. */
+const PROMPT_GRACE_MS = 30_000;
+/** Birinchi o'qishdan keyin telefon joylashuvni yangilab ulgurishi uchun. */
+const RETRY_GAP_MS = 2_000;
+
+const timedOut = (ms: number) =>
+  new Promise<LocationFailure>((resolve) => window.setTimeout(() => resolve({ ok: false, reason: "timeout" }), ms));
+
+/** Brauzer geolokatsiyasi — KESHSIZ (`maximumAge: 0`). `high` — GPS, aks holda tarmoq. */
+function browserLocation(high: boolean, timeoutMs: number): Promise<LocationResult> {
   if (typeof navigator === "undefined" || !navigator.geolocation) return Promise.resolve({ ok: false, reason: "unavailable" });
-  return new Promise((resolve) => {
+  const read = new Promise<LocationResult>((resolve) => {
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ ok: true, lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy ?? null, at: Date.now() }),
+      (p) =>
+        resolve({
+          ok: true,
+          lat: p.coords.latitude,
+          lng: p.coords.longitude,
+          acc: p.coords.accuracy ?? null,
+          at: Date.now(),
+          source: high ? "gps" : "network",
+          ageMs: Math.max(0, Date.now() - p.timestamp),
+        }),
       (e) => resolve({ ok: false, reason: e.code === 1 ? "denied" : e.code === 3 ? "timeout" : "unavailable" }),
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 },
+      { enableHighAccuracy: high, timeout: timeoutMs, maximumAge: 0 },
     );
   });
+  return Promise.race([read, timedOut(timeoutMs + PROMPT_GRACE_MS)]);
 }
 
-/**
- * Qurilma joylashuvi. Avval Telegram'ning LocationManager'i (Bot API 8.0+ —
- * GPS, ruxsatni Telegram o'zi so'raydi), bo'lmasa brauzer geolokatsiyasi.
- * Hech qachon otilmaydi; javob kelmasa 20 soniyada `timeout`.
- */
-export function readLocation(app: TelegramWebApp | null): Promise<LocationResult> {
+/** Telegram'ning LocationManager'i (Bot API 8.0+); ruxsatni Telegram o'zi so'raydi. */
+function telegramLocation(app: TelegramWebApp | null, timeoutMs: number): Promise<LocationResult> {
   const lm = app?.LocationManager;
-  const viaTelegram = new Promise<LocationResult>((resolve) => {
-    if (!lm || app?.isVersionAtLeast?.("8.0") === false) {
-      void browserLocation().then(resolve);
-      return;
-    }
+  if (!lm || app?.isVersionAtLeast?.("8.0") === false) return Promise.resolve({ ok: false, reason: "unavailable" });
+  const read = new Promise<LocationResult>((resolve) => {
     const ask = () => {
       if (lm.isLocationAvailable === false) {
-        void browserLocation().then(resolve);
+        resolve({ ok: false, reason: "unavailable" });
         return;
       }
       lm.getLocation((d) =>
         resolve(
           d && Number.isFinite(d.latitude) && Number.isFinite(d.longitude)
-            ? { ok: true, lat: d.latitude, lng: d.longitude, acc: d.horizontal_accuracy ?? null, at: Date.now() }
+            ? { ok: true, lat: d.latitude, lng: d.longitude, acc: d.horizontal_accuracy ?? null, at: Date.now(), source: "telegram", ageMs: null }
             : { ok: false, reason: "denied" },
         ),
       );
@@ -88,10 +117,53 @@ export function readLocation(app: TelegramWebApp | null): Promise<LocationResult
     if (lm.isInited) ask();
     else lm.init(ask);
   });
-  const timeout = new Promise<LocationResult>((resolve) =>
-    window.setTimeout(() => resolve({ ok: false, reason: "timeout" }), LOCATION_TIMEOUT_MS),
-  );
-  return Promise.race([viaTelegram, timeout]);
+  return Promise.race([read, timedOut(timeoutMs)]);
+}
+
+/**
+ * Belgilash uchun joylashuv O'QISHLARI, eng ishonchlisi birinchi. Chaqiruvchi
+ * har birini serverga yuboradi va qabul qilingach to'xtaydi (StaffCheckinTg).
+ *
+ * NEGA BITTA O'QISH YETMAYDI (06.11.2026, «tizim bittada aniqlay olmayapti»):
+ * Telegram ANDROID'da LocationManager GPS so'ramaydi — `getLastKnownLocation`
+ * bilan telefon xotirasidagi oxirgi nuqtani, yoshini tekshirmay beradi (ochiq
+ * kodi: ui/bots/BotLocation.java → requestObject). Yo'lda qolgan nuqta bilan
+ * filial ichida «uzoqdasiz» chiqardi; teskarisi ham mumkin edi: kecha ishda
+ * qolgan nuqta bilan uydan belgilanardi. Shuning uchun Android'da brauzer
+ * geolokatsiyasi KESHSIZ: avval tarmoq (tez), rad etilsa GPS. Telegram buning
+ * uchun har sahifada bir marta ruxsat so'raydi (BotWebViewContainer: retain =
+ * false). Telegram keshiga faqat yangi o'qish umuman kelmasa qaytiladi — yangi
+ * o'qish rad etilgan bo'lsa eski nuqta unga qarshi ishlatilmaydi.
+ *
+ * iPhone'da Telegram jonli oqimning birinchi qiymatini beradi: odatda yangi,
+ * lekin oldingi nuqta bo'lishi ham mumkin. Rad etilsa biroz kutib yana so'raladi,
+ * keyin brauzer GPS'i.
+ *
+ * Ruxsat rad etilsa (`denied`) davom etilmaydi: keshga qaytish «rad etish»
+ * tugmasi bilan tekshiruvni chetlab o'tish yo'li bo'lardi.
+ *
+ * Kamera ruxsati bilan bir vaqtda SO'RALMAYDI: Telegram'da yangi ruxsat oynasi
+ * ochiq turganini yopib yuboradi (onPermissionRequest), shu bois yuzdan keyin.
+ */
+export async function* locationReadings(app: TelegramWebApp | null): AsyncGenerator<LocationResult, void, void> {
+  if (app?.platform === "android") {
+    const net = await browserLocation(false, NETWORK_FIX_MS);
+    yield net;
+    if (!net.ok && net.reason === "denied") return;
+    const gps = await browserLocation(true, GPS_FIX_MS);
+    yield gps;
+    if (!gps.ok && gps.reason === "denied") return;
+    if (!net.ok && !gps.ok) yield await telegramLocation(app, TELEGRAM_AGAIN_MS);
+    return;
+  }
+  const first = await telegramLocation(app, TELEGRAM_FIRST_MS);
+  yield first;
+  if (!first.ok && first.reason === "denied") return;
+  if (first.ok) {
+    await new Promise((resolve) => window.setTimeout(resolve, RETRY_GAP_MS));
+    yield await telegramLocation(app, TELEGRAM_AGAIN_MS);
+  }
+  yield await browserLocation(true, GPS_FIX_MS);
 }
 
 function tgApp(): TelegramWebApp | null {

@@ -389,6 +389,9 @@ async function createAllIndexes(db: Db): Promise<void> {
       { unique: true, partialFilterExpression: { source: "qr" }, name: "qr_day_employee_branch" },
     ),
   );
+  // Urinishlar jurnali (lib/attendanceAttempts.ts, 06.11.2026): 60 kundan keyin o'zi o'chadi.
+  tasks.push(db.collection("attendance_attempts").createIndex({ at: 1 }, { expireAfterSeconds: 60 * 86_400 }));
+  tasks.push(db.collection("attendance_attempts").createIndex({ employeeId: 1, at: -1 }));
   // FACE ID (lib/staffFace.ts, 30.10.2026): xodimga bitta yuz; urinishlar
   // (rasm bilan) xodim bo'yicha so'nggisidan, 60 kundan keyin o'zi o'chadi
   // (staffFace.ts → SHOT_TTL_DAYS bilan bir xil son).

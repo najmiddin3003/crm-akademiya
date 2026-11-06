@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseWorkTime } from "@/lib/workTime";
 import { ensureIndexes } from "@/lib/mongodb";
 import {
   sanitizeAssignments,
@@ -201,6 +202,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Ishdan ketgan sana (oxirgi ish kuni) — oklad shu kungacha hisoblanadi.
   if (body.salaryEndDate !== undefined) {
     set.salaryEndDate = sanitizeSalaryEndDate(body.salaryEndDate);
+  }
+  // Ish vaqti (lib/workTime.ts): boshi va oxiri birga keladi; ikkalasi bo'sh — olib tashlash.
+  if (body.workStart !== undefined || body.workEnd !== undefined) {
+    const workTime = parseWorkTime(body.workStart, body.workEnd);
+    if (!workTime.ok) return NextResponse.json({ ok: false, error: workTime.error }, { status: 400 });
+    set.workStart = workTime.workStart;
+    set.workEnd = workTime.workEnd;
   }
   // `branchAssignments` quyida, filial qoidasi bilan BIRGA ishlanadi:
   // qatorlar a'zolik ichiga kesilishi kerak, ya'ni `branchIds` aniq

@@ -29,6 +29,7 @@ import EmployeeSalaryCard, { type SalaryCardState } from "./EmployeeSalaryCard";
 import EmployeeScheduleCard, { type ProfileGroup } from "./EmployeeScheduleCard";
 import EmployeeTasksCard from "./EmployeeTasksCard";
 import EmployeeFaceCard from "./EmployeeFaceCard";
+import EmployeeWorkTimeCard from "./EmployeeWorkTimeCard";
 
 // YANGI VERSIYA — XODIM PROFILI (rasm «Xodim profili», yorug'/qorong'i, 20.10.2026):
 //
@@ -329,6 +330,15 @@ export default function EmployeeProfileV2({ id }: { id: number }) {
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           <EmployeeSalaryCard state={salaryState} period={period} canPayroll={canPayroll} canConfigure={!archived} onConfigure={() => setSalaryOpen(true)} />
+          <EmployeeWorkTimeCard
+            workStart={emp.workStart}
+            workEnd={emp.workEnd}
+            canEdit={!archived}
+            employeeName={emp.name}
+            onSave={(next) =>
+              patchEmployee(next, next.workStart ? t("{name} — ish vaqti saqlandi", { name: emp.name }) : t("{name} — ish vaqti olib tashlandi", { name: emp.name }))
+            }
+          />
           <EmployeeTasksCard tasks={tasks} employeeId={emp.id} canAssign={canAssign && !archived} />
           {/* Face ID — biometrik rasm, faqat admin (API ham shunday). */}
           {isAdmin && <EmployeeFaceCard employeeId={emp.id} />}

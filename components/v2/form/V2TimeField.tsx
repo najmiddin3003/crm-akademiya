@@ -41,6 +41,7 @@ export default function V2TimeField({
   disabled = false,
   icon = true,
   ariaLabel,
+  placeholder = "16:00",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -51,6 +52,7 @@ export default function V2TimeField({
   /** Chapdagi soat ikonkasi («Yangi topshiriq» oynasida yo'q — sana yonida, 23.10.2026). */
   icon?: boolean;
   ariaLabel?: string;
+  placeholder?: string;
 }) {
   return (
     <div className="relative">
@@ -60,7 +62,7 @@ export default function V2TimeField({
         type="text"
         inputMode="numeric"
         autoComplete="off"
-        placeholder="16:00"
+        placeholder={placeholder}
         maxLength={5}
         disabled={disabled}
         aria-label={ariaLabel}

@@ -61,6 +61,8 @@ export async function hireCv(
     percent: salaryType === "fixed" ? "" : String(Math.round(percent * 100) / 100),
     branchAssignments: salaryType === "foiz" ? [] : [{ branchId, roleId: null, scheduleId: null, salary: oklad }],
     salaryStartDate: startDate,
+    workStart: typeof body.workStart === "string" ? body.workStart : null,
+    workEnd: typeof body.workEnd === "string" ? body.workEnd : null,
     // Eski «Ishga olish»dagi taxmin: ismi «a» bilan tugasa — ayol (xodim kartasida tuzatiladi).
     gender: /a$/i.test(first) ? "female" : "male",
     photoUrl: cv.photoUrl || "",

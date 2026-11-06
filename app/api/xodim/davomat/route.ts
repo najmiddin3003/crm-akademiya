@@ -7,10 +7,12 @@ import { fillLocationAddress, markAttendance, type ScanLocation } from "@/lib/at
 import { notifyLate } from "@/lib/attendanceNotify";
 import { isValidPoint } from "@/lib/geo";
 import { clientIp, clientUa, logAction } from "@/lib/actionLog";
+import { logAttendanceAttempt, type AttemptClientMeta, type AttendanceAttempt } from "@/lib/attendanceAttempts";
 
 // POST /api/xodim/davomat — «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i
 // (/xodim/keldim) kelish yoki ketishni yozadi.
-// Body: { kind: "in"|"out", loc: { lat, lng, acc }, facePass?: string }.
+// Body: { kind: "in"|"out", loc: { lat, lng, acc }, facePass?: string,
+//         source?, ageMs?, tryNo?, platform?, locError? } — oxirgilari faqat jurnalga.
 //
 // QR'SIZ (31.10.2026): filial QR kodidan emas, JOYLASHUVDAN aniqlanadi —
 // koordinatasi kiritilgan filiallardan radiusi ichidagi eng yaqini
@@ -26,6 +28,9 @@ import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 // `facePass` — FACE ID yoqilgan bo'lsa (30.10.2026, lib/staffFace.ts): Mini App
 // avval /api/xodim/yuz da yuzni tasdiqlaydi va shu ruxsatni oladi. Ruxsatsiz
 // yoki eskirgan bo'lsa `code: "face_required"` — Mini App yuz qadamiga qaytadi.
+//
+// Mini App bir bosishda bir necha o'qish yuborishi mumkin (StaffCheckinTg): rad
+// etilgan har urinish `attendance_attempts` ga tushadi (lib/attendanceAttempts.ts).
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: NO_STORE });
@@ -40,8 +45,27 @@ function readLocation(raw: unknown): ScanLocation | null {
   return { ...p, acc: acc !== null && Number.isFinite(acc) && acc >= 0 ? acc : null };
 }
 
+const SOURCES = ["telegram", "network", "gps"];
+const LOC_ERRORS = ["denied", "unavailable", "timeout"];
+
+/** Mini App aytgani — faqat jurnal uchun, ro'yxatdan tashqarisi tashlanadi. */
+function readAttemptMeta(body: Record<string, unknown>): AttemptClientMeta {
+  const num = (v: unknown, max: number) => {
+    const n = Number(v);
+    return v !== null && v !== undefined && Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n) : null;
+  };
+  const oneOf = (v: unknown, list: string[]) => (typeof v === "string" && list.includes(v) ? v : null);
+  return {
+    source: oneOf(body.source, SOURCES),
+    ageMs: num(body.ageMs, 7 * 86_400_000),
+    tryNo: num(body.tryNo, 20),
+    platform: typeof body.platform === "string" && /^[a-z_]{1,20}$/.test(body.platform) ? body.platform : null,
+    locError: oneOf(body.locError, LOC_ERRORS),
+  };
+}
+
 export async function POST(req: Request) {
-  let body: { kind?: unknown; loc?: unknown; facePass?: unknown };
+  let body: { kind?: unknown; loc?: unknown; facePass?: unknown } & Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -55,16 +79,39 @@ export async function POST(req: Request) {
     const auth = await staffFromInitData(db, req.headers.get("x-telegram-init-data") || "");
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
+    const loc = readLocation(body.loc);
+    const attempt = (a: Pick<AttendanceAttempt, "ok" | "fresh" | "code" | "error" | "branchId" | "distanceM">) => {
+      const row: AttendanceAttempt = {
+        at: new Date(),
+        employeeId: auth.employee.id,
+        name: auth.employee.name,
+        kind,
+        loc,
+        ...readAttemptMeta(body),
+        ...a,
+      };
+      after(() => logAttendanceAttempt(db, row));
+    };
+
     // FACE ID: yoqilgan va xodim ozod bo'lmasa — yuz ruxsati shart.
     let faceShotId: string | null = null;
     const settings = await loadAttendanceSettings(db);
     if (settings.faceRequired && !(await faceState(db, auth.employee.id)).exempt) {
       faceShotId = readFacePass(body.facePass, auth.employee.id);
-      if (!faceShotId) return json({ ok: false, error: "Avval yuzingizni tasdiqlang", code: "face_required" }, 403);
+      if (!faceShotId) {
+        const error = "Avval yuzingizni tasdiqlang";
+        attempt({ ok: false, fresh: null, code: "face_required", error, branchId: null, distanceM: null });
+        return json({ ok: false, error, code: "face_required" }, 403);
+      }
     }
 
-    const res = await markAttendance(db, auth.employee, kind, { loc: readLocation(body.loc), faceShotId });
-    if (!res.ok) return json({ ok: false, error: res.error, code: res.code ?? null }, res.status);
+    const res = await markAttendance(db, auth.employee, kind, { loc, faceShotId });
+    if (!res.ok) {
+      attempt({ ok: false, fresh: null, code: res.code ?? null, error: res.error, branchId: res.near?.branchId ?? null, distanceM: res.near?.distanceM ?? null });
+      return json({ ok: false, error: res.error, code: res.code ?? null }, res.status);
+    }
+    const mark = res.kind === "out" ? res.record.exitLocation : res.record.location;
+    attempt({ ok: true, fresh: res.fresh, code: null, error: null, branchId: res.branch.id, distanceM: mark?.distanceM ?? null });
 
     // Yuz urinishi qaysi yozuvga ishlatildi — admin profilda ko'radi.
     if (faceShotId && res.fresh) {

@@ -9,6 +9,7 @@ import { useBranches } from "@/hooks/useBranches";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { uzDateIso } from "@/lib/uzTime";
+import { parseWorkTime } from "@/lib/workTime";
 import EmployeeToggle from "./EmployeeToggle";
 import CustomFieldDrawer, { type CustomFieldDraft } from "./CustomFieldDrawer";
 import {
@@ -19,6 +20,7 @@ import {
 } from "./employeeExtras";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { branchBuildingLabel } from "@/lib/branchPools";
@@ -220,6 +222,10 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   const [salaryEnd, setSalaryEnd] = useState(employee?.salaryEndDate ?? "");
   // Kelajakdagi sana tanlansa — tasdiq oynasi (13.10.2026).
   const endConfirm = useFutureEndDateConfirm(salaryEnd, setSalaryEnd);
+  // Ish vaqti (lib/workTime.ts): yangi xodimda majburiy, tahrirda yo'q — eski
+  // xodimlarda hali kiritilmagan, boshqa maydonni tuzatishga xalaqit bermasin.
+  const [workStart, setWorkStart] = useState(employee?.workStart ?? "");
+  const [workEnd, setWorkEnd] = useState(employee?.workEnd ?? "");
   const [comment, setComment] = useState(employee?.comment ?? "");
   const [payroll, setPayroll] = useState(employee?.payroll ?? false);
   const [twoFactor, setTwoFactor] = useState(employee?.twoFactor ?? false);
@@ -571,6 +577,15 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       showError(t("Kursni tanlang"));
       return;
     }
+    const workTime = parseWorkTime(workStart, workEnd);
+    if (!workTime.ok) {
+      showError(t(workTime.error));
+      return;
+    }
+    if (!editing && !workTime.workStart) {
+      showError(t("Ish vaqtini kiriting"));
+      return;
+    }
     // Drawer'da "Majburiy maydon" yoqilgan bo'lsa — u haqiqatan majburiy
     // bo'lsin, aks holda toggle yana bir bo'sh va'da bo'lib qolardi.
     const missing = customDefs.find((f) => f.required && !(customValues[f.name] || "").trim());
@@ -659,6 +674,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           // Bo'sh → `null` (cheklov yo'q, oklad oy boshidan).
           salaryStartDate: salaryStart || null,
           salaryEndDate: salaryEnd || null,
+          workStart: workTime.workStart,
+          workEnd: workTime.workEnd,
         }),
       });
       const data = await res.json();
@@ -861,6 +878,22 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               {!!salaryStart && !!salaryEnd && salaryEnd < salaryStart
                 ? <span className="text-rose-600">{t("Ishdan ketgan sana ishga kirgan sanadan oldin bo'lishi mumkin emas")}</span>
                 : t("Oklad faqat shu kunlar orasida hisoblanadi. Ishdan ketgan sana bo'sh — hali ishlayapti.")}
+            </p>
+          </div>
+
+          {/* Ish vaqti — o'qituvchidan boshqa xodimning kechikishi shundan o'lchanadi
+              (lib/attendanceCheck.ts → expectationFor). */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className={labelCls}>{t("Ish boshlanishi")}{!editing && <span className="text-rose-500">*</span>}</label>
+              <TimeField value={workStart} onChange={setWorkStart} variant="form" placeholder="09:00" />
+            </div>
+            <div>
+              <label className={labelCls}>{t("Ish tugashi")}{!editing && <span className="text-rose-500">*</span>}</label>
+              <TimeField value={workEnd} onChange={setWorkEnd} variant="form" placeholder="18:00" />
+            </div>
+            <p className="self-end text-[11.5px] text-muted-foreground pb-1">
+              {t("O'qituvchi kechikishi darsidan, boshqa xodimniki shu vaqtdan o'lchanadi.")}
             </p>
           </div>
 

@@ -17,6 +17,7 @@ import { primaryBtn, secondaryBtn } from "@/components/v2/ui/buttons";
 import { CV_REJECT_REASONS } from "@/constants/managementCv";
 import type { CvApplication } from "@/lib/managementCv";
 import { uzDateIso } from "@/lib/uzTime";
+import { parseWorkTime } from "@/lib/workTime";
 import {
   addDaysIso,
   cvExpPhrase,
@@ -346,13 +347,16 @@ export function CvHireDialog({
   const salaryType: SalaryType = typeRaw ?? (teacher ? "foiz" : "fixed");
   const [oklad, setOklad] = useState("");
   const [percent, setPercent] = useState("");
+  const [workStart, setWorkStart] = useState("");
+  const [workEnd, setWorkEnd] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [tried, setTried] = useState(false);
-  const dirty = roleRaw !== null || branchRaw !== null || startRaw !== null || kursRaw !== null || typeRaw !== null || oklad !== "" || percent !== "";
+  const dirty = roleRaw !== null || branchRaw !== null || startRaw !== null || kursRaw !== null || typeRaw !== null || oklad !== "" || percent !== "" || workStart !== "" || workEnd !== "";
 
   const okladNum = Number(oklad || 0);
   const pctNum = Number(percent.replace(",", "."));
+  const workTime = parseWorkTime(workStart, workEnd);
   const errs = {
     role: roleId === null ? t("Lavozimni tanlang") : "",
     branch: branchId === null ? t("Filialni tanlang") : "",
@@ -360,6 +364,7 @@ export function CvHireDialog({
     kurs: teacher && !kurs ? t("Yo'nalishni tanlang") : "",
     oklad: salaryType !== "foiz" && !(okladNum > 0) ? t("Okladni kiriting") : "",
     percent: salaryType !== "fixed" && !(Number.isFinite(pctNum) && pctNum > 0 && pctNum <= 100) ? t("Foizni kiriting — 1 dan 100 gacha") : "",
+    work: !workTime.ok ? t(workTime.error) : !workTime.workStart ? t("Ish vaqtini kiriting") : "",
   };
   const hasErr = Object.values(errs).some(Boolean);
 
@@ -380,6 +385,8 @@ export function CvHireDialog({
           salaryType,
           oklad: salaryType === "foiz" ? 0 : okladNum,
           percent: salaryType === "fixed" ? 0 : pctNum,
+          workStart,
+          workEnd,
         }),
       });
       const d = await res.json();
@@ -486,6 +493,13 @@ export function CvHireDialog({
             </Field>
           )}
         </div>
+
+        <Field label={t("Ish vaqti")} error={tried ? errs.work : ""}>
+          <div className="grid grid-cols-2 gap-3">
+            <V2TimeField value={workStart} onChange={setWorkStart} placeholder="09:00" ariaLabel={t("Ish boshlanishi")} state={tried && errs.work ? "error" : "default"} />
+            <V2TimeField value={workEnd} onChange={setWorkEnd} placeholder="18:00" ariaLabel={t("Ish tugashi")} state={tried && errs.work ? "error" : "default"} />
+          </div>
+        </Field>
 
         <div>
           <div className="mb-1.5 text-v2-small font-medium text-v2-text">{t("Oylik hisoblash usuli")}</div>

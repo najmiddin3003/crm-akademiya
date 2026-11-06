@@ -34,6 +34,9 @@ export interface TempStaffRow {
   archReason: string;
   archDate: string;
   created: string;
+  /** Ish vaqti, "HH:MM" (lib/workTime.ts); `null` — kiritilmagan. */
+  workStart: string | null;
+  workEnd: string | null;
   /** "Ikki bosqichli tasdiqlash" talab qilinganmi (`hr_employees.twoFactor`). */
   twoFactor: boolean;
   /**
@@ -94,6 +97,8 @@ export async function GET() {
     archReason: String(r.archReason ?? ""),
     archDate: String(r.archDate ?? ""),
     created: String(r.created ?? ""),
+    workStart: typeof r.workStart === "string" ? r.workStart : null,
+    workEnd: typeof r.workEnd === "string" ? r.workEnd : null,
     twoFactor: Boolean(r.twoFactor),
     accountStatus: statusByPhone.get(key) ?? null,
     approval: (approvalByPhone.get(key) ?? "") as TempStaffRow["approval"],

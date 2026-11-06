@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { branchBuildingLabel } from "@/lib/branchPools";
 import { pooledBranchInCondition } from "@/lib/branchScope";
 import { lessonExpectedOn, parseTimeRange } from "@/lib/groupRules";
 import type { HrEmployee } from "@/lib/hrEmployees";
@@ -83,6 +84,12 @@ export interface BranchHit<B> {
   distance: number | null;
 }
 
+/** Rad etilganda eng yaqin filial — urinishlar jurnali uchun (lib/attendanceAttempts.ts). */
+export interface NearBranch {
+  branchId: number;
+  distanceM: number;
+}
+
 export type BranchLocate<B> =
   | {
       ok: true;
@@ -92,7 +99,7 @@ export type BranchLocate<B> =
       /** Xodimning koordinatasi KIRITILMAGAN filiallari (masofa tekshirilmaydi) — oylik filiali birinchi. */
       unplaced: BranchHit<B>[];
     }
-  | { ok: false; status: number; code: LocationErrorCode; error: string };
+  | { ok: false; status: number; code: LocationErrorCode; error: string; near?: NearBranch };
 
 /**
  * Xodim qaysi filialda — joylashuv bo'yicha (sof funksiya — sinov shu orqali).
@@ -133,20 +140,24 @@ export function locateBranch<B extends Pick<AttendanceBranch, "id" | "name" | "g
   if (all.length === 0) {
     return { ok: false, status: 409, code: "no_branch_geo", error: "Filial joylashuvi kiritilmagan — administratorga ayting" };
   }
+  const near = all[0];
+  const nearest = { branchId: near.branch.id, distanceM: Math.round(near.distance) };
   if (acc > MAX_ACCURACY_M) {
     return {
       ok: false,
       status: 400,
       code: "location_inaccurate",
+      near: nearest,
       error: `Joylashuv aniq emas (±${Math.round(acc)} m) — telefonda GPS'ni yoqib, qayta urinib ko'ring`,
     };
   }
-  const near = all[0];
   return {
     ok: false,
     status: 403,
     code: "too_far",
-    error: `Siz «${near.branch.name}» filialidan ${formatDistance(near.distance)} uzoqdasiz — belgilanmadi`,
+    near: nearest,
+    // Hovuzda ikkala bino nomi bir xil («Akademiya Chortoq») — qaysi binodan uzoqligi ko'rinsin.
+    error: `Siz «${branchBuildingLabel(near.branch, (n) => `${n}-bino`)}» filialidan ${formatDistance(near.distance)} uzoqdasiz — belgilanmadi`,
   };
 }
 
@@ -269,7 +280,7 @@ export interface AttendanceRecord {
   lateMinutes: number;
   /** Kelishi kerak bo'lgan vaqt ("HH:MM") — o'lchanmagan bo'lsa null. */
   expected: string | null;
-  /** Nimaga qarab: «…» guruhi darsi / filial ish vaqti. */
+  /** Nimaga qarab: «…» guruhi darsi / xodim ish vaqti / filial ish vaqti. */
   expectedWhy: string | null;
   /** Kelgan / ketgan paytdagi joylashuv (29.09.2026 dan). */
   location?: TurnstileLocation | null;
@@ -345,12 +356,24 @@ export function lateBy(nowMin: number, exp: Expectation | null): number {
   return nowMin > exp.at + exp.grace ? nowMin - exp.at : 0;
 }
 
+/** Filialda ruxsat etilgan kechikish, daqiqa. */
+function branchGrace(branch: AttendanceBranch): number {
+  const g = Number(branch.lateGraceMin);
+  return Number.isInteger(g) && g > 0 ? Math.min(g, 180) : 0;
+}
+
 /** Filialning ish vaqti — o'qituvchi bo'lmagan xodim uchun (sof funksiya). */
 export function branchExpectation(branch: AttendanceBranch): Expectation | null {
   const at = hmToMin(branch.workStart);
   if (at === null) return null;
-  const g = Number(branch.lateGraceMin);
-  return { at, why: "filial ish vaqti", grace: Number.isInteger(g) && g > 0 ? Math.min(g, 180) : 0 };
+  return { at, why: "filial ish vaqti", grace: branchGrace(branch) };
+}
+
+/** Xodimning o'z ish vaqti (lib/workTime.ts) — bo'lsa filialnikidan ustun; ruxsat etilgan kechikish filialniki. */
+export function employeeExpectation(emp: { workStart?: string | null }, branch: AttendanceBranch): Expectation | null {
+  const at = hmToMin(emp.workStart);
+  if (at === null) return null;
+  return { at, why: "xodim ish vaqti", grace: branchGrace(branch) };
 }
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -391,7 +414,7 @@ export async function groupsInBuilding<G extends object>(
 }
 
 async function expectationFor(db: Db, emp: HrEmployee, branch: AttendanceBranch, iso: string, weekday: number): Promise<Expectation | null> {
-  if (emp.turi !== "teacher") return branchExpectation(branch);
+  if (emp.turi !== "teacher") return employeeExpectation(emp, branch) ?? branchExpectation(branch);
   const who = { $regex: `^\\s*${escapeRegex(emp.name.trim())}\\s*$`, $options: "i" };
   // Hovuz bo'yicha olinadi, keyin XONASI shu binoda bo'lganlari qoladi
   // (groupsInBuilding): ustoz kechikishi jismoniy bino bo'yicha.
@@ -419,7 +442,7 @@ export type AttendanceOutcome =
       /** Manzil hozir topilmadi — chaqiruvchi javobdan keyin `fillLocationAddress` ni chaqiradi. */
       addressPending?: "location" | "exitLocation";
     }
-  | { ok: false; status: number; error: string; code?: LocationErrorCode };
+  | { ok: false; status: number; error: string; code?: LocationErrorCode; near?: NearBranch };
 
 const isDuplicateKey = (e: unknown) => (e as { code?: number } | null)?.code === 11000;
 
@@ -473,7 +496,7 @@ export async function markAttendance(
     .find({}, { projection: { _id: 0, id: 1, name: 1, workStart: 1, lateGraceMin: 1, attendanceTopicId: 1, geo: 1, geoRadiusM: 1 } })
     .toArray()) as unknown as AttendanceBranch[];
   const found = locateBranch(branches, opts.loc ?? null, homeBranchIds(emp));
-  if (!found.ok) return { ok: false, status: found.status, error: found.error, code: found.code };
+  if (!found.ok) return { ok: false, status: found.status, error: found.error, code: found.code, near: found.near };
   const { loc, hits, unplaced } = found;
 
   const u = toUz(now);

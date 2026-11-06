@@ -6,7 +6,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import FaceCapture, { type FaceCaptureResult } from "./FaceCapture";
 import FaceGuide from "./FaceGuide";
 import { faceVoiceNeedsTap, sayFaceCue, unlockFaceVoice } from "./faceVoice";
-import { readLocation, useTelegramWebApp, type LocationResult } from "./useTelegramWebApp";
+import { locationReadings, useTelegramWebApp, type LocationFailure, type LocationFix, type LocationResult } from "./useTelegramWebApp";
 
 // XODIMLAR BOTI — «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i
 // (28.09.2026). 31.10.2026 dan QR YO'Q (foydalanuvchi: "yuz scaner qilinsa
@@ -20,6 +20,10 @@ import { readLocation, useTelegramWebApp, type LocationResult } from "./useTeleg
 // old kamerada tasdiqlanadi (FaceCapture), /api/xodim/yuz ruxsat (pass)
 // beradi, u joylashuv bilan birga yuboriladi. Birinchi marta yuz ro'yxatga
 // olinadi (rozilik matni bilan). Tartib: yuz → joylashuv → belgilash.
+//
+// BIR NECHA O'QISH (06.11.2026): joylashuv bitta o'qish bilan hal qilinmaydi —
+// telefon eski nuqtani berishi mumkin (locationReadings izohi). Server rad etsa,
+// xato ko'rsatilmay keyingi, aniqroq o'qish yuboriladi; xato faqat oxirida chiqadi.
 //
 // Xodim kimligi — `initData` dan, filial va masofa — serverda. `kind` —
 // qaysi tugma bosilgani.
@@ -37,6 +41,12 @@ interface CheckinResult {
 }
 
 type LocationError = "location_required" | "location_inaccurate" | "too_far" | "no_branch_geo";
+
+/** Yuborish natijasi: `rejected` — joylashuv rad etildi, boshqa o'qish yuborsa bo'ladi. */
+type SendOutcome = { s: "done" } | { s: "rejected"; message: string; code: LocationError | null };
+
+/** Keyingi o'qish yordam beradigan rad kodlari (filialda koordinata yo'qligiga yordam bermaydi). */
+const RETRY_CODES: readonly (LocationError | null)[] = ["too_far", "location_inaccurate"];
 
 /** Yuz ruxsati serverda 5 daqiqa amal qiladi — biroz oldinroq yangilanadi. */
 const FACE_PASS_FRESH_MS = 4 * 60_000;
@@ -59,6 +69,8 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
   const { app, initData, error: sdkError } = useTelegramWebApp();
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
+  /** Birinchi o'qish rad etildi — aniqroq joylashuv kutilmoqda. */
+  const [refining, setRefining] = useState(false);
   const [location, setLocation] = useState<LocationResult | null>(null);
   const [result, setResult] = useState<CheckinResult | null>(null);
   const [error, setError] = useState("");
@@ -66,17 +78,6 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
   const [gate, setGate] = useState<FaceGate>({ s: "checking" });
   const passRef = useRef<{ pass: string; at: number } | null>(null);
   const autoStarted = useRef(false);
-
-  const locate = useCallback(async (): Promise<LocationResult> => {
-    setLocating(true);
-    try {
-      const loc = await readLocation(app);
-      setLocation(loc);
-      return loc;
-    } finally {
-      setLocating(false);
-    }
-  }, [app]);
 
   /** Yuz kerakmi va xodim ro'yxatdan o'tganmi — ochilganda va ruxsat eskirganda. */
   const checkFace = useCallback(async () => {
@@ -99,38 +100,40 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
     }
   }, [initData, lang, t]);
 
+  /** Bitta o'qishni yuboradi. Rad etilsa xatoni ko'rsatmaydi — hal qilish `start` da. */
   const submit = useCallback(
-    async (loc: LocationResult) => {
+    async (loc: LocationFix, tryNo: number): Promise<SendOutcome> => {
       setBusy(true);
-      setError("");
-      setErrorCode(null);
-      setResult(null);
       try {
         const r = await fetch("/api/xodim/davomat", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-telegram-init-data": initData ?? "" },
           body: JSON.stringify({
             kind,
-            loc: loc.ok ? { lat: loc.lat, lng: loc.lng, acc: loc.acc } : null,
+            loc: { lat: loc.lat, lng: loc.lng, acc: loc.acc },
             facePass: passRef.current?.pass ?? null,
+            source: loc.source,
+            ageMs: loc.ageMs,
+            tryNo,
+            platform: app?.platform ?? null,
           }),
         });
         const d = await r.json();
         if (d?.ok) {
           setResult(d as CheckinResult);
           app?.HapticFeedback?.notificationOccurred?.(d.lateMinutes > 0 ? "warning" : "success");
-        } else if (d?.code === "face_required") {
+          return { s: "done" };
+        }
+        if (d?.code === "face_required") {
           // Ruxsat eskirgan yoki admin hozirgina yoqqan — yuz qadamiga qaytiladi.
           passRef.current = null;
           app?.HapticFeedback?.notificationOccurred?.("error");
           void checkFace();
-        } else {
-          setError(t(d?.error || "Belgilanmadi — qayta urinib ko'ring"));
-          setErrorCode((d?.code as LocationError | null) ?? null);
-          app?.HapticFeedback?.notificationOccurred?.("error");
+          return { s: "done" };
         }
+        return { s: "rejected", message: t(d?.error || "Belgilanmadi — qayta urinib ko'ring"), code: (d?.code as LocationError | null) ?? null };
       } catch {
-        setError(t("Tarmoq xatosi — qayta urinib ko'ring"));
+        return { s: "rejected", message: t("Tarmoq xatosi — qayta urinib ko'ring"), code: null };
       } finally {
         setBusy(false);
       }
@@ -138,23 +141,67 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
     [app, initData, kind, t, checkFace],
   );
 
-  /** Joylashuv → belgilash. Joylashuv olinmasa yuborilmaydi (server baribir rad etadi). */
+  /** Telefonda joylashuv olinmadi: serverga hech narsa bormasdi — sababi jurnalga yoziladi. */
+  const reportNoLocation = useCallback(
+    (reason: LocationFailure["reason"]) => {
+      void fetch("/api/xodim/davomat", {
+        method: "POST",
+        // Xodim oynani darhol yopsa ham yetib borsin.
+        keepalive: true,
+        headers: { "Content-Type": "application/json", "x-telegram-init-data": initData ?? "" },
+        body: JSON.stringify({ kind, loc: null, facePass: passRef.current?.pass ?? null, locError: reason, platform: app?.platform ?? null }),
+      }).catch(() => {});
+    },
+    [app, initData, kind],
+  );
+
+  /** Joylashuv → belgilash: o'qishlar navbat bilan, server qabul qilguncha. */
   const start = useCallback(async () => {
     setError("");
     setErrorCode(null);
     setResult(null);
-    const loc = await locate();
-    if (!loc.ok) {
-      setError(
-        loc.reason === "denied"
-          ? t("Joylashuvga ruxsat berilmagan")
-          : t("Joylashuv aniqlanmadi — telefonda joylashuv (GPS) yoqilganini tekshiring"),
-      );
-      setErrorCode("location_required");
+    setLocating(true);
+    let rejected: Extract<SendOutcome, { s: "rejected" }> | null = null;
+    let failure: LocationFailure | null = null;
+    let last: LocationFix | null = null;
+    let tryNo = 0;
+    try {
+      for await (const loc of locationReadings(app)) {
+        if (!loc.ok) {
+          failure = loc;
+          if (loc.reason === "denied") break;
+          continue;
+        }
+        // Telefon o'sha nuqtani qaytargan — yuborishdan foyda yo'q.
+        if (last && last.lat === loc.lat && last.lng === loc.lng && last.acc === loc.acc) continue;
+        last = loc;
+        setLocation(loc);
+        tryNo += 1;
+        const out = await submit(loc, tryNo);
+        if (out.s === "done") return;
+        rejected = out;
+        if (!RETRY_CODES.includes(out.code)) break;
+        setRefining(true);
+      }
+    } finally {
+      setLocating(false);
+      setRefining(false);
+    }
+    app?.HapticFeedback?.notificationOccurred?.("error");
+    if (rejected) {
+      setError(rejected.message);
+      setErrorCode(rejected.code);
       return;
     }
-    await submit(loc);
-  }, [locate, submit, t]);
+    const reason = failure?.reason ?? "unavailable";
+    reportNoLocation(reason);
+    setError(
+      reason === "denied"
+        ? t("Joylashuvga ruxsat berilmagan")
+        : t("Joylashuv aniqlanmadi — telefonda joylashuv (GPS) yoqilganini tekshiring"),
+    );
+    setErrorCode("location_required");
+  }, [app, reportNoLocation, submit, t]);
 
   /** Qayta urinish: yuz ruxsati eskirgan bo'lsa — avval yuz. */
   const restart = useCallback(() => {
@@ -390,7 +437,9 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
         {busy || locating ? (
           <div className="space-y-2">
             <SpinnerBlock />
-            <p className="text-[13px] text-muted-foreground">{locating ? t("Joylashuv aniqlanmoqda…") : t("Tekshirilmoqda…")}</p>
+            <p className="text-[13px] text-muted-foreground">
+              {refining ? t("Joylashuv aniqlashtirilmoqda — bir necha soniya kuting") : locating ? t("Joylashuv aniqlanmoqda…") : t("Tekshirilmoqda…")}
+            </p>
           </div>
         ) : error ? (
           <div className="space-y-2">
@@ -400,7 +449,15 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
             </p>
             {locationProblem && (
               <p className="text-[13px] text-muted-foreground">
-                {t("Ishga kelganingizni tasdiqlash uchun Telegram'ga joylashuvingizni ko'rishga ruxsat bering — faqat belgilash paytida olinadi.")}
+                {/* Android'da ruxsatni WebView sahifa yopilguncha eslab turadi: rad etilsa «Qayta urinish» ham rad bo'ladi. */}
+                {app?.platform === "android"
+                  ? t("Telegram joylashuvni so'raganda ruxsat bering. So'ramasa, bu oynani yopib, botdan qayta oching.")
+                  : t("Ishga kelganingizni tasdiqlash uchun Telegram'ga joylashuvingizni ko'rishga ruxsat bering — faqat belgilash paytida olinadi.")}
+              </p>
+            )}
+            {errorCode === "too_far" && (
+              <p className="text-[13px] text-muted-foreground">
+                {t("Filial ichida bo'lsangiz: deraza yoniga yoki ochiq joyga o'ting, keyin qayta urining.")}
               </p>
             )}
           </div>
