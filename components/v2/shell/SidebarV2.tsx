@@ -115,10 +115,18 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
   const openKey = toggled && toggled.path === pathname ? toggled.key : activeGroup;
   const toggle = (key: string) => setToggled({ path: pathname, key: openKey === key ? null : key });
 
+  /**
+   * Yangi versiyada boshqa son ko'rsatiladigan bandlar: «Birinchi darsga
+   * yozilganlar» — natija kutayotganlar (22-qism, sahifa sarlavhasidagi son bilan
+   * bir xil); eski menyu barcha yozilganlarni sanaydi (eski ro'yxat jami).
+   */
+  const V2_COUNT_KEYS: Record<string, string> = { firstLessons: "firstLessonsWaiting" };
+
   const renderSubItem = (it: SidebarMenuItem, key: string) => {
     const locked = isLockedRoute(it.href);
     const active = isActive(it.href);
-    const count = it.countKey != null ? counts[it.countKey] : undefined;
+    const countKey = it.countKey != null ? (V2_COUNT_KEYS[it.countKey] ?? it.countKey) : null;
+    const count = countKey != null ? counts[countKey] : undefined;
     const cls = `flex h-8 items-center gap-2 rounded-v2-md border px-2.5 text-v2-body transition-colors ${active ? ROW_ACTIVE : ROW_IDLE}`;
     const label = noEmoji(t(V2_ITEM_LABELS[it.href] ?? it.label));
     const inner = (

@@ -50,6 +50,9 @@ export function snapshotOf(o: Order, at: string, by: string): LeadHolatSnapshot 
     status: o.status ?? "",
     group: o.group ?? "",
     groupId: o.groupId ?? null,
+    firstLessonGroupId: o.firstLessonGroupId ?? null,
+    firstLessonReminder: o.firstLessonReminder ?? null,
+    firstLessonFollowUp: o.firstLessonFollowUp ?? null,
     moderator: o.moderator ?? "",
     leadStatus: o.leadStatus ?? null,
     at,
@@ -133,6 +136,12 @@ export async function applyHolatChange(db: Db, filter: Filter<Document>, order: 
     set.firstLesson = fl;
     if (c.sinov.oqituvchi) set.teacher = c.sinov.oqituvchi;
     set.firstLessonStatus = had && had !== fl ? "QAYTA_BELGILANDI" : "YOZILDI";
+    // 22-qism: dars qaysi guruhda; eski eslatish va «kelmadi» qadami yangi sanaga tegishli emas.
+    if (c.sinov.guruhId) set.firstLessonGroupId = c.sinov.guruhId;
+    else unset.firstLessonGroupId = "";
+    if (c.sinov.eslatma === false) set.firstLessonReminder = { off: true };
+    else unset.firstLessonReminder = "";
+    unset.firstLessonFollowUp = "";
   }
   if (c.to === "guruh" && c.guruh) {
     set.guruh = c.guruh;
@@ -236,6 +245,10 @@ export async function undoHolatChange(db: Db, filter: Filter<Document>, order: O
   opt("firstLessonStatus", last.firstLessonStatus);
   opt("groupId", last.groupId);
   opt("leadStatus", last.leadStatus);
+  // Eski nusxalarda maydon yo'q (undefined) — u holda tegilmaydi.
+  if (last.firstLessonGroupId !== undefined) opt("firstLessonGroupId", last.firstLessonGroupId);
+  if (last.firstLessonReminder !== undefined) opt("firstLessonReminder", last.firstLessonReminder);
+  if (last.firstLessonFollowUp !== undefined) opt("firstLessonFollowUp", last.firstLessonFollowUp);
 
   const ev: LeadHolatEvent = { at: now, kind: "undo", holat: last.holat, from: holatOf(order), by };
   for (const k of Object.keys(set)) delete unset[k];

@@ -31,6 +31,28 @@ export const FIRST_LESSON_STATUSES: { value: FirstLessonStatus; label: string }[
   { value: "ALOQA_KERAK", label: "Aloqa kerak" },
 ];
 
+/**
+ * Birinchi dars oldidan eslatish. `off` — yozishda «eslatish» belgisi olib
+ * tashlangan; `result` — operator qo'ng'iroq qilib belgilagan natija. `at`/`by`
+ * server yozadi (PATCH /api/orders/:id).
+ */
+export interface FirstLessonReminder {
+  off?: boolean;
+  result?: "eslatildi" | "tasdiqladi" | "javob_yoq";
+  at?: string;
+  by?: string;
+}
+
+/** «Kelmadi» dan keyin operatorga qo'ng'iroq: kim, qachongacha ("YYYY-MM-DD HH:MM", Toshkent), izoh. */
+export interface FirstLessonFollowUp {
+  kind: "call";
+  assignee: string;
+  due: string;
+  note?: string;
+  at?: string;
+  by?: string;
+}
+
 export function firstLessonStatusLabel(v: string | undefined): string {
   return FIRST_LESSON_STATUSES.find((s) => s.value === v)?.label ?? "";
 }
@@ -91,6 +113,17 @@ export interface Order {
   lessonStartTime: string;
   /** Birinchi darsga yozilganlar sahifasidagi holat. Kiritilmagan bo'lishi mumkin. */
   firstLessonStatus?: FirstLessonStatus;
+  /**
+   * Birinchi dars QAYSI GURUHNING darsida (yangi versiya, 22-qism) — «Birinchi
+   * darsga yozish» oynasida guruh tanlansa yoziladi. Yo'q bo'lsa guruh
+   * o'qituvchi + vaqt + hafta kunidan topiladi (components/v2/leads/leadUtils.ts
+   * → trialGroupOf). Dars ko'chirilsa qayta yoziladi yoki olib tashlanadi.
+   */
+  firstLessonGroupId?: number;
+  /** Dars oldidan eslatish natijasi — dars ko'chirilsa tozalanadi (lib/leadHolatServer.ts). */
+  firstLessonReminder?: FirstLessonReminder;
+  /** «Kelmadi → keyingi qadam» — operator qo'ng'irog'i (yangi sana yoki «ketdi» bilan yopiladi). */
+  firstLessonFollowUp?: FirstLessonFollowUp;
   /**
    * O'quvchi HAQIQATDA qo'shilgan guruhning id'si — "Guruhga qo'shish"
    * amali bajarilganda yoziladi (/api/groups/:id/students ga qo'shilgach).

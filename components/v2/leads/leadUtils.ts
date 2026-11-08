@@ -173,7 +173,13 @@ export function splitByCourse(o: Pick<Order, "course">, list: Group[]): { match:
  */
 export function trialGroupOf(o: Order, groups: Group[]): Group | null {
   const s = sinovOf(o);
-  if (!s || !s.vaqt) return null;
+  if (!s) return null;
+  // 22-qism: guruh yozishda tanlangan bo'lsa — o'sha (ro'yxatda bo'lsa).
+  if (o.firstLessonGroupId) {
+    const g = groups.find((x) => x.id === o.firstLessonGroupId);
+    if (g) return g;
+  }
+  if (!s.vaqt) return null;
   const wd = weekdayOfIso(s.sana);
   const teacher = norm(s.oqituvchi);
   const course = norm(o.course);

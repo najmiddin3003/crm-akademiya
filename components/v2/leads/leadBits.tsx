@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent } from "react";
+import { type KeyboardEvent, type ReactNode } from "react";
 import { useT } from "@/components/shared/Language";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { roomLabel, timeLabel } from "@/components/v2/ui/groupStatus";
@@ -60,6 +60,7 @@ export function GroupRadioList({
   allowNone = false,
   label,
   autoFocus = false,
+  aside,
 }: {
   groups: Group[];
   value: number | null;
@@ -69,6 +70,8 @@ export function GroupRadioList({
   label: string;
   /** Oyna ochilganda fokus shu ro'yxatda (tanlangan yoki birinchi karta) — V2Dialog `data-autofocus`. */
   autoFocus?: boolean;
+  /** O'ngdagi yozuv (sukut: «6 o'quvchi»); «Birinchi darsga yozish» — bo'sh o'rin va yozilganlar. */
+  aside?: (g: Group) => ReactNode;
 }) {
   const { t } = useT();
   const move = (e: KeyboardEvent, i: number) => {
@@ -111,7 +114,11 @@ export function GroupRadioList({
                 <span className={`size-2 shrink-0 rounded-full ${FAN_DOT[fanOf(g.course)]}`} aria-hidden />
                 <span className="font-semibold text-v2-text">{g.course || g.name || `#${g.id}`}</span>
                 {trial && <span className="rounded-v2-sm bg-v2-warning-bg px-1.5 py-px text-v2-caption text-v2-warning">{t("Birinchi dars shu guruhda")}</span>}
-                <span className="ml-auto shrink-0 text-v2-caption text-v2-text-2">{t("{n} o'quvchi", { n: groupStudentCount(g) })}</span>
+                {aside ? (
+                  <span className="ml-auto shrink-0 text-right">{aside(g)}</span>
+                ) : (
+                  <span className="ml-auto shrink-0 text-v2-caption text-v2-text-2">{t("{n} o'quvchi", { n: groupStudentCount(g) })}</span>
+                )}
               </span>
               {groupMeta(g) && <span className="mt-1 block text-v2-small text-v2-text-2">{groupMeta(g)}</span>}
             </span>

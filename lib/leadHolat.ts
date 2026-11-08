@@ -19,6 +19,8 @@
 //   `group/groupId`     — «Guruhga qo'shish» ularni to'ldiradi.
 // Bu fayl `mongodb` ni import qilmaydi — mijoz ham, server ham o'qiydi.
 
+import type { FirstLessonFollowUp, FirstLessonReminder } from "@/lib/ordersData";
+
 export type LeadHolat = "yangi" | "bog" | "sinov" | "guruh" | "rad";
 
 export interface LeadHolatMeta {
@@ -57,6 +59,10 @@ export interface LeadSinov {
   sana: string;
   vaqt: string;
   oqituvchi: string;
+  /** Qaysi guruhning darsiga (22-qism) — `orders.firstLessonGroupId` ga yoziladi. */
+  guruhId?: number;
+  /** `false` — dars oldidan eslatilmaydi (yozish oynasidagi belgi olib tashlangan). */
+  eslatma?: boolean;
 }
 
 /** Lid yozilgan guruh. `kun`/`vaqt` guruh jadvalidan, `boshlash` — birinchi dars. */
@@ -105,6 +111,11 @@ export interface LeadHolatSnapshot {
   status: string;
   group: string;
   groupId: number | null;
+  /** Birinchi dars guruhi (22-qism) — eski nusxalarda yo'q. */
+  firstLessonGroupId?: number | null;
+  /** Eslatish natijasi va «Kelmadi» qo'ng'irog'i (22-qism) — ko'chirilganda tozalanadi, bekor qilinsa qaytadi. */
+  firstLessonReminder?: FirstLessonReminder | null;
+  firstLessonFollowUp?: FirstLessonFollowUp | null;
   moderator: string;
   /** Telegram tugmasining javobi — xabardagi "Bog'lanildi" qatori shundan. */
   leadStatus: string | null;
@@ -138,6 +149,24 @@ export function holatOf(o: HolatSource): LeadHolat {
   if (o.leadStatus === "later" || o.leadStatus === "pay" || o.stage || (o.status && o.status !== "Yangi")) return "bog";
   return "yangi";
 }
+
+/**
+ * Mongo sharti: holati «Birinchi dars» (natija kutmoqda) — {@link holatOf} bilan
+ * bir xil: maydon bo'lsa o'sha, bo'lmasa eski maydonlardan (guruhga yozilmagan,
+ * rad etilmagan). `firstLesson` borligi alohida shart (chaqiruvchida).
+ */
+export const FIRST_LESSON_WAITING = {
+  $or: [
+    { holat: "sinov" },
+    {
+      holat: { $exists: false },
+      groupId: { $in: [null, 0] },
+      status: { $ne: "Bekor qilindi" },
+      leadStatus: { $ne: "reject" },
+      firstLessonStatus: { $nin: ["GURUHGA_QOSHILDI", "RAD_ETDI"] },
+    },
+  ],
+};
 
 /**
  * Ruxsat etilgan o'tish — prototipdagi oqim bilan bir xil, CRM'da ham,

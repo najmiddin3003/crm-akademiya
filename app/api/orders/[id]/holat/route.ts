@@ -34,7 +34,14 @@ function parseSinov(v: unknown): LeadSinov | null | "bad" {
   const sana = str(o.sana, 10);
   const vaqt = str(o.vaqt, 5);
   if (!DATE_RE.test(sana) || !TIME_RE.test(vaqt)) return "bad";
-  return { sana, vaqt, oqituvchi: str(o.oqituvchi, 120) };
+  const guruhId = Number(o.guruhId);
+  return {
+    sana,
+    vaqt,
+    oqituvchi: str(o.oqituvchi, 120),
+    ...(Number.isInteger(guruhId) && guruhId > 0 ? { guruhId } : {}),
+    ...(o.eslatma === false ? { eslatma: false } : {}),
+  };
 }
 
 function parseGuruh(v: unknown): LeadGuruh | null | "bad" {

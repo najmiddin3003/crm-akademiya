@@ -3,6 +3,7 @@ import type { Document } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
+import { stampFirstLessonFields } from "@/lib/firstLessonFields";
 import { withLeadScope } from "@/lib/leadScope";
 import { HOLAT_CONFLICT, SERVER_MANAGED_ORDER_FIELDS, legacyHolatSync } from "@/lib/leadHolatServer";
 import { refreshLeadMessage } from "@/lib/leadNotify";
@@ -49,6 +50,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   for (const k of SERVER_MANAGED_ORDER_FIELDS) delete patch[k];
 
   const author = await currentAuthorName();
+  // Birinchi dars eslatmasi va «kelmadi» qadami (22-qism): kim va qachon — server yozadi.
+  const stamped = stampFirstLessonFields(patch, author || "CRM");
+  if (stamped) return NextResponse.json({ ok: false, error: stamped }, { status: 400 });
   const db = await ensureIndexes();
   const col = db.collection("orders");
   // Filtr qamrov bilan kesiladi: boshqa filialning lidini id'sini bilib

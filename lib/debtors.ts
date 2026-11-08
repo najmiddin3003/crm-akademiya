@@ -1,12 +1,11 @@
 import type { Db } from "mongodb";
 import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import { withBranch, type BranchScope } from "@/lib/branchScope";
-import { branchPool } from "@/lib/branchPools";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
 import { lessonsPerMonthFor, unpaidMonths, type DebtIssue, type DebtorGroupPart, type DebtorRow, type DebtorsReport, type GroupIssue, type MonthlySummary } from "@/lib/debtorsTypes";
-import { findCourseByName } from "@/lib/courseLevels";
+import { monthlyPriceFor, type PricedCourse } from "@/lib/coursePrice";
 import { groupWeekdays } from "@/lib/attendance";
 import {
   GROUP_MEMBERSHIPS,
@@ -77,69 +76,10 @@ import {
 
 const norm = (s: string | undefined | null) => String(s ?? "").trim().toLowerCase();
 
-/**
- * `offline_courses` hujjatining narx uchun kerak bo'lgan qismi
- * (components/offline-courses/OfflineCoursesProvider.tsx → OfflineCourse
- * bilan bir xil maydonlar). O'sha tip ATAYLAB import qilinmaydi:
- * scripts/gen-api-permissions.mjs importlarni kuzatib, Provider ichidagi
- * "/api/offline-courses" havolalarini /reports-unpaid sahifasiga ham
- * ochib yuborardi (kurs yaratish/o'chirish API'si hisobot ruxsati bilan).
- */
-interface PricedCourse {
-  name: string;
-  branches?: { id: number; enabled: boolean; price: number }[];
-  levels?: { name: string; branches?: { id: number; enabled: boolean; summa: number }[] }[];
-}
-
-/**
- * `groups` hujjati — `Group` tipida `branchId` yo'q, bazada esa bor (POST
- * /api/groups yozadi); `archivedAt` — arxivlangan kun (PATCH /api/groups/:id).
- */
 type GroupDoc = Group & { branchId?: number | null; archivedAt?: string | null };
 
-/**
- * Oylik narx bundan kichik bo'lishi mumkin emas (ro'yxatdagi eng pasti
- * 280 000). Kichigi — eski "bitta dars narxi" (21 538 kabi) qolib ketgan
- * hujjat: uni oylik deb olsak qarz 13 barobar kam chiqardi. Shunday qiymat
- * "narx kiritilmagan" deb olinadi — sahifada ogohlantirish chiqadi,
- * scripts/set-course-prices.mjs qayta yurgiziladi.
- */
-const MIN_MONTHLY_PRICE = 50_000;
-
-/**
- * Guruh uchun OYLIK narx (yuqoridagi qoida). `null` — topilmadi.
- *
- * Musbat bo'lmagan narx (0) "kiritilmagan" deb olinadi: kurs formasi
- * o'chirilgan filialga ham `price: 0` yozadi.
- */
-export function monthlyPriceFor(
-  group: Pick<GroupDoc, "course" | "level" | "branchId">,
-  courses: PricedCourse[],
-): number | null {
-  const course = findCourseByName(courses, group.course || "");
-  if (!course) return null;
-  // Maydoni yo'q eski guruh 1-filialniki (lib/branchScope.ts → branchCondition).
-  const branchId = Number(group.branchId) || 1;
-  // 1+2 HOVUZI (09.10.2026, lib/branchPools.ts): guruhning `branchId` si —
-  // uni yaratgan navbar filiali, bino emas. Avval o'z filiali qatori, u
-  // yo'q yoki o'chiq bo'lsa — hovuzdosh filial qatori. Aks holda bir xil
-  // kursdagi umumiy ro'yxat guruhlari jimgina kurs asosiy narxiga tushardi.
-  const order = [branchId, ...branchPool(branchId).filter((b) => b !== branchId)];
-
-  const levelKey = norm(group.level);
-  if (levelKey) {
-    const level = (course.levels ?? []).find((l) => norm(l.name) === levelKey);
-    for (const bid of order) {
-      const lb = level?.branches?.find((b) => Number(b.id) === bid && b.enabled);
-      if (lb && Number(lb.summa) >= MIN_MONTHLY_PRICE) return Number(lb.summa);
-    }
-  }
-  for (const bid of order) {
-    const cb = (course.branches ?? []).find((b) => Number(b.id) === bid && b.enabled);
-    if (cb && Number(cb.price) >= MIN_MONTHLY_PRICE) return Number(cb.price);
-  }
-  return null;
-}
+// Oylik narx (monthlyPriceFor) — lib/coursePrice.ts (mijoz ham o'qiydi); bu yerdan ham eksport.
+export { monthlyPriceFor };
 
 /** Guruh jadvali uchun oydagi darslar soni (lib/debtorsTypes.ts → lessonsPerMonthFor). */
 export function lessonsPerMonthOf(day: string | undefined | null): number {

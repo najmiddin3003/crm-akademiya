@@ -115,7 +115,9 @@ export default function LeadSinovModalV2({
     setSubmitted(true);
     if (errSana || errVaqt) return;
     setBusy(true);
-    const r = await postHolat(order.id, { to: "sinov", sinov: { sana, vaqt, oqituvchi } });
+    // Guruh tanlangan bo'lsa — lid aynan shu guruhning darsiga (22-qism: ro'yxatdagi guruh va bo'sh o'rinlar shundan).
+    const guruhId = pick && live.some((g) => g.id === pick) ? pick : undefined;
+    const r = await postHolat(order.id, { to: "sinov", sinov: { sana, vaqt, oqituvchi, ...(guruhId ? { guruhId } : {}) } });
     setBusy(false);
     if (!r.ok) {
       showToast({ tone: "error", title: t("Saqlab bo'lmadi"), detail: t(r.error) });

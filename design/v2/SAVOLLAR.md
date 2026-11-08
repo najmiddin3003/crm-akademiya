@@ -1435,6 +1435,54 @@ sms dagi «Tug'ilgan kunida» yozuvi bor, lekin uni hech narsa yubormaydi.
 *Savol:* xodimni tabriklash nima qilsin (SMS oynasi o'quvchi uchun — ota-onaga yuborishni taklif qiladi)? Arxivdagi
 o'quvchilar bu oynada va sahifada ko'rinsinmi? Avtomatik tabrik SMS'i kerakmi?
 
+**248. Birinchi darsga yozilganlar — o'qituvchi davomati** — ochiq (08.11.2026, 22-qism rasmlari)
+Rasmda: «natijani o'qituvchi davomatda belgilaydi, shu yerdan ham belgilash mumkin», «Davomat yozilmagan» va izohda
+«O'qituvchi davomatida bu kishilar "Birinchi dars" bo'limida chiqadi». Bunday bog'lanish hozir YO'Q: davomat faqat
+guruh o'quvchilari bo'yicha, lid o'quvchi emas.
+*Savol:* o'qituvchi davomatiga «Birinchi dars» bo'limi qo'shilsinmi (o'qituvchi «Keldi» bossa — shu sahifadagidek
+guruhga qo'shilsinmi yoki faqat belgi qo'yilsinmi)?
+*Taxmin:* hozircha natija FAQAT shu sahifada belgilanadi; yozuvlar shunga moslandi («Natija belgilanmagan», «natija
+dars kuni shu yerda belgilanadi»), izohning uchinchi qatori chiqmaydi.
+
+**249. «Kelmadi» → «Operator qo'ng'iroq qilsin»** — taxmin
+Rasmda «Zarina Tojiboyeva · ertaga 10:00 gacha» — operatorga qo'ng'iroq TOPSHIRIG'I. Xodim topshiriqlari (/tasks)
+da jarima va «dangasa» avtomatikasi bor, shuning uchun topshiriq YARATILMAYDI: lidning o'zida «× Kelmadi ·
+Qo'ng'iroq: ertaga 10:00 gacha · Zarina T.» yoziladi (mas'ul — lidning mas'uli, bo'lmasa belgilagan xodim), muddat
+o'tsa sariq «Qo'ng'iroq kechikdi». Lid «O'tgan kunlar — natija yo'q» da hal bo'lguncha turadi; «Keyingi qadam» menyusi
+qayta ochadi.
+*Savol:* /tasks ga haqiqiy topshiriq tushsinmi (jarimasiz)?
+
+**250. «Keldi» — guruhga qo'shish va bekor qilish** — taxmin
+«Keldi» bosilganda o'quvchi DARHOL guruhga yoziladi (birinchi dars sanasidan — o'sha dars ham hisobga kiradi) va lid
+«Guruhga qo'shildi»; oynachada oylik narx (kurs/daraja narxi, filial bo'yicha) va «To'lov qabul qilish» (kassa ruxsati
+borlarga). «Bekor qilish» faqat LID HOLATINI qaytaradi, o'quvchi guruhda qoladi (Lidlar sahifasidagi qaror, 94) —
+toastda «O'quvchi guruhda qoldi — kerak bo'lsa guruhdan chiqaring». To'lov oynasiga oyning TO'LIQ narxi yoziladi —
+oy o'rtasida qo'shilganda summani kassir o'zi o'zgartiradi.
+
+**251. Bo'sh o'rinlar — xona sig'imidan** — taxmin
+Guruhning o'z sig'imi yo'q; «bo'sh o'rin 5 · 7 / 12 band» — guruh XONASINING sig'imi (Guruh → Xonalar) minus
+o'quvchilar. Xona topilmasa yoki sig'imi kiritilmagan bo'lsa — faqat «N o'quvchi». «Bo'sh o'rinlar →» Guruhlar
+ro'yxatini ochadi (alohida bo'sh o'rinlar sahifasi yo'q). Operator uchun xona/kurs API'si yopiq — sig'im va narx
+alohida «faqat o'qish» route'dan keladi (/api/first-lessons/groups-info).
+
+**252. Eslatish qo'ng'irog'i** — taxmin
+«Dars kunidan bir kun oldin eslatish» — operatorning eslatmasi: kelgusi darslar ro'yxatida eslatish kuni kelganda sariq
+«Eslatish: ertaga/bugun» va «Eslatish» tugmasi (natija: Tasdiqladi / Eslatildi / Javob bermadi). Avtomatik SMS yoki
+bot xabari YUBORILMAYDI. Bugun yozilgan lid — «✓ Yozildi · bugun 18:21». Belgi olib tashlansa — «Eslatish o'chirilgan».
+Dars ko'chirilsa eslatish va qo'ng'iroq belgisi tozalanadi (bekor qilinsa qaytadi).
+
+**253. Birinchi darsga yozilganlar — rasmdan farqlar** — taxmin
+«Namuna» belgisi chiqmaydi (196/211). «Kelmadi → Ketdi» tavsifidagi «Bosh sahifada 6 → 7» raqamlari olindi — sahifa
+Bosh sahifa raqamini bilmaydi; «Ketdi» lidni «Rad etdi» holatiga sababi bilan o'tkazadi. Yon menyudagi son (yangi
+versiyada) — faqat NATIJA KUTAYOTGANLAR (eski versiyada — barcha birinchi darsga yozilganlar, o'zgarmadi). Bugun hal
+bo'lganlar (keldi/ketdi) kun oxirigacha o'z qatorida ko'rinib turadi, sanoqqa kirmaydi.
+
+**254. Natijasiz eski birinchi darslar (232 ta)** — ochiq
+Haqiqiy bazada «O'tgan kunlar — natija yo'q» bo'limida ~232 lid bor (oylar oldingi, hech kim Keldi/Kelmadi bosmagan).
+Hozircha: eng yangisi tepada, 20 tadan, «Yana ko'rsatish» tugmasi; guruh kartalari ham 8 tadan, «Yana N ta guruh».
+Savol: eskilarini bir martalik tozalash kerakmi (masalan, 30 kundan eskisini «Rad etdi — natija yozilmagan» ga),
+yoki ma'lum muddatdan keyin avtomatik arxivga tushsinmi? Yon menyudagi son ham shu sababli katta (233).
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

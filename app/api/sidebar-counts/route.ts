@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isPathAllowed } from "@/lib/permissions";
 import { getBranchScope, withBranch } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
+import { FIRST_LESSON_WAITING } from "@/lib/leadHolat";
 import { withLeadScope } from "@/lib/leadScope";
 import { taskBadgeCount } from "@/lib/staffTasksServer";
 import { cvBranchFilter } from "@/lib/managementCv";
@@ -54,6 +55,13 @@ export async function GET() {
       db.collection("orders")
         .countDocuments({ $and: [leadFilter, { firstLesson: { $nin: ["", null] } }] })
         .then((n) => { counts.firstLessons = n; }),
+    );
+    // Yangi versiya (22-qism): faqat NATIJA KUTAYOTGANLAR — holati «Birinchi dars»
+    // (eski lidlarda holat maydondan hisoblanadi: lib/leadHolat.ts → holatOf).
+    jobs.push(
+      db.collection("orders")
+        .countDocuments({ $and: [leadFilter, { firstLesson: { $nin: ["", null] } }, FIRST_LESSON_WAITING] })
+        .then((n) => { counts.firstLessonsWaiting = n; }),
     );
   }
   if (can("/groups")) {
