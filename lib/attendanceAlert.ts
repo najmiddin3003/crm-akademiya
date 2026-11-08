@@ -26,17 +26,37 @@ import { uzClock, type UzClock } from "@/lib/teacherLessons";
 // admin hisoblariga boradi. «Rahbar» tizimda alohida rol emas: Akademiya'da admin hisobi
 // bitta, egasining o'zi esa «IT mutaxassisi» — shu sabab ro'yxatni admin belgilaydi.
 // Admin hamma filialni, boshqalar saytda ko'radigan filiallarini oladi (loadViewer qoidasi).
+//
+// 08.11.2026 — yana ikki qoida (egasi: «Face ID'dan o'tmadi» va «dars boshlandi, o'qituvchi hali
+// kelmadi» xabarlari ham rahbarga). Uchala qoida ALOHIDA yoqiladi, qabul qiluvchilar va `since`
+// umumiy:
+//   • `enabled`       — davomat qilinmagan guruhlar (dars tugagach MISSED_ALERT_AFTER_MIN);
+//   • `faceFail`      — xodim Face ID'dan o'ta olmadi va oxirgi urinishdan FACE_FAIL_GRACE_MIN
+//                       o'tib ham muvaffaqiyatli urinish yo'q (kuniga bir marta);
+//   • `teacherAbsent` — dars boshlanib TEACHER_ABSENT_AFTER_MIN o'tdi, ustoz bugun «Ishga keldim»
+//                       belgilamagan (ustoz «Ishga keldim» dan foydalanadigan bo'lsa).
 
 export const ATTENDANCE_ALERT_SETTINGS = "attendance_alert_settings";
 
 /** Dars tugagandan necha daqiqa keyin davomat tekshiriladi: ustoz oxirgi daqiqada belgilashi mumkin. */
 export const MISSED_ALERT_AFTER_MIN = 10;
 
+/** Face ID rad etilgach shuncha daqiqa kutiladi: xodim qayta urinib o'tib ketsa, xabar kerak emas. */
+export const FACE_FAIL_GRACE_MIN = 5;
+
+/** Dars boshlangandan necha daqiqa keyin ustoz kelmagani yoziladi: eshikdan endi kirayotgan bo'lishi mumkin. */
+export const TEACHER_ABSENT_AFTER_MIN = 5;
+
 const KEY = "main";
 const MAX_RECIPIENTS = 50;
 
 export interface AttendanceAlertSettings {
+  /** Davomat qilinmagan guruhlar (06.11 dagi birinchi qoida — nomi o'zgarmadi, bazada shunday). */
   enabled: boolean;
+  /** Face ID'dan o'ta olmadi. */
+  faceFail: boolean;
+  /** Dars boshlandi, o'qituvchi hali kelmadi. */
+  teacherAbsent: boolean;
   /** `null` — admin tanlamagan: botga kirgan adminlar. */
   recipients: number[] | null;
   /**
@@ -52,6 +72,8 @@ export function normalizeAttendanceAlert(raw: unknown): AttendanceAlertSettings 
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
     enabled: r.enabled === true,
+    faceFail: r.faceFail === true,
+    teacherAbsent: r.teacherAbsent === true,
     recipients: Array.isArray(r.recipients) ? [...new Set(r.recipients.filter(isChatId))] : null,
     since: typeof r.since === "string" ? r.since : null,
   };
@@ -64,16 +86,24 @@ export async function loadAttendanceAlert(db: Db): Promise<AttendanceAlertSettin
 
 export type SaveAttendanceAlertResult = { ok: true; settings: AttendanceAlertSettings } | { ok: false; error: string };
 
+/** Yoqib-o'chiriladigan qoidalar. */
+export const ALERT_RULES = ["enabled", "faceFail", "teacherAbsent"] as const;
+export type AlertRule = (typeof ALERT_RULES)[number];
+
+const anyRuleOn = (s: Pick<AttendanceAlertSettings, AlertRule>): boolean => ALERT_RULES.some((k) => s[k]);
+
 /** Faqat yuborilgan maydonlar o'zgaradi; yaroqsiz qiymat rad etiladi. */
 export async function saveAttendanceAlert(
   db: Db,
-  patch: { enabled?: unknown; recipients?: unknown },
+  patch: Partial<Record<AlertRule | "recipients", unknown>>,
   now: Date = new Date(),
 ): Promise<SaveAttendanceAlertResult> {
   const set: Partial<AttendanceAlertSettings> = {};
-  if (patch.enabled !== undefined) {
-    if (typeof patch.enabled !== "boolean") return { ok: false, error: "Noto'g'ri so'rov" };
-    set.enabled = patch.enabled;
+  for (const k of ALERT_RULES) {
+    const v = patch[k];
+    if (v === undefined) continue;
+    if (typeof v !== "boolean") return { ok: false, error: "Noto'g'ri so'rov" };
+    set[k] = v;
   }
   if (patch.recipients !== undefined) {
     if (!Array.isArray(patch.recipients) || !patch.recipients.every(isChatId) || patch.recipients.length > MAX_RECIPIENTS) {
@@ -81,11 +111,12 @@ export async function saveAttendanceAlert(
     }
     set.recipients = [...new Set(patch.recipients)];
   }
-  if (set.enabled === undefined && set.recipients === undefined) return { ok: false, error: "Noto'g'ri so'rov" };
+  if (!ALERT_RULES.some((k) => set[k] !== undefined) && set.recipients === undefined) return { ok: false, error: "Noto'g'ri so'rov" };
 
   const before = await loadAttendanceAlert(db);
-  const turnedOn = set.enabled === true && !before.enabled;
-  if (turnedOn || (before.enabled && set.recipients !== undefined)) set.since = now.toISOString();
+  // Qaysi qoida bo'lmasin, endi yoqilsa yoki odam o'zgarsa — o'tgan voqealar birdan yuborilmasin.
+  const turnedOn = ALERT_RULES.some((k) => set[k] === true && !before[k]);
+  if (turnedOn || (anyRuleOn(before) && set.recipients !== undefined)) set.since = now.toISOString();
   await db.collection(ATTENDANCE_ALERT_SETTINGS).updateOne({ key: KEY }, { $set: { key: KEY, ...set } }, { upsert: true });
   return { ok: true, settings: { ...before, ...set } };
 }

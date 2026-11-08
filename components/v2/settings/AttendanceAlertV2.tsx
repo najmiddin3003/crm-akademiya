@@ -6,11 +6,13 @@ import EmployeeToggle from "@/components/employees/EmployeeToggle";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import V2Checkbox from "@/components/v2/ui/V2Checkbox";
-import type { AlertCandidate } from "@/lib/attendanceAlert";
+import type { AlertCandidate, AlertRule } from "@/lib/attendanceAlert";
 import { ApiError, fetchJson } from "@/lib/fetchJson";
 
 // SOZLAMALAR → «NAZORAT QOIDALARI» (`/settings-nazorat`, 06.11.2026).
-// Davomat qilinmagan guruhlar haqida rahbarga bot xabari: yoqish/o'chirish va kimga borishi.
+// Rahbarga bot xabarlari: har qoida alohida yoqiladi, kimga borishi — umumiy ro'yxat.
+//   • davomat qilinmagan guruhlar (06.11);
+//   • o'qituvchi darsga kelmadi va Face ID'dan o'ta olmadi (08.11).
 // Qoida va sabablari — lib/attendanceAlert.ts, yuborish — lib/staffBot/dayReminders.ts.
 //
 // Faqat ADMIN o'zgartiradi (app/api/attendance-alert → requireAdmin); boshqa xodim sahifani ochsa
@@ -21,12 +23,18 @@ type CandidateRow = Omit<AlertCandidate, "branchIds"> & { branches: string[] | n
 
 interface AlertView {
   enabled: boolean;
+  faceFail: boolean;
+  teacherAbsent: boolean;
   selected: number[];
   candidates: CandidateRow[];
   botReady: boolean;
   muted: boolean;
   afterMin: number;
+  faceGraceMin: number;
+  absentAfterMin: number;
 }
+
+type Patch = Partial<Record<AlertRule, boolean>> & { recipients?: number[] };
 
 const URL = "/api/attendance-alert";
 
@@ -60,7 +68,7 @@ export default function AttendanceAlertV2() {
     };
   }, []);
 
-  async function save(patch: { enabled?: boolean; recipients?: number[] }, done?: string) {
+  async function save(patch: Patch, done?: string) {
     setSaving(true);
     try {
       setData(await fetchJson<AlertView>(URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }));
@@ -79,6 +87,32 @@ export default function AttendanceAlertV2() {
 
   const known = data ? new Set(data.candidates.filter((c) => !c.blocked).map((c) => c.chatId)) : new Set<number>();
   const nobody = !!data && !data.selected.some((id) => known.has(id));
+  const anyOn = !!data && (data.enabled || data.faceFail || data.teacherAbsent);
+  const rules: { key: AlertRule; title: string; text: string }[] = data
+    ? [
+        {
+          key: "enabled",
+          title: t("Davomat qilinmagan guruhlar"),
+          text: t("Dars tugagach {n} daqiqa o'tib ham davomat belgilanmasa, xodimlar botida xabar keladi: guruh, ustoz va telefoni, vaqti, xonasi, filiali, o'quvchilar soni.", {
+            n: data.afterMin,
+          }),
+        },
+        {
+          key: "teacherAbsent",
+          title: t("O'qituvchi darsga kelmadi"),
+          text: t("Dars boshlanib {n} daqiqa o'tsa-yu, ustoz bugun «Ishga keldim» ni belgilamagan bo'lsa: guruh, ustoz va telefoni, vaqti, xonasi, o'quvchilar soni. «Ishga keldim» dan foydalanmaydigan ustoz uchun yuborilmaydi.", {
+            n: data.absentAfterMin,
+          }),
+        },
+        {
+          key: "faceFail",
+          title: t("Face ID'dan o'ta olmadi"),
+          text: t("Xodimning yuzi mos kelmasa va {n} daqiqa ichida qayta urinib o'ta olmasa: ismi, lavozimi, telefoni, urinishlar soni va vaqti. Har xodim uchun kuniga bir marta.", {
+            n: data.faceGraceMin,
+          }),
+        },
+      ]
+    : [];
 
   return (
     <div className="flex min-h-full shrink-0 flex-col gap-4 p-4 sm:p-6 lg:px-8">
@@ -93,31 +127,31 @@ export default function AttendanceAlertV2() {
 
       {data && (
         <section className="max-w-[44rem] rounded-v2-lg border border-v2-border bg-v2-surface p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="text-v2-section text-v2-text">{t("Davomat qilinmagan guruhlar")}</h2>
-              <p className="mt-1 text-v2-small text-v2-text-2">
-                {t("Dars tugagach {n} daqiqa o'tib ham davomat belgilanmasa, xodimlar botida xabar keladi: guruh, ustoz va telefoni, vaqti, xonasi, filiali, o'quvchilar soni.", {
-                  n: data.afterMin,
-                })}
-              </p>
-            </div>
-            <div className="shrink-0">
-              <EmployeeToggle
-                checked={data.enabled}
-                disabled={saving}
-                title={t("Davomat qilinmagan guruhlar")}
-                onChange={(on) => void save({ enabled: on }, t(on ? "Xabar yoqildi" : "Xabar o'chirildi"))}
-              />
-            </div>
-          </div>
+          <ul className="-my-3 divide-y divide-v2-border">
+            {rules.map((r) => (
+              <li key={r.key} className="flex items-start justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <h2 className="text-v2-section text-v2-text">{r.title}</h2>
+                  <p className="mt-1 text-v2-small text-v2-text-2">{r.text}</p>
+                </div>
+                <div className="shrink-0">
+                  <EmployeeToggle
+                    checked={data[r.key]}
+                    disabled={saving}
+                    title={r.title}
+                    onChange={(on) => void save({ [r.key]: on }, t(on ? "Xabar yoqildi" : "Xabar o'chirildi"))}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
 
           {data.muted ? (
             <Note>{t("Bu sinov sayti: bu yerdan bot hech kimga yozmaydi.")}</Note>
           ) : (
             !data.botReady && <Note>{t("Xodimlar boti sozlanmagan — xabar bormaydi.")}</Note>
           )}
-          {data.enabled && data.candidates.length > 0 && nobody && <Note>{t("Hech kim tanlanmagan — xabar bormaydi.")}</Note>}
+          {anyOn && data.candidates.length > 0 && nobody && <Note>{t("Hech kim tanlanmagan — xabar bormaydi.")}</Note>}
 
           <div className="mt-5 border-t border-v2-border pt-4">
             <h3 className="text-v2-body font-medium text-v2-text">{t("Kimga yuboriladi")}</h3>

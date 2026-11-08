@@ -106,6 +106,26 @@ export function lessonsEndedBy<G extends Pick<LessonGroup, "status" | "day" | "s
   });
 }
 
+/**
+ * Darsi boshlanib, ustiga `afterMin` daqiqa o'tgan va hali TUGAMAGAN guruhlar. Muddati `sinceMin`
+ * daqiqasigacha kelib bo'lganlari kirmaydi (lib/attendanceAlert.ts → `since`). Dars tugagach
+ * kirmaydi: server o'chib qolib, kechqurun yoqilsa ertalabgi «hali kelmadi» xabarlari yog'ilmasin.
+ */
+export function lessonsStartedBy<G extends Pick<LessonGroup, "status" | "day" | "startDate" | "endDate" | "period" | "time">>(
+  groups: readonly G[],
+  clock: UzClock,
+  afterMin: number,
+  sinceMin: number = -1,
+): G[] {
+  return groups.filter((g) => {
+    if (!lessonExpectedOn(g, clock.iso, clock.weekday)) return false;
+    const range = parseTimeRange(g.time);
+    if (!range) return false;
+    const due = range[0] + afterMin;
+    return clock.nowMin >= due && clock.nowMin < range[1] && due > sinceMin;
+  });
+}
+
 const hm = (n: number) => String(n).padStart(2, "0");
 
 /** "14:00 - 15:30" → "14:00"; vaqt kiritilmagan bo'lsa "". */

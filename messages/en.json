@@ -6795,5 +6795,9 @@
   "Yozish": "Book",
   "Yana ko'rsatish — {n} ta eskiroq": "Show more — {n} older",
   "Kamroq ko'rsatish": "Show less",
-  "Yana {n} ta guruh": "{n} more groups"
+  "Yana {n} ta guruh": "{n} more groups",
+  "O'qituvchi darsga kelmadi": "Teacher didn't show up",
+  "Dars boshlanib {n} daqiqa o'tsa-yu, ustoz bugun «Ishga keldim» ni belgilamagan bo'lsa: guruh, ustoz va telefoni, vaqti, xonasi, o'quvchilar soni. «Ishga keldim» dan foydalanmaydigan ustoz uchun yuborilmaydi.": "If {n} minutes after a lesson starts the teacher still hasn't marked “I'm at work” today: group, teacher and phone, time, room, number of students. Not sent for teachers who don't use “I'm at work”.",
+  "Face ID'dan o'ta olmadi": "Failed Face ID",
+  "Xodimning yuzi mos kelmasa va {n} daqiqa ichida qayta urinib o'ta olmasa: ismi, lavozimi, telefoni, urinishlar soni va vaqti. Har xodim uchun kuniga bir marta.": "If an employee's face doesn't match and they don't pass on retry within {n} minutes: name, position, phone, number and time of attempts. Once a day per employee."
 }

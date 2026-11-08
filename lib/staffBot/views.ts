@@ -1022,12 +1022,12 @@ function missedBlock(r: MissedLessonRow): string {
   return lines.join("\n");
 }
 
-/** Bitta xabarga sig'adigan to'plamlar. */
-export function missedAttendanceBatches<R extends MissedLessonRow>(rows: readonly R[]): R[][] {
+/** Bitta xabarga sig'adigan to'plamlar (`block` — har qatorning matni). */
+function alertBatches<R>(rows: readonly R[], block: (r: R) => string): R[][] {
   const out: R[][] = [];
   let size = 0;
   for (const r of rows) {
-    const len = missedBlock(r).length + 2;
+    const len = block(r).length + 2;
     if (!out.length || size + len > MISSED_MESSAGE_MAX) {
       out.push([]);
       size = 0;
@@ -1038,6 +1038,13 @@ export function missedAttendanceBatches<R extends MissedLessonRow>(rows: readonl
   return out;
 }
 
+/** Bitta xabarga sig'adigan to'plamlar. */
+export function missedAttendanceBatches<R extends MissedLessonRow>(rows: readonly R[]): R[][] {
+  return alertBatches(rows, missedBlock);
+}
+
+const dmyOf = (iso: string) => iso.split("-").reverse().join(".");
+
 /** Rahbarga: dars tugadi, davomat belgilanmadi (lib/attendanceAlert.ts). */
 export function missedAttendancePush(rows: readonly MissedLessonRow[], iso: string): string {
   return [
@@ -1045,6 +1052,64 @@ export function missedAttendancePush(rows: readonly MissedLessonRow[], iso: stri
     `📅 ${iso.split("-").reverse().join(".")} · ${rows.length} ta guruh`,
     "",
     rows.map(missedBlock).join("\n\n"),
+  ].join("\n");
+}
+
+/** Rahbarga: dars boshlandi, ustoz bugun «Ishga keldim» belgilamagan (lib/attendanceAlert.ts → teacherAbsent). */
+export function teacherAbsentPush(rows: readonly MissedLessonRow[], iso: string): string {
+  return [
+    "🚨 <b>Dars boshlandi — o'qituvchi hali kelmadi</b>",
+    `📅 ${dmyOf(iso)} · ${rows.length} ta guruh`,
+    "Ustoz bugun «Ishga keldim» ni belgilamagan.",
+    "",
+    rows.map(missedBlock).join("\n\n"),
+  ].join("\n");
+}
+
+export interface FaceFailRow {
+  name: string;
+  /** Lavozim («O'qituvchi», «Administrator» …). */
+  role: string;
+  /** "+998 94 111 88 55"; bo'lmasa bo'sh. */
+  phone: string;
+  branch: string;
+  /** Oxirgi muvaffaqiyatli urinishdan keyingi rad etilganlar soni. */
+  attempts: number;
+  /** Birinchi va oxirgi rad etilgan urinish, "HH:MM". */
+  first: string;
+  last: string;
+  /** Bugun «Ishga keldim» / «Ishdan ketdim» vaqti; belgilanmagan bo'lsa null. */
+  enter: string | null;
+  exit: string | null;
+}
+
+function faceFailBlock(r: FaceFailRow): string {
+  const lines = [`👤 <b>${esc(r.name)}</b>${r.role ? ` · ${esc(r.role)}` : ""}`];
+  if (r.phone) lines.push(`📞 ${esc(r.phone)}`);
+  if (r.branch) lines.push(`🏢 Filial: ${esc(r.branch)}`);
+  lines.push(`❌ ${r.attempts} ta urinish rad etildi · ${r.first === r.last ? r.first : `${r.first}–${r.last}`}`);
+  lines.push(
+    r.enter
+      ? `🕘 Bugun ishga kelgan: ${esc(r.enter)}${r.exit ? `, ketgan: ${esc(r.exit)}` : ""}`
+      : "🕘 Bugun «Ishga keldim» belgilanmagan",
+  );
+  return lines.join("\n");
+}
+
+/** Bitta xabarga sig'adigan to'plamlar. */
+export function faceFailBatches<R extends FaceFailRow>(rows: readonly R[]): R[][] {
+  return alertBatches(rows, faceFailBlock);
+}
+
+/** Rahbarga: xodim Face ID'dan o'ta olmadi (lib/attendanceAlert.ts → faceFail). */
+export function faceFailPush(rows: readonly FaceFailRow[], iso: string): string {
+  return [
+    "🙈 <b>Face ID'dan o'ta olmadi</b>",
+    `📅 ${dmyOf(iso)} · ${rows.length} ta xodim`,
+    "",
+    rows.map(faceFailBlock).join("\n\n"),
+    "",
+    "Urinish rasmlari — saytda, xodim profilidagi Face ID bo'limida.",
   ].join("\n");
 }
 
