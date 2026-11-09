@@ -11,6 +11,7 @@ import {
   TEACHER_ABSENT_AFTER_MIN,
   type AttendanceAlertSettings,
 } from "@/lib/attendanceAlert";
+import { attendanceGroup, attendanceThreadId, branchAttendanceThreads } from "@/lib/attendanceNotify";
 import { branchNames } from "@/lib/gamification/scope";
 import { ensureIndexes } from "@/lib/mongodb";
 import { isStaffBotReady, loadStaffBotConfig } from "@/lib/staffBot/config";
@@ -25,7 +26,12 @@ import { telegramMuted } from "@/lib/telegramApi";
 const NO_STORE = { "Cache-Control": "private, no-store" };
 
 async function view(db: Db, settings: AttendanceAlertSettings) {
-  const [candidates, branches] = await Promise.all([alertCandidates(db), branchNames(db)]);
+  const group = attendanceGroup();
+  const [candidates, branches, threads] = await Promise.all([
+    alertCandidates(db),
+    branchNames(db),
+    group ? branchAttendanceThreads(db) : Promise.resolve(new Map<number, string>()),
+  ]);
   return {
     ok: true,
     enabled: settings.enabled,
@@ -37,6 +43,8 @@ async function view(db: Db, settings: AttendanceAlertSettings) {
       // `null` — hamma filial.
       branches: branchIds === null ? null : [...new Set(branchIds.map((id) => branches.get(id) ?? String(id)))],
     })),
+    // «Davomat qilinmagan guruhlar» filial topigiga ketadi; topigi yo'q filialniki — ro'yxatdagilarga botda.
+    noTopic: [...new Set([...branches].filter(([id]) => !(threads.get(id) ?? (group ? attendanceThreadId(null) : ""))).map(([, name]) => name))],
     botReady: isStaffBotReady(loadStaffBotConfig()),
     muted: telegramMuted(),
     afterMin: MISSED_ALERT_AFTER_MIN,

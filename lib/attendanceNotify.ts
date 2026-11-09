@@ -1,5 +1,7 @@
+import type { Db } from "mongodb";
 import { loadSyncConfig } from "@/lib/sync/config";
-import { esc, sendMessage } from "@/lib/sync/telegram";
+import { esc } from "@/lib/sync/telegram";
+import { sendHtml } from "@/lib/telegramApi";
 import { ROLE_LABELS } from "@/constants/employees";
 import type { AttendanceBranch, AttendanceRecord } from "@/lib/attendanceCheck";
 
@@ -16,6 +18,9 @@ import type { AttendanceBranch, AttendanceRecord } from "@/lib/attendanceCheck";
 //
 // Faqat KECHIKKANLAR haqida — vaqtida kelganlar «Ishga keldim» sahifasidagi ro'yxatda va
 // Nazorat → Turniket sahifasida ko'rinadi, guruhni to'ldirib yubormaydi.
+//
+// 09.11.2026 dan shu topikka «Davomat qilinmagan guruhlar» ham tushadi (lib/staffBot/dayReminders.ts,
+// egasi: «adminga emas, telegram guruh topiciga»). Topigi yo'q filialniki — avvalgidek rahbarga botda.
 
 /** "2026-09-28" → "28.09.2026". */
 function dmy(iso: string): string {
@@ -45,6 +50,24 @@ export function attendanceThreadId(branchTopic: number | null | undefined): stri
     : (process.env.TELEGRAM_TOPIC_ATTENDANCE || "").trim();
 }
 
+export interface AttendanceGroup {
+  token: string;
+  chatId: string;
+}
+
+/** Davomat xabarlari tushadigan guruh; Telegram sozlanmagan yoki sinxron o'chiq bo'lsa `null`. */
+export function attendanceGroup(): AttendanceGroup | null {
+  const cfg = loadSyncConfig();
+  const chatId = (process.env.TELEGRAM_CHAT_ATTENDANCE || "").trim() || cfg.targets.payment.chatId;
+  return cfg.enabled && cfg.telegramToken && chatId ? { token: cfg.telegramToken, chatId } : null;
+}
+
+/** Filial → davomat topigi (`attendanceThreadId` qoidasi); topigi yo'q filial — bo'sh satr. */
+export async function branchAttendanceThreads(db: Db): Promise<Map<number, string>> {
+  const rows = await db.collection("branches").find({}, { projection: { _id: 0, id: 1, attendanceTopicId: 1 } }).toArray();
+  return new Map(rows.map((b) => [Number(b.id), attendanceThreadId(b.attendanceTopicId)]));
+}
+
 /**
  * Kechikish haqida filial topigiga xabar. HECH QACHON OTILMAYDI — yozuv
  * allaqachon bazada; Telegram ishlamay qolgani xodimning belgilanishiga
@@ -53,15 +76,14 @@ export function attendanceThreadId(branchTopic: number | null | undefined): stri
 export async function notifyLate(rec: AttendanceRecord, branch: AttendanceBranch, turi: string): Promise<void> {
   try {
     if (rec.lateMinutes <= 0) return;
-    const cfg = loadSyncConfig();
-    const chatId = (process.env.TELEGRAM_CHAT_ATTENDANCE || "").trim() || cfg.targets.payment.chatId;
-    if (!cfg.enabled || !cfg.telegramToken || !chatId) return;
+    const group = attendanceGroup();
+    if (!group) return;
     const threadId = attendanceThreadId(branch.attendanceTopicId);
     if (!threadId) {
       console.warn(`[attendance] kechikish xabari yuborilmadi: ${branch.name || `filial ${branch.id}`} uchun davomat topigi yo'q`);
       return;
     }
-    await sendMessage(cfg, chatId, lateMessage(rec, branch.name, turi), threadId);
+    await sendHtml(group.token, group.chatId, lateMessage(rec, branch.name, turi), { threadId });
   } catch (e) {
     console.error("[attendance] kechikish xabari yuborilmadi:", e instanceof Error ? e.message : e);
   }

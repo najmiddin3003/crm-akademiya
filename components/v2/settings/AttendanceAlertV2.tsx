@@ -10,9 +10,10 @@ import type { AlertCandidate, AlertRule } from "@/lib/attendanceAlert";
 import { ApiError, fetchJson } from "@/lib/fetchJson";
 
 // SOZLAMALAR → «NAZORAT QOIDALARI» (`/settings-nazorat`, 06.11.2026).
-// Rahbarga bot xabarlari: har qoida alohida yoqiladi, kimga borishi — umumiy ro'yxat.
-//   • davomat qilinmagan guruhlar (06.11);
-//   • o'qituvchi darsga kelmadi va Face ID'dan o'ta olmadi (08.11).
+// Rahbarga avtomatik xabarlar, har qoida alohida yoqiladi:
+//   • davomat qilinmagan guruhlar (06.11) — 09.11 dan filialning Telegram guruhidagi «davomat»
+//     topigiga; topigi yo'q filialniki pastdagi ro'yxatdagilarga botda;
+//   • o'qituvchi darsga kelmadi va Face ID'dan o'ta olmadi (08.11) — ro'yxatdagilarga botda.
 // Qoida va sabablari — lib/attendanceAlert.ts, yuborish — lib/staffBot/dayReminders.ts.
 //
 // Faqat ADMIN o'zgartiradi (app/api/attendance-alert → requireAdmin); boshqa xodim sahifani ochsa
@@ -27,6 +28,8 @@ interface AlertView {
   teacherAbsent: boolean;
   selected: number[];
   candidates: CandidateRow[];
+  /** «Davomat» topigi yo'q filiallar — ularning davomat xabari ro'yxatdagilarga botda. */
+  noTopic: string[];
   botReady: boolean;
   muted: boolean;
   afterMin: number;
@@ -87,13 +90,14 @@ export default function AttendanceAlertV2() {
 
   const known = data ? new Set(data.candidates.filter((c) => !c.blocked).map((c) => c.chatId)) : new Set<number>();
   const nobody = !!data && !data.selected.some((id) => known.has(id));
-  const anyOn = !!data && (data.enabled || data.faceFail || data.teacherAbsent);
+  // Ro'yxat kerak: bot xabarlari yoqilgan yoki davomat xabari topigi yo'q filialdan ham chiqadi.
+  const needsPeople = !!data && (data.faceFail || data.teacherAbsent || (data.enabled && data.noTopic.length > 0));
   const rules: { key: AlertRule; title: string; text: string }[] = data
     ? [
         {
           key: "enabled",
           title: t("Davomat qilinmagan guruhlar"),
-          text: t("Dars tugagach {n} daqiqa o'tib ham davomat belgilanmasa, xodimlar botida xabar keladi: guruh, ustoz va telefoni, vaqti, xonasi, filiali, o'quvchilar soni.", {
+          text: t("Dars tugagach {n} daqiqa o'tib ham davomat belgilanmasa, filialning Telegram guruhidagi «davomat» topigiga xabar tushadi: guruh, ustoz va telefoni, vaqti, xonasi, o'quvchilar soni.", {
             n: data.afterMin,
           }),
         },
@@ -151,11 +155,17 @@ export default function AttendanceAlertV2() {
           ) : (
             !data.botReady && <Note>{t("Xodimlar boti sozlanmagan — xabar bormaydi.")}</Note>
           )}
-          {anyOn && data.candidates.length > 0 && nobody && <Note>{t("Hech kim tanlanmagan — xabar bormaydi.")}</Note>}
+          {data.enabled && data.noTopic.length > 0 && (
+            <Note>
+              {t("«Davomat» topigi yo'q filiallar: {list}. Ularning davomat xabari pastdagi ro'yxatdagilarga botda boradi.", { list: data.noTopic.join(", ") })}
+            </Note>
+          )}
+          {needsPeople && data.candidates.length > 0 && nobody && <Note>{t("Hech kim tanlanmagan — xabar bormaydi.")}</Note>}
 
           <div className="mt-5 border-t border-v2-border pt-4">
             <h3 className="text-v2-body font-medium text-v2-text">{t("Kimga yuboriladi")}</h3>
             <p className="mt-0.5 text-v2-small text-v2-text-2">
+              {t("«O'qituvchi darsga kelmadi» va «Face ID'dan o'ta olmadi» xabarlari botda shularga boradi.")}{" "}
               {t("Ro'yxatda botga kirgan xodimlar bor, o'qituvchilarsiz. Admin hamma filialni, boshqalar o'z filialini oladi.")}
             </p>
             {data.candidates.length === 0 ? (

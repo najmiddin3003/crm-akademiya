@@ -12,6 +12,7 @@ import {
   type AttendanceAlertSettings,
 } from "@/lib/attendanceAlert";
 import { QR_SOURCE } from "@/lib/attendanceCheck";
+import { attendanceGroup, attendanceThreadId, branchAttendanceThreads, type AttendanceGroup } from "@/lib/attendanceNotify";
 import { loadAttendanceSettings } from "@/lib/attendanceQr";
 import { branchNames, normName } from "@/lib/gamification/scope";
 import { sendToStaff } from "@/lib/staffBot/api";
@@ -22,7 +23,7 @@ import { markBlocked, STAFF_BOT_USERS, type StaffBotUser } from "@/lib/staffBot/
 import * as V from "@/lib/staffBot/views";
 import { formatPhone, phoneKey } from "@/lib/studentBot/phone";
 import { uzTimeOf } from "@/lib/staffTasks";
-import { telegramMuted, type InlineKeyboard } from "@/lib/telegramApi";
+import { callTelegram, telegramErrorMessage, telegramMuted, type InlineKeyboard } from "@/lib/telegramApi";
 import {
   describeLesson,
   LESSON_GROUP_FIELDS,
@@ -43,8 +44,10 @@ import {
 //   08:00 — botga kirgan HAMMA xodimga, har kuni. Shu kuni ishga kelganini
 //           belgilagan bo'lsa yozilmaydi.
 //   −10 daqiqa — guruh ustoziga (ism bo'yicha, ismdoshlarning ikkalasiga ham).
-//   +10 daqiqa — dars tugab, davomat belgilanmagan bo'lsa rahbarga (sozlama yoqilgan
-//           bo'lsa, lib/attendanceAlert.ts). Bir paytda muddati kelgan guruhlar bitta
+//   +10 daqiqa — dars tugab, davomat belgilanmagan bo'lsa (sozlama yoqilgan bo'lsa,
+//           lib/attendanceAlert.ts) — filialning Telegram guruhidagi «davomat» topigiga
+//           (09.11.2026 dan, kechikish xabari bilan bitta joy — lib/attendanceNotify.ts);
+//           topigi yo'q filialniki rahbarga botda. Bir paytda muddati kelgan guruhlar bitta
 //           xabarda: hozircha kuniga 40 tagacha guruh chiqadi, har biriga alohida xabar
 //           suhbatni to'ldirardi.
 //   +5 daqiqa (dars boshidan) — ustoz bugun «Ishga keldim» belgilamagan bo'lsa rahbarga
@@ -78,7 +81,9 @@ type ReminderReason =
   /** Ustoz kelgan («Ishga keldim» bor) — `absent` kerak emas. */
   | "arrived"
   /** Ustoz «Ishga keldim» dan foydalanmaydi (botda yo'q, oxirgi 30 kunda belgisi yo'q) yoki xodimlar ro'yxatida topilmadi. */
-  | "no_checkin";
+  | "no_checkin"
+  /** Telegram guruh/topikka yozishni rad etdi (topik o'chirilgan, bot chiqarilgan) — bugun qayta urinilmaydi. */
+  | "rejected";
 
 interface ReminderDoc {
   _id: string;
@@ -321,19 +326,16 @@ async function deliverLessonAlerts(
   }
 }
 
-/** Dars tugadi, davomat yo'q — rahbarga. Bir paytda muddati kelgan guruhlar bitta xabarda. */
-async function sendMissedAttendance(db: Db, cfg: StaffBotConfig, clock: UzClock, settings: AttendanceAlertSettings, active: LessonGroup[], out: Tally): Promise<void> {
-  if (!settings.enabled) return;
-  const due = lessonsEndedBy(active, clock, MISSED_ALERT_AFTER_MIN, sinceMinute(settings, clock));
-  if (!due.length) return;
-  const pending = await pendingLessonPairs(db, clock, "missed", settings, due);
-  if (!pending) return;
-
-  // /nazorat-missed-groups qoidasi: guruhda shu kuni birorta belgi bo'lsa — davomat qilingan.
-  const groups = [...new Map(pending.todo.map((p) => [p.g.id, p.g])).values()];
-  const marked = new Set(
-    (await db.collection("attendance").distinct("groupId", { date: clock.iso, groupId: { $in: groups.map((g) => g.id) } })).map(Number),
-  );
+/**
+ * Davomat qilinmagan guruhlar qatori (/nazorat-missed-groups qoidasi: guruhda shu kuni birorta belgi
+ * bo'lsa — davomat qilingan). `rows` da yo'q guruhning sababi — `reasonOf`.
+ */
+async function missedRows(
+  db: Db,
+  iso: string,
+  groups: LessonGroup[],
+): Promise<{ rows: Map<number, V.MissedLessonRow>; reasonOf: (groupId: number) => ReminderReason }> {
+  const marked = new Set((await db.collection("attendance").distinct("groupId", { date: iso, groupId: { $in: groups.map((g) => g.id) } })).map(Number));
   const [employees, branches] = await Promise.all([
     db.collection("hr_employees").find({}, { projection: { _id: 0, name: 1, phone: 1 } }).toArray(),
     branchNames(db),
@@ -342,10 +344,119 @@ async function sendMissedAttendance(db: Db, cfg: StaffBotConfig, clock: UzClock,
   const rows = new Map<number, V.MissedLessonRow>();
   for (const g of groups) {
     if (marked.has(g.id)) continue;
-    const row = await lessonRow(db, g, clock.iso, branches, phones);
+    const row = await lessonRow(db, g, iso, branches, phones);
     if (row) rows.set(g.id, row);
   }
-  await deliverLessonAlerts(db, cfg, clock, "missed", pending, rows, (id) => (marked.has(id) ? "marked" : "no_pupil"), V.missedAttendancePush, out);
+  return { rows, reasonOf: (id) => (marked.has(id) ? "marked" : "no_pupil") };
+}
+
+/** Kalit oxiri: topikka xabar bitta (qabul qiluvchilar bo'yicha emas) — `missed:<kun>:<guruh>:topic`. */
+const TOPIC_KEY = "topic";
+
+/** Egallangan eslatmalar guruh topigiga bitta xabarda. Natija shu yozuvlarda qoladi. */
+async function sendClaimedToTopic(db: Db, group: AttendanceGroup, threadId: string, claims: Claim[], html: string, out: Tally): Promise<void> {
+  const mine = { _id: { $in: claims.map((c) => c._id) } };
+  const col = reminders(db);
+  let error: unknown;
+  try {
+    const res = await callTelegram(group.token, "sendMessage", {
+      chat_id: group.chatId,
+      message_thread_id: Number(threadId),
+      text: html,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+    });
+    if (res.ok) {
+      await col.updateMany(mine, { $set: { sent: true, reason: "sent" } });
+      out.sent += claims.length;
+      return;
+    }
+    const why = telegramErrorMessage(res.description || "noma'lum xato", group.chatId, threadId);
+    // 400/403 — guruh yoki topik yo'q, bot chiqarilgan: har daqiqa qayta urinish foyda bermaydi.
+    if (res.error_code === 400 || res.error_code === 403) {
+      await col.updateMany(mine, { $set: { reason: "rejected" } });
+      out.failed += claims.length;
+      console.error(`[staff-bot] davomat topigiga yozilmadi (${claims[0]._id}):`, why);
+      return;
+    }
+    error = why;
+  } catch (e) {
+    error = e instanceof Error ? e.message : e;
+  }
+  // Vaqtinchalik xato — egallash bo'shatiladi, keyingi daqiqada qayta uriniladi.
+  await col.deleteMany(mine);
+  out.failed += claims.length;
+  console.error(`[staff-bot] davomat topigiga yozilmadi (${claims[0]._id}):`, error);
+}
+
+/**
+ * Filial topigiga: har topikka o'z guruhlari bitta xabarda (3500 belgidan oshsa bo'linadi).
+ * Bugun shu guruh haqida qaysi yo'l bilan bo'lmasin yozilgan bo'lsa (masalan, topik kun o'rtasida
+ * ochilib, ertaroq rahbarga ketgan) — qayta yozilmaydi.
+ */
+async function sendMissedToTopics(
+  db: Db,
+  clock: UzClock,
+  group: AttendanceGroup,
+  due: LessonGroup[],
+  threadOf: (g: LessonGroup) => string,
+  out: Tally,
+): Promise<void> {
+  const done = new Set((await reminders(db).distinct("groupId", { kind: "missed", day: clock.iso, groupId: { $in: due.map((g) => g.id) } })).map(Number));
+  const fresh = due.filter((g) => !done.has(g.id));
+  if (!fresh.length) return;
+
+  const { rows, reasonOf } = await missedRows(db, clock.iso, fresh);
+  const chatId = Number(group.chatId);
+  const byThread = new Map<string, (V.MissedLessonRow & { claim: Claim })[]>();
+  for (const g of fresh) {
+    const c: Claim = {
+      _id: `missed:${clock.iso}:${g.id}:${TOPIC_KEY}`,
+      kind: "missed",
+      day: clock.iso,
+      chatId: Number.isSafeInteger(chatId) ? chatId : 0,
+      groupId: g.id,
+    };
+    const row = rows.get(g.id);
+    if (!row) {
+      await skip(db, c, reasonOf(g.id), out);
+      continue;
+    }
+    const thread = threadOf(g);
+    byThread.set(thread, [...(byThread.get(thread) ?? []), { ...row, claim: c }]);
+  }
+  for (const [threadId, list] of byThread) {
+    list.sort((a, b) => a.start.localeCompare(b.start));
+    for (const batch of V.missedAttendanceBatches(list)) {
+      const mine: typeof batch = [];
+      for (const row of batch) if (await claim(db, row.claim, null)) mine.push(row);
+      if (mine.length) await sendClaimedToTopic(db, group, threadId, mine.map((row) => row.claim), V.missedAttendancePush(mine, clock.iso), out);
+    }
+  }
+}
+
+/**
+ * Dars tugadi, davomat yo'q — filialning «davomat» topigiga; topigi yo'q filialniki (yoki guruh
+ * Telegram'i sozlanmagan bo'lsa) rahbarga botda. Bir paytda muddati kelgan guruhlar bitta xabarda.
+ */
+async function sendMissedAttendance(db: Db, cfg: StaffBotConfig, clock: UzClock, settings: AttendanceAlertSettings, active: LessonGroup[], out: Tally): Promise<void> {
+  if (!settings.enabled) return;
+  const due = lessonsEndedBy(active, clock, MISSED_ALERT_AFTER_MIN, sinceMinute(settings, clock));
+  if (!due.length) return;
+
+  const group = attendanceGroup();
+  const threads = group ? await branchAttendanceThreads(db) : new Map<number, string>();
+  const threadOf = (g: LessonGroup): string => (group ? (threads.get(lessonBranchId(g)) ?? attendanceThreadId(null)) : "");
+  const toTopic = due.filter((g) => threadOf(g));
+  if (group && toTopic.length) await sendMissedToTopics(db, clock, group, toTopic, threadOf, out);
+
+  const toAdmins = due.filter((g) => !threadOf(g));
+  if (!toAdmins.length) return;
+  const pending = await pendingLessonPairs(db, clock, "missed", settings, toAdmins);
+  if (!pending) return;
+  const groups = [...new Map(pending.todo.map((p) => [p.g.id, p.g])).values()];
+  const { rows, reasonOf } = await missedRows(db, clock.iso, groups);
+  await deliverLessonAlerts(db, cfg, clock, "missed", pending, rows, reasonOf, V.missedAttendancePush, out);
 }
 
 /** "YYYY-MM-DD" dan `days` kun oldingi kun. */

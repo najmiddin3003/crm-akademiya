@@ -6691,7 +6691,7 @@
   "{n} ta o'qituvchiga guruh vaqti qo'yildi": "Group time set for {n} teachers",
   "{n} tasida aktiv guruh yo'q, ular o'zgarmadi": "{n} have no active group and were left unchanged",
   "Rahbarga avtomatik xabarlar.": "Automatic messages to managers.",
-  "Dars tugagach {n} daqiqa o'tib ham davomat belgilanmasa, xodimlar botida xabar keladi: guruh, ustoz va telefoni, vaqti, xonasi, filiali, o'quvchilar soni.": "If attendance is still not marked {n} minutes after a lesson ends, a message arrives in the staff bot: group, teacher and phone, time, room, branch and number of students.",
+  "Dars tugagach {n} daqiqa o'tib ham davomat belgilanmasa, filialning Telegram guruhidagi «davomat» topigiga xabar tushadi: guruh, ustoz va telefoni, vaqti, xonasi, o'quvchilar soni.": "If attendance still isn't marked {n} minutes after a lesson ends, a message goes to the branch's “attendance” topic in the Telegram group: group, teacher and phone, time, room, number of students.",
   "Kimga yuboriladi": "Who receives it",
   "Ro'yxatda botga kirgan xodimlar bor, o'qituvchilarsiz. Admin hamma filialni, boshqalar o'z filialini oladi.": "The list shows staff signed in to the bot, without teachers. Admins get all branches, others get their own.",
   "Botga kirgan rahbar yo'q — avval xodimlar botiga kirsin.": "No manager is signed in to the bot yet. Sign in to the staff bot first.",
@@ -6799,5 +6799,7 @@
   "O'qituvchi darsga kelmadi": "Teacher didn't show up",
   "Dars boshlanib {n} daqiqa o'tsa-yu, ustoz bugun «Ishga keldim» ni belgilamagan bo'lsa: guruh, ustoz va telefoni, vaqti, xonasi, o'quvchilar soni. «Ishga keldim» dan foydalanmaydigan ustoz uchun yuborilmaydi.": "If {n} minutes after a lesson starts the teacher still hasn't marked “I'm at work” today: group, teacher and phone, time, room, number of students. Not sent for teachers who don't use “I'm at work”.",
   "Face ID'dan o'ta olmadi": "Failed Face ID",
-  "Xodimning yuzi mos kelmasa va {n} daqiqa ichida qayta urinib o'ta olmasa: ismi, lavozimi, telefoni, urinishlar soni va vaqti. Har xodim uchun kuniga bir marta.": "If an employee's face doesn't match and they don't pass on retry within {n} minutes: name, position, phone, number and time of attempts. Once a day per employee."
+  "Xodimning yuzi mos kelmasa va {n} daqiqa ichida qayta urinib o'ta olmasa: ismi, lavozimi, telefoni, urinishlar soni va vaqti. Har xodim uchun kuniga bir marta.": "If an employee's face doesn't match and they don't pass on retry within {n} minutes: name, position, phone, number and time of attempts. Once a day per employee.",
+  "«Davomat» topigi yo'q filiallar: {list}. Ularning davomat xabari pastdagi ro'yxatdagilarga botda boradi.": "Branches without an “attendance” topic: {list}. Their attendance alerts go to the people below via the bot.",
+  "«O'qituvchi darsga kelmadi» va «Face ID'dan o'ta olmadi» xabarlari botda shularga boradi.": "“Teacher didn't show up” and “Failed Face ID” alerts go to these people via the bot."
 }
