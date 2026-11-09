@@ -111,7 +111,7 @@ export default function AttendanceAlertV2() {
         {
           key: "faceFail",
           title: t("Face ID'dan o'ta olmadi"),
-          text: t("Xodimning yuzi mos kelmasa va {n} daqiqa ichida qayta urinib o'ta olmasa: ismi, lavozimi, telefoni, urinishlar soni va vaqti. Har xodim uchun kuniga bir marta.", {
+          text: t("Xodimning yuzi mos kelmasa va {n} daqiqa ichida qayta urinib o'ta olmasa: xodimning ismi va urinish vaqti. Har xodim uchun kuniga bir marta.", {
             n: data.faceGraceMin,
           }),
         },

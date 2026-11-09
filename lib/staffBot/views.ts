@@ -1090,34 +1090,22 @@ export interface FaceFailRow {
   exit: string | null;
 }
 
-function faceFailBlock(r: FaceFailRow): string {
-  const lines = [`👤 <b>${esc(r.name)}</b>${r.role ? ` · ${esc(r.role)}` : ""}`];
-  if (r.phone) lines.push(`📞 ${esc(r.phone)}`);
-  if (r.branch) lines.push(`🏢 Filial: ${esc(r.branch)}`);
-  lines.push(`❌ ${r.attempts} ta urinish rad etildi · ${r.first === r.last ? r.first : `${r.first}–${r.last}`}`);
-  lines.push(
-    r.enter
-      ? `🕘 Bugun ishga kelgan: ${esc(r.enter)}${r.exit ? `, ketgan: ${esc(r.exit)}` : ""}`
-      : "🕘 Bugun «Ishga keldim» belgilanmagan",
-  );
-  return lines.join("\n");
+/**
+ * QISQA (09.11.2026, egasi: «face id xabarini ham qisqa qil» — «O'qituvchi kelmadi» kabi): har xodim
+ * bitta qator — ism va oxirgi rad etilgan urinish vaqti.
+ */
+function faceFailLine(r: FaceFailRow): string {
+  return `👤 <b>${esc(r.name)}</b> — ${esc(r.last)}`;
 }
 
 /** Bitta xabarga sig'adigan to'plamlar. */
 export function faceFailBatches<R extends FaceFailRow>(rows: readonly R[]): R[][] {
-  return alertBatches(rows, faceFailBlock);
+  return alertBatches(rows, faceFailLine);
 }
 
 /** Rahbarga: xodim Face ID'dan o'ta olmadi (lib/attendanceAlert.ts → faceFail). */
 export function faceFailPush(rows: readonly FaceFailRow[], iso: string): string {
-  return [
-    "🙈 <b>Face ID'dan o'ta olmadi</b>",
-    `📅 ${dmyOf(iso)} · ${rows.length} ta xodim`,
-    "",
-    rows.map(faceFailBlock).join("\n\n"),
-    "",
-    "Urinish rasmlari — saytda, xodim profilidagi Face ID bo'limida.",
-  ].join("\n");
+  return [`🙈 <b>Face ID'dan o'ta olmaganlar</b> · ${dmyOf(iso)}`, "", rows.map(faceFailLine).join("\n")].join("\n");
 }
 
 // Push xabarlar (lib/staffBot/taskNotify.ts) — tizim o'zi yozadi.
