@@ -104,7 +104,7 @@ export default function AttendanceAlertV2() {
         {
           key: "teacherAbsent",
           title: t("O'qituvchi darsga kelmadi"),
-          text: t("Dars boshlanib {n} daqiqa o'tsa-yu, ustoz bugun «Ishga keldim» ni belgilamagan bo'lsa: guruh, ustoz va telefoni, vaqti, xonasi, o'quvchilar soni. «Ishga keldim» dan foydalanmaydigan ustoz uchun yuborilmaydi.", {
+          text: t("Dars boshlanib {n} daqiqa o'tsa-yu, ustoz bugun «Ishga keldim» ni belgilamagan bo'lsa: ustozning ismi va dars vaqti. «Ishga keldim» dan foydalanmaydigan ustoz uchun yuborilmaydi.", {
             n: data.absentAfterMin,
           }),
         },

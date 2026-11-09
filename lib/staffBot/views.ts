@@ -1055,15 +1055,22 @@ export function missedAttendancePush(rows: readonly MissedLessonRow[], iso: stri
   ].join("\n");
 }
 
+/**
+ * «O'qituvchi kelmadi» — QISQA (09.11.2026, egasi: «ism familiya dars vaqti korinsa boldi»):
+ * har dars bitta qator, guruh/telefon/xona yo'q.
+ */
+function absentLine(r: MissedLessonRow): string {
+  return `👤 <b>${r.teacher ? esc(r.teacher) : "Ustoz biriktirilmagan"}</b> — ${esc(r.time)}`;
+}
+
+/** Bitta xabarga sig'adigan to'plamlar. */
+export function teacherAbsentBatches<R extends MissedLessonRow>(rows: readonly R[]): R[][] {
+  return alertBatches(rows, absentLine);
+}
+
 /** Rahbarga: dars boshlandi, ustoz bugun «Ishga keldim» belgilamagan (lib/attendanceAlert.ts → teacherAbsent). */
 export function teacherAbsentPush(rows: readonly MissedLessonRow[], iso: string): string {
-  return [
-    "🚨 <b>Dars boshlandi — o'qituvchi hali kelmadi</b>",
-    `📅 ${dmyOf(iso)} · ${rows.length} ta guruh`,
-    "Ustoz bugun «Ishga keldim» ni belgilamagan.",
-    "",
-    rows.map(missedBlock).join("\n\n"),
-  ].join("\n");
+  return [`🚨 <b>Darsga kelmagan o'qituvchilar</b> · ${dmyOf(iso)}`, "", rows.map(absentLine).join("\n")].join("\n");
 }
 
 export interface FaceFailRow {

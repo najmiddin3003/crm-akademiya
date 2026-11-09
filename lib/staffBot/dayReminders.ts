@@ -318,7 +318,8 @@ async function deliverLessonAlerts(
       else await skip(db, c, row ? "no_access" : reasonOf(g.id), out);
     }
     send.sort((a, b) => a.start.localeCompare(b.start));
-    for (const batch of V.missedAttendanceBatches(send)) {
+    const batches = kind === "absent" ? V.teacherAbsentBatches(send) : V.missedAttendanceBatches(send);
+    for (const batch of batches) {
       const mine: typeof batch = [];
       for (const row of batch) if (await claim(db, row.claim, null)) mine.push(row);
       if (mine.length) await sendClaimed(db, cfg, mine.map((row) => row.claim), push(mine, clock.iso), undefined, out);
