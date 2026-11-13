@@ -1771,6 +1771,147 @@ olib keladi. Rad sabablari uchun alohida yangi sahifa kerakmi?
 Rasm pastidagi «Bekor qilish / Saqlash» qatori yo'q: har oyna o'zi saqlaydi, yo'nalish tugmasi va «Sahifa ochiq»
 darhol yoziladi. Oxirgi yoqilgan yo'nalishni o'chirib bo'lmaydi (sahifani yopish — «Sahifa ochiq» bilan).
 
+### 25-qism — Boshqaruv: Rollar va huquqlar (13.11.2026)
+
+Jadval, xodim paneli va «Login hisoblari» — 308–331. Eski ko'rinish: /management-rollar?classic=1.
+
+**308. «Ko'rish» darajasi yo'q — katak faqat «To'liq» yoki «Yo'q»** — QAROR KERAK
+Rasmda har katakda uch daraja: «To'liq · ko'radi, o'zgartiradi», «Ko'rish · faqat o'qiydi», «Yo'q». Tizimda
+bo'lim ruxsati ikki holatli — sahifa ochiq yoki yopiq (`roles.permissions` — sahifalar ro'yxati). Menyuda
+«Ko'rish» o'chiq turadi («hali yo'q»). Haqiqiy «faqat o'qish» kerak bo'lsa — har API'da yozish (POST/PATCH/
+DELETE) uchun alohida ruxsat tekshiruvi kerak (~200 route): katta ish. Qilaylikmi, yoki ikki holat yetadimi?
+
+**309. Qator = bir nechta sahifa; «Qisman 2/5» va qatorni ochish** — taxmin
+Jadval qatorlari bo'limlar (Lidlar, Guruhlar, Moliya · Kassalar …), ruxsat esa SAHIFA bo'yicha saqlanadi. Qator
+sahifalarining bir qismi ochiq bo'lsa — kulrang «Qisman» va «2/5». «›» bilan qator ochiladi va har sahifa alohida
+yoqiladi. Katak menyusidagi «To'liq / Yo'q» qatorning HAMMA sahifasini birdan ochadi yoki yopadi. Qatorlar
+lib/accessRows.ts da: sahifa menyudagi guruhi bo'yicha (PERMISSION_GROUPS) aynan bitta qatorga tushadi.
+
+**310. «To'lovlar» qatori alohida emas — Moliya uchga bo'lingan** — taxmin
+Rasmda «To'lovlar», «Moliya», «Hisobotlar». Tizimda to'lov qabul qilish Kassa sahifasida, shuning uchun:
+«Moliya · Kassalar» (kassa, kirim-chiqim, tranzaksiyalar, shartnoma, sinxron), «Moliya · Oylik» (oylik, bonus,
+jarima), «Moliya · Tahlil» (reja, analitika, P&L, pul oqimi). «Hisobotlar» — faqat /reports-* sahifalari.
+
+**311. «Rahbar paneli · 48-qism» qatorlari qo'yilmadi** — ochiq
+Rasmdagi «Rahbar paneli» bo'limi hali qurilmagan (48-qism) — sahifasi yo'q, jadvalda qatori ham yo'q. Qurilganda
+sahifasi menyuga qo'shiladi va qator o'zi chiqadi.
+
+**312. Administrator ustuni va «Doira» chiplari** — ochiq
+Administrator — rol emas, hisob belgisi (`users.role = admin`): hamma narsa ochiq, ustun qulfli. Ustundagi
+«N xodim» — administratorlar soni. Doira: administrator — «Hamma filial», qolgan rollar — «O'z filiallari»
+(xodim kartasidagi filiallar). Rasmdagi rol bo'yicha doira («Faqat o'zi», «Hamma filial» oddiy rolga) tizimda
+yo'q — kerak bo'lsa alohida ish.
+
+**313. Hammaga ochiq va faqat admin qatorlari** — taxmin
+Gamifikatsiya (reyting, do'kon) — hammaga ochiq (ALWAYS_ALLOWED_PATHS), ichida rol bo'yicha kesiladi: qator
+qulfli «To'liq». Amallar jurnali va Vaqtinchalik — faqat administrator, rolga berilmaydi. Topshiriqlar — «o'zi»:
+yopiq bo'lsa ham xodim o'z topshiriqlarini ko'radi («Ko'rish · o'zi»), ochiq bo'lsa — beradi va nazorat qiladi.
+
+**314. Saqlash — darhol, «Saqlash» tugmasi yo'q** — taxmin
+Har katak o'zgarishi shu zahoti saqlanadi (PATCH /api/roles/:id) va toast chiqadi. Rolda hamma sahifa belgilansa
+— «cheklovsiz» saqlanadi (keyin qo'shiladigan sahifalar ham ochiq — eski sahifadagi qoida). «O'zida borini
+beradi»: administrator bo'lmagan xodim faqat o'zida bor bo'limni bera oladi — qolganlarida «To'liq» o'chiq.
+Yangi rol — hamma bo'lim yopiq. Nomini o'zgartirish va o'chirish — faqat qo'lda qo'shilgan rolda; xodimi bor rol
+o'chmaydi.
+
+**315. Lavozimi belgilanmagan xodim hamma bo'limni ko'radi** — QAROR KERAK
+Rolsiz (lavozim belgilanmagan, alohida ruxsatsiz) xodimga hech qanday cheklov qo'llanmaydi — u administrator
+bo'lmasa ham hamma bo'limni ko'radi (lib/rolePermissions.ts: rol yo'q → `null`). Sahifa tepasida sariq
+ogohlantirish va ismlar chiqadi (bosilsa — panel). Shunday qoldiraylikmi yoki rolsiz xodim hech narsani
+ko'rmasinmi (faqat Bosh sahifa va Profil)?
+
+**316. Alohida ruxsat — xodimga to'liq sahifalar ro'yxati, qatorlar faqat ko'rinish** — taxmin
+Saqlash avvalgidek: `hr_employees.permissions` — xodimning TO'LIQ sahifalar ro'yxati, roldan ustun
+(lib/rolePermissions.ts). Paneldagi «Moliya · Oylik — Qo'shildi» qatorlari shu ro'yxatni roldagi bilan
+solishtirib chiqariladi (lib/accessRows.ts → accessDiff). Amal joriy ro'yxatga qo'llanadi; natija rolnikiga
+teng bo'lsa istisno butunlay olib tashlanadi (`null`). Oqibat: rol keyin o'zgarsa, istisnosi bor xodimning
+bo'limlari O'ZGARMAYDI (ro'yxat qotgan) — faqat farqlar yangi rolga nisbatan qayta ko'rsatiladi. Rol
+almashtirish tasdig'ida shu aytiladi. Agar «istisno — faqat farq, rol o'zgarsa ergashsin» kerak bo'lsa —
+saqlash formati o'zgaradi (qo'shilgan/olingan sahifalar alohida), bu kattaroq ish.
+
+**317. «Ko'rish» darajasi yo'q (panelda)** — ochiq (308 bilan bitta qaror)
+Rasmdagi «Daraja: Ko'rish | To'liq» tanlovida «Ko'rish» o'chirilgan (title: «Faqat ko'rish darajasi hali
+yo'q»), «To'liq» doim tanlangan. Tizimda bo'lim ruxsati ikki holatli: sahifa ochiq yoki yopiq — faqat
+o'qish (tahrirsiz) rejimi yo'q. «O'zi» qatorlari (topshiriqlar va h.k.) — «Ko'rish · o'zi» shu qatorlarning
+yopiq holati, alohida daraja emas. Haqiqiy «faqat ko'rish» kerak bo'lsa — har API'da yozish ruxsatini
+alohida tekshirish kerak bo'ladi.
+
+**318. Sabab endi saqlanadi, eski istisnolarda sabab yo'q** — taxmin
+Qo'shish/cheklashda sabab majburiy (200 belgigacha) — `hr_employees.accessNotes` (oxirgi 50 yozuv: kim,
+qachon, qator, oldin → keyin). Shu kungacha qo'yilgan istisnolarda yozuv yo'q — panelda «Sababi yozilmagan —
+eski istisno». Qator × bilan rolga qaytarilsa, eski sabab ko'rsatilmaydi (oxirgi yozuv — qaytarish).
+So'rov tanasi (sabab bilan) Amallar jurnaliga ham tushadi (proxy).
+
+**319. Filial biriktirish — xodim kartasida qoladi** — taxmin
+Rasmda «Qo'shimcha filial» kartasi panelda tahrirlanadi. Filial a'zoligi oylik, kassa va hovuz
+qoidalariga bog'liq (PATCH /api/hr-employees/:id dagi «FILIAL QOIDASI», oylik uyi) — panelda faqat ko'rinadi
+va «Xodim kartasida» havolasi beriladi. Birinchi filial — asosiy deb ko'rsatiladi (`payrollBranchId`
+jadval javobida yo'q).
+
+**320. «Doira» — xodim qaysi filiallarni ko'radi** — taxmin
+«Doira»: administrator — «Hamma filial»; boshqalar — «O'z filiali» (+N — qo'shimcha filiallar soni);
+filiali yo'q — «Filial biriktirilmagan». Bu `branchIds` dan (navbardagi filial tanlovi shu ro'yxatda,
+lib/branchScope.ts). Alohida «doira» sozlamasi (masalan bitta bo'limda hamma filial) tizimda yo'q.
+
+**321. Rolni panelda o'zgartirish — navbardagi filial hovuzida** — taxmin
+Rol PATCH /api/hr-employees/:id orqali o'zgaradi (o'sha qoidalar: Administrator'ni faqat admin beradi va
+oladi, o'zini va oxirgi faol adminni chiqarib bo'lmaydi). U so'rov navbardagi filial hovuziga kesiladi —
+boshqa filial xodimida panel rolni qulflaydi: «Rolni o'zgartirish uchun navbarda xodim filialini tanlang».
+«Administrator» varianti ro'yxatda faqat adminga ko'rinadi.
+
+**322. Administrator — rol tanlovi faqat admin uchun, istisno yo'q** — taxmin
+Administrator cheklovdan ozod — unga alohida ruxsat yozilmaydi (server 409), panelda ko'k izoh. Admin
+bo'lmagan foydalanuvchi administratorning rolini ko'radi, lekin o'zgartira olmaydi («Administratorni faqat
+admin o'zgartiradi»).
+
+**323. «Tarix» manbalari** — taxmin
+Tarix = `accessNotes` (bo'lim qo'shildi/cheklandi/qaytarildi, istisno olib tashlandi, rol almashdi) +
+`users` hujjati (hisob yaratilgan, taklif yuborilgan — muddatidan 72 soat orqaga hisoblanadi, faollashtirilgan).
+Amallar jurnali ishlatilmadi: proxy so'rov natijasini (muvaffaqiyatli bo'ldimi) yozmaydi. Rol yozuvi panel
+orqali almashtirilganda qoladi; xodim kartasidan almashtirilgani tarixda ko'rinmaydi. Oxirgi 20 ta.
+
+**324. SMS matni — vaqtinchalik parol emas, faollashtirish havolasi va kod** — QAROR KERAK
+Rasmdagi SMS: «…login: telefon raqamingiz · vaqtinchalik parol: …». Tizimda SMS — Eskiz'da moderatsiyadan
+o'tgan shablon: «CRM-<markaz> tizimida hisobingizni faollashtirish uchun havola: …/activate?t=… yoki tasdiqlash
+kodi: ……» (lib/invite.ts → activationMessage). Eskiz tasdiqlanmagan matnni yubormaydi (400). Oynadagi namuna —
+serverdagi HAQIQIY matn, token va kod o'rnida «…» va «••••••». Vaqtinchalik parol kerakmi? Kerak bo'lsa —
+yangi shablon Eskiz moderatsiyasidan o'tishi va parol oqimi (xeshlash, birinchi kirishda almashtirish) qurilishi kerak.
+
+**325. «Birinchi kirishda parolni almashtirish majburiy»** — taxmin
+Tizimda vaqtinchalik parol yo'q: xodim havola yoki kod orqali parolni O'ZI o'rnatadi. Ya'ni shart doim
+bajariladi — oynada qulfli belgilangan qator «Parolni xodim o'zi o'rnatadi (havola yoki kod orqali)».
+
+**326. «3 kun amal qiladi»** — taxmin
+Taklif muddati 72 soat (lib/invite.ts → INVITE_TTL_MS) — rasmdagi «3 kun» bilan bir xil. Muddati o'tgan taklif
+«Havola eskirgan» (qizil) bo'lib chiqadi va «Yuborilgan, kirmagan» kartasida sanaladi; «Qayta yuborish» yangi
+havola va kod yuboradi. SMS'dagi 6 xonali kod esa 10 daqiqa amal qiladi — havoladan kirish 3 kun.
+
+**327. Login hisoblari — faqat administratorga** — taxmin
+Ro'yxatda telefonlar bor, yuborish (POST /api/temp-staff/invite) esa avvaldan faqat admin. Rollar bo'limi ochiq,
+lekin admin bo'lmagan xodimga tab ko'rinmaydi; to'g'ridan so'ralsa — 403 «Bu bo'lim faqat admin uchun».
+
+**328. Bir martada 25 tagacha** — taxmin
+Server bir so'rovda 25 xodimga yuboradi (MAX_BATCH, SMS pul turadi; Vercel'da funksiya 60 s). «Hammasini
+tanlash (44)» bosilsa oyna 25 talik bo'laklarga bo'lib KETMA-KET yuboradi; bitta bo'lak rad etilsa qolgani
+yuborilmaydi va sababi ko'rsatiladi. Soatiga 5 tadan ko'p kod so'ralmaydi (bitta raqamga) — qayta-qayta yuborilsa
+server rad etadi.
+
+**329. «Kirishga admin tasdig'i kerak» — oynada qo'shimcha belgi** — ochiq
+Rasmda yo'q. Bu mavjud ikki bosqichli tasdiq (users.adminApproval, /vaqtinchalik dagi tugmacha): parol qo'ygach
+ham admin ✓ bosguncha kira olmaydi. Sukut — tanlanganlarning hammasida avval yoqiq bo'lsa yoqiq, aks holda o'chiq
+(qayta yuborishda jimgina o'chib qolmasin). Kerak emasmi — olib tashlaymizmi?
+
+**330. Holatlar va tanlov** — taxmin
+Login yo'q (`users` yozuvi yo'q) · Yuborilgan (taklif, muddati ichida) · Havola eskirgan · Login bor (faol) ·
+Bloklangan. Faol va bloklangan hisobga yuborilmaydi (taklif blokni jimgina olib tashlardi) — katakcha va tugma yo'q.
+Telefoni yo'q xodim tanlansa oynada ogohlantirish chiqadi va unga yuborilmaydi. Hisob xodimga hrEmployeeId, bo'lmasa
+telefon bo'yicha bog'lanadi (lib/staffAccounts.ts — jadvaldagi «N xodim» bilan bir xil).
+
+**331. Ro'yxat — barcha filiallar, faqat faol xodimlar** — taxmin
+Rasmdagi «Akademiya 3 Uychida hammaning logini bor — ro'yxatda boshqa filiallar xodimlari» izohi qo'yilmadi:
+ro'yxat navbardagi filialga kesilmaydi (login — markaz darajasidagi narsa), «Filial» filtri bilan toraytiriladi.
+Arxivdagi xodimlar ko'rinmaydi. Sahifada 50 qator (V2Pagination: 50/100/200).
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
