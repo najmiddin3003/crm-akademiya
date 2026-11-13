@@ -22,6 +22,7 @@ import { downloadXlsx, type ExportDoc } from "./reportExport";
 export function ReportShell({
   report,
   subtitle,
+  tabs,
   filters,
   filtersEnd,
   getDoc,
@@ -30,8 +31,11 @@ export function ReportShell({
   children,
 }: {
   report: ReportDef;
-  /** «barcha filiallar» / «qarzi bor o'quvchilar, eng kattasi tepada» (sukut — ro'yxatdagi). */
-  subtitle?: string;
+  /** «barcha filiallar» / «qarzi bor o'quvchilar, eng kattasi tepada» (sukut — ro'yxatdagi).
+   *  26-qism: havola ham bo'lishi mumkin («… — Moliya → Kirim-chiqim»). */
+  subtitle?: ReactNode;
+  /** Sarlavha ostidagi tablar (26-qism, «Kirim va chiqim»: Toifalar / Kassalar). */
+  tabs?: ReactNode;
   filters: ReactNode;
   filtersEnd?: ReactNode;
   /** Eksport hujjati (Excel va PDF uchun bitta). */
@@ -98,6 +102,8 @@ export function ReportShell({
           </button>
         </div>
       </div>
+
+      {tabs}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">{filters}</div>

@@ -2,12 +2,14 @@
 
 import "@fontsource-variable/onest/wght.css";
 import { REPORT_BY_SLUG, type ReportSlug } from "@/lib/reportsCatalog";
+import BonusJarimaReport from "./BonusJarimaReport";
 import { DavomatGuruhlarReport, DavomatOqituvchilarReport } from "./DavomatReports";
 import FaolOquvchilarReport from "./FaolOquvchilarReport";
 import KelganKetganReport from "./KelganKetganReport";
-import { KirimChiqimReport, TolovTurlariReport } from "./MoliyaReports";
+import KirimChiqimReport from "./KirimChiqimReport";
+import OylikAvansReport from "./OylikAvansReport";
 import QarzdorlarReport, { type RowPerms } from "./QarzdorlarReport";
-import { BonusJarimaReport, OylikAvansReport } from "./XodimReports";
+import TolovTurlariReport from "./TolovTurlariReport";
 
 // HISOBOTLAR (15-qism) — `/reports/<slug>` sahifasi: slug bo'yicha hisobot komponenti.
 // Ruxsat serverda tekshirilgan (app/(app)/reports/[slug]/page.tsx).

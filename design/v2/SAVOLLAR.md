@@ -1912,6 +1912,156 @@ Rasmdagi «Akademiya 3 Uychida hammaning logini bor — ro'yxatda boshqa filiall
 ro'yxat navbardagi filialga kesilmaydi (login — markaz darajasidagi narsa), «Filial» filtri bilan toraytiriladi.
 Arxivdagi xodimlar ko'rinmaydi. Sahifada 50 qator (V2Pagination: 50/100/200).
 
+### 26-qism — Hisobotlar: moliya va oylik (13.11.2026)
+
+Kirim va chiqim (Toifalar / Kassalar), To'lov turlari, Oylik va avans, Bonus va jarimalar — 332–366. Yangi
+API: /api/reports/cashbox-month, /api/reports/payment-methods, /api/reports/payroll, /api/reports/bonus-penalty.
+
+**332. Kassa egasi ostidagi «bugun ishga kelmadi»** — ochiq
+Rasm 37 da (Akademiya 3 Uychi) kassa egasining bugungi davomati bor. Tizimda davomat bor (Face ID «Ishga keldim»),
+lekin kassa hisobotini davomatga bog'lash yana bir manba. Qo'yilmadi: qatorda faqat «ism · vazifa» va «… yo'lda».
+Kerakmi?
+
+**333. Kassa egasining vazifasi («Direktor»)** — taxmin
+Bazada kassa egalarining hammasi `turi: moderator`, shuning uchun «Direktor» emas, «Moderator» chiqadi. Xodimga
+Rollar'da qo'lda rol berilgan bo'lsa (`centerRoleId`) — o'sha rol nomi, aks holda lavozim yorlig'i.
+
+**334. Kassalar tabini kim ko'radi** — taxmin
+Moliya → Kassalar bilan bir xil: admin — hamma kassa, xodim — faqat o'ziga biriktirilgani (izoh: «Sizga faqat
+o'zingizga biriktirilgan kassa ko'rinadi»). «Kirim chiqim» ruxsati bor xodim hamma kassa qoldig'ini ko'rsinmi?
+
+**335. «Ko'chirish faqat bosh kassaga» izohi** — taxmin
+Tizimda bunday cheklov yo'q (283 ga qarang): istalgan kassadan istalganiga va kassa ichida turdan turga ko'chiriladi.
+Izoh umumiy: «Ko'chirish — kassalar va to'lov turlari orasida o'tgan pul…»; bosh kassaga o'tgan summa alohida aytiladi.
+
+**336. «Har bir kassa faqat o'zi qabul qiladigan turlarda yuritiladi»** — taxmin
+Kassada «qabul qiladigan turlar» ro'yxati yo'q — jumla olib tashlandi. Ochiladigan qatorda faqat oyda harakati yoki
+qoldig'i bor turlar chiqadi.
+
+**337. Toifa nomlari rasmdagidek emas** — taxmin
+Rasmda «Oylik va avans» bitta qator, bazada «Oylik» va «Avans» alohida; nomlar ham uzun («Reklama va marketing (SMM,
+target, flayer)»). Toifa = Moliya → Tranzaksiya turidagi nom, birlashtirilmaydi; tartib — jami bo'yicha kamayib.
+
+**338. Bitta toifa ikkala guruhda** — taxmin
+Kirim turidagi MANFIY oddiy yozuv (yoki chiqimdagi musbat) Moliya analitikasida ishorasiga qarab sanaladi. Jamilar
+analitikaga teng qolishi uchun shunday toifa ikkala guruhda ham chiqadi. Bugun bazada bunday holat yo'q.
+
+**339. Sentabr: kassa jurnali va `transactions` 300 000 ga farq qiladi** — ochiq
+Sentabrda kassa jurnalida (`transaction_entries`) kirim +300 000 va chiqim −300 000 ortiq juftlik bor,
+`transactions` da (analitika, Toifalar) yo'q. Shu oyda Kassalar va Toifalar tabidagi kirim/chiqim farq qiladi;
+oktabr–noyabrda farq 0. Manbalar aralashtirilmadi. Juftlikni topib tekshiraymi?
+
+**340. «Eng yaxshi oy» — tugamagan oy kirmaydi** — taxmin
+Oraliqda boshqa harakatli oy bo'lsa, joriy (yarim) oy «eng yaxshi oy» bo'lmaydi.
+
+**341. «Kassa bu turni qabul qiladi» — qayerdan** — ochiq
+Bunday sozlama yo'q: to'lov oynasi har kassaga hamma faol turlarni beradi. Kassa turni «qabul qiladi», agar oxirgi
+90 kunda shu kassaga shu turda tushum bo'lsa (Sozlamalar → Kassalar bilan bir manba) yoki tanlangan oylarda musbat
+tushum bo'lsa. Ikkalasi yo'q — «–»; qabul qilib tushum yo'q — «0». Haqiqiy sozlama kerakmi?
+
+**342. Ishlatilmagan faol turlarga karta chiqmaydi** — ochiq
+Bazada 8 faol tur; Ilova Click, Korporativ karta, Yagona QR, Hisob raqam'da tushum ham, 90 kunlik ishlatilish ham
+yo'q. Karta faqat tushumi yoki ishlatilishi bor turga; qolganlari izohda: «Ishlatilmagan turlar ko'rsatilmadi: …».
+
+**343. «p.p.» o'zgarishi rangsiz** — taxmin
+Ulush siljishi o'z-o'zidan yaxshi ham, yomon ham emas — kulrang matn va strelka (↗ / ↘ / —). Oraliqda bitta oy
+bo'lsa o'zgarish yo'q.
+
+**344. Kassa mas'uli uchun yangi API** — taxmin
+`GET /api/reports/payment-methods` — kassalar (nom, filial, bosh kassa, arxiv, mas'ul) va 90 kunlik ishlatilish,
+PUL YO'Q. Ruxsat — hisobot ruxsati (/finance-cashflow). /api/cashboxes?names=1 da mas'ul yo'q, to'liq ro'yxat esa
+xodimga faqat o'z kassasini beradi.
+
+**345. Bosh kassa qatori — hammasi «–»** — ochiq
+Haqiqiy bazada bosh kassaga to'lov tushmaydi (u ko'chirma qabul qiladi); Terminal va Inkassa rasmdagidek Rahbar
+kassasida emas, Chortoq 1 va 2 kassalarida. Qator ko'rsatiladi («Bosh kassa» belgisi bilan). Tushumsiz kassani
+yashiraymi?
+
+**346. Kartalar va «Kassalar bo'yicha» — oraliqning oxirgi oyi** — taxmin
+Davom etayotgan oy — «1–12-oktabr», o'tgan — «Sentabr 2026»; yulduzcha va «hali tugamagan» faqat joriy oyda.
+«Oylar bo'yicha» jadvalida «Jami» qatori yo'q (rasmdagidek), Excel/PDF'da bor.
+
+**347. Sukut oralig'idagi bo'sh oylar** — ochiq
+Sukut — oxirgi 6 oy. Moliya yozuvlari 01.09.2026 dan, shuning uchun iyun–avgust bo'sh. Oraliqni ma'lumot bor
+birinchi oydan boshlaymi?
+
+**348. Oylik: joriy oy hisobotda yo'q** — ochiq
+Oy tanlagichning oxirgisi — oxirgi YOPILGAN oy (bugun oktabr); sarlavha ostida «joriy oy — Moliya → Oylik
+chiqarish» havolasi. Joriy oy ham kerak bo'lsa — «hali yopilmagan» belgisi bilan qo'shiladi.
+
+**349. Oylik avgust 2026 dan boshlanadi — iyul ko'rinmaydi** — taxmin
+Tizimdan oldingi oyda okladli xodimga oklad o'z-o'zidan «hisoblanib» qoladi (iyulda 23 xodimga 3 000 000 — yolg'on
+raqam). «Iyul – sentabr» tanlansa iyul tushadi, izoh chiqadi.
+
+**350. «Jami oylik» — bonus/jarimasiz** — ochiq
+Rasm formulasi: qolgan = jami oylik − avans − to'langan + o'tgan oydan + bonus − jarima, ya'ni «Jami oylik» = oklad
++ ulush. Oylik chiqarish sahifasidagi «Jami oylik» esa bonus va jarimani ham qo'shadi — shunday oyda ikkala raqam
+farq qiladi (jadval ostida izoh). Sahifa bilan bir xil qilaymi?
+
+**351. Soliq ustuni** — taxmin
+Rasmda soliq yo'q, bazada bor (sentabr va oktabrda 2 598 000). «Soliq» ustuni faqat shu oyda soliq bo'lsa chiqadi
+(qizil «−»), formula izohiga «− soliq» qo'shiladi.
+
+**352. «Kirim va chiqim» bilan «bir xil» — aslida farq qiladi** — QAROR KERAK
+Izohdagi raqam haqiqiy: teng bo'lsa rasmdagi matn, bo'lmasa ikkala raqam va sababi. Bazada: sentabr — avans +
+to'langan 290 312 288, «Kirim va chiqim»da 271 634 787; oktabr — 270 830 350 va 293 027 835. Sabablar:
+(a) «Kirim va chiqim» berilgan SANA bo'yicha, oylik QAYSI OY hisobiga bo'yicha sanaydi (04.11 dan avans/oylik doim
+joriy oyga — noyabrdan farq yo'qoladi); (b) xodimlar ro'yxatida YO'Q ismga yozilgan avans/oylik: sentabrda
+3 000 000, oktabrda 1 935 484. (b) dagi yozuvlarni topib, xodimga bog'laymizmi?
+
+**353. Bitta filialda «Kirim va chiqim» bilan solishtirilmaydi** — taxmin
+«Kirim va chiqim» filialni KASSA bo'yicha, oylik — xodimning OYLIK filiali bo'yicha oladi (2-bino xodimlariga
+sentabrda 71,8 mln berilgan, 2-bino kassalaridan 23,5 mln chiqqan). Filial tanlansa izohda faqat «Avans + to'langan
+= X so'm — shu xodimlarga».
+
+**354. Oylik: filial filtri bino bo'yicha** — taxmin
+Oylik chiqarish kabi 1- va 2-bino alohida, jadval ham bino bo'yicha guruhlanadi (boshqa hisobotlarda 1+2 bitta).
+
+**355. «Qolgan oylik» — qatorda ishorali, jamida kassadan chiqadigani** — taxmin
+Xodim qatorida ishorali (manfiy — xodim qarzi, qizil); filial, «Jami» va kartada — kassadan chiqadigan musbat
+yig'indi va «xodim qarzi: …». Qator ostida «→ oktabrga o'tdi».
+
+**356. Bir necha oyda «Qolgan oylik» — oxirgi oy** — taxmin
+Qoldiq keyingi oyga o'tadi, oylar qo'shilsa bitta pul ikki marta sanaladi. Shu ko'rsatkichda «Oxirgi oyda».
+
+**357. «To'langan» kartasidagi sana** — taxmin
+Shu oy hisobiga berilgan OXIRGI oylik yozuvining sanasi (sentabr uchun — 31-oktabr, qo'shimcha chiqarish).
+
+**358. Oylik: xodim yorlig'i** — taxmin
+«Oklad + 30% · tushum 2 240 000», «Foiz 50% · tushum …», «Oklad · 4 500 000», arxivdagi — «· arxivda»,
+sozlanmagan — «Sozlanmagan», raqamlari «—».
+
+**359. «Hisoblash usuli» faqat bitta oyda** — taxmin
+Rasm 43/44 da yo'q — bir necha oyda filtr yashiriladi. Usul tanlanganda «Kirim va chiqim» bilan solishtirma chiqmaydi.
+
+**360. Avgust — nol-yopish oyi** — taxmin
+Avgust eski tizimda hal qilingan: «Qolgan oylik» 0, «O'tgan oydan» zanjiri sentabrdan (Oylik chiqarishdagi kabi).
+
+**361. Oylik hisoboti ruxsati — «Oylik chiqarish»** — taxmin
+Faqat /finance-payroll ruxsati borlar ochadi (API ichida). Filial — o'ziga biriktirilganlar, admin — hammasi.
+«Hisobotlar» ruxsatining o'zi yetsinmi?
+
+**362. «Kechikish jarimasi» ustuni — tizimda bunday jarima yo'q** — QAROR KERAK
+«Ishga keldim» faqat rahbarga xabar beradi, `penalties` ga yozmaydi. Ustun o'rnida «Boshqa jarima» — Moliya →
+Jarima'da qo'lda yozilganlar; izohda «Kechikish uchun jarima tizimda yozilmaydi». Avtomatik kechikish jarimasi
+kerakmi (necha daqiqadan, qancha so'm, qaysi lavozimga)? Shunda ustun qaytadi.
+
+**363. Qo'lda yozilgan jarimani kim va qachon bekor qilgani saqlanmaydi** — ochiq
+Topshiriq jarimasida sabab, kim, qachon bor. Moliya → Jarima'da bekor qilishda faqat sabab saqlanadi, bonusda bekor
+qilish yo'q (faqat o'chirish). Hozircha qo'lda yozilganda faqat sabab. Kim/qachon ham yozilsinmi?
+
+**364. Bonus/jarima: xodim qaysi filialda** — taxmin
+Xodim oyligi chiqadigan filial (`payrollBranchId`) ostida — Oylik sahifasi bilan bir xil, ikki marta chiqmaydi.
+1- va 2-bino alohida qator, filtrda bitta. Ro'yxatda yo'q ism — «Filiali noma'lum», faqat adminga.
+
+**365. «Kutilmoqda» — qaysi topshiriqlar** — taxmin
+«Muddati o'tdi» holatidagi, jarimasi bor, qayta muddati TANLANGAN OYGA tushadigan topshiriqlar. Oylikka ta'siriga
+qo'shilmaydi. «Tasdiq kutilmoqda» (ijrochi bajargan) kirmaydi — ularga jarima yozilmaydi.
+
+**366. Bonus/jarima: tartib va ochiq qator** — taxmin
+Filiallar raqam, xodimlar ism, yozuvlar vaqt bo'yicha (eski tepada — limitdan oshgani pastda). Sahifa ochilganda
+filiallar va birinchi xodim ochiq. «Namuna» belgisi qo'yilmadi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
