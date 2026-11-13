@@ -135,18 +135,23 @@ export default function RolesPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const countByTuri = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const e of employees) {
-      if (!e.turi) continue;
-      map.set(e.turi, (map.get(e.turi) ?? 0) + 1);
-    }
-    return map;
-  }, [employees]);
+  // «Xodimlar» ustuni yangi versiyadagi jadval bilan BIR XIL sanaladi (components/v2/roles/rolesBits.tsx →
+  // employeesOfRole; 13.11.2026 — eski sahifa 57, yangisi 51 ko'rsatardi): faqat FAOL xodim (arxivdagisi
+  // sanalmaydi), administrator chiqmaydi (cheklovdan ozod — /api/roles/coverage → adminBypass),
+  // Rollar'dan qo'lda rol berilgani (`centerRoleId`) — lavozimida emas, o'sha rolda.
+  const adminIds = useMemo(() => new Set((coverage?.adminBypass ?? []).map((p) => p.id)), [coverage]);
+  const activeStaff = useMemo(
+    () => employees.filter((e) => !String(e.archReason ?? "").trim() && !adminIds.has(e.id)),
+    [employees, adminIds],
+  );
+  const countOfRole = (r: Role) =>
+    activeStaff.filter((e) =>
+      e.centerRoleId !== null && e.centerRoleId !== undefined ? e.centerRoleId === r.id : Boolean(r.key) && e.turi === r.key,
+    ).length;
 
   const overrideCount = useMemo(
-    () => employees.filter((e) => Array.isArray(e.permissions)).length,
-    [employees],
+    () => activeStaff.filter((e) => Array.isArray(e.permissions)).length,
+    [activeStaff],
   );
 
   /** Xodimning roli: Rollar'da qo'lda qo'shilgan rol bo'lsa — o'sha (`centerRoleId`), aks holda lavozim. */
@@ -381,10 +386,9 @@ export default function RolesPage() {
                   <td className="px-5 py-3 text-[13px] text-muted-foreground">{r.description || "-"}</td>
                   <td className="px-5 py-3"><PermBadge permissions={r.permissions} /></td>
                   <td className="px-5 py-3 text-right tabular-nums">
-                    {/* Faqat o'rnatilgan rollar xodimga bog'langan (`turi`).
-                        Qo'lda qo'shilgan rolni xodimga biriktirish usuli
-                        hali yo'q — soxta 0 ko'rsatmaymiz. */}
-                    {r.key ? (countByTuri.get(r.key) ?? 0) : <span className="text-muted-foreground">—</span>}
+                    {/* O'rnatilgan rol — lavozim (`turi`), qo'lda qo'shilgani — `centerRoleId`
+                        (xodim kartasidagi «Vazifa»). Hisob — yuqoridagi countOfRole. */}
+                    {countOfRole(r)}
                   </td>
                   <td className="px-5 py-3 pr-5">
                     <div className="flex items-center justify-end gap-1">
@@ -514,7 +518,7 @@ export default function RolesPage() {
                     </h3>
                     {roleTarget?.key && (
                       <p className="mt-0.5 text-[12px] text-muted-foreground">
-                        {countByTuri.get(roleTarget.key) ?? 0} ta xodimga qo&apos;llanadi
+                        {countOfRole(roleTarget)} ta xodimga qo&apos;llanadi
                         {overrideCount > 0 && " (alohida istisnosi borlardan tashqari)"}.
                       </p>
                     )}
