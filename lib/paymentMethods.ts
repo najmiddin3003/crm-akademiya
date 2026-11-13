@@ -10,6 +10,7 @@
 // kassalardagi summalar "yo'qolib" qolardi.
 import type { Db, Document, WithId } from "mongodb";
 import { PAYMENT_METHODS_SEED } from "@/constants/settingsLists";
+import { sortPaymentMethods } from "@/lib/paymentMethodUsage";
 
 export interface PaymentMethod {
   id: number;
@@ -17,6 +18,12 @@ export interface PaymentMethod {
   name: string;
   active: boolean;
   system: boolean;
+  /**
+   * Ko'rsatish tartibi (24-qism, Sozlamalar → To'lov turlari, qatorni surish). Faqat
+   * ro'yxat tartibi — hisob-kitobga ta'siri yo'q. Yo'q bo'lsa — oxirida, `id` bo'yicha;
+   * «naqd» doim birinchi (lib/paymentMethodUsage.ts sortPaymentMethods).
+   */
+  order?: number;
 }
 
 export const PAYMENT_METHODS_COLLECTION = "settings_payment_methods";
@@ -85,7 +92,7 @@ export async function loadPaymentMethods(db: Db): Promise<PaymentMethod[]> {
     rows = await col.find({}).sort({ id: 1 }).toArray();
   }
 
-  return rows.map(({ _id, ...rest }) => rest as unknown as PaymentMethod);
+  return sortPaymentMethods(rows.map(({ _id, ...rest }) => rest as unknown as PaymentMethod));
 }
 
 export async function loadPaymentMethodKeys(db: Db): Promise<string[]> {

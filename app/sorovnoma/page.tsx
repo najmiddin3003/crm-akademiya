@@ -6,6 +6,7 @@ import "@fontsource-variable/ibm-plex-sans/wght.css";
 import SurveyPage from "@/components/leads/SurveyPage";
 import { ensureIndexes } from "@/lib/mongodb";
 import { loadSurveyConfig } from "@/lib/surveyServer";
+import { loadSurveyOpen } from "@/lib/surveyOpen";
 import "./sorovnoma.css";
 
 // Ommaviy so'rovnoma — «Bepul sinov darsiga yoziling». Havola reklamaga
@@ -35,7 +36,10 @@ export const metadata: Metadata = {
 export default async function Page() {
   await connection();
   const db = await ensureIndexes();
-  const config = await loadSurveyConfig(db);
+  const [loaded, open] = await Promise.all([loadSurveyConfig(db), loadSurveyOpen(db)]);
+  // «Sahifa ochiq» o'chirilgan (lib/surveyOpen.ts) — yo'nalishsiz konfiguratsiya:
+  // SurveyPage o'zining «So'rovnoma vaqtincha yopiq» holatini ko'rsatadi.
+  const config = open ? loaded : { ...loaded, yonalishlar: [] };
   return (
     <div className="srv">
       <SurveyPage config={config} />

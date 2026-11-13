@@ -20,6 +20,7 @@ export const SECTION_LABELS: Record<string, string> = {
   branches: "Filiallar",
   cashboxes: "Kassalar",
   contracts: "Shartnomalar",
+  "course-categories": "Kurs kategoriyalari va narxlari",
   "edu-categories": "Kategoriyalar",
   employees: "Xodimlar",
   equipment: "Jihozlar",

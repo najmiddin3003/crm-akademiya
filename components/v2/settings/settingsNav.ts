@@ -45,7 +45,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
   {
     title: "Moliya",
     items: [
-      { label: "Kassalar", href: "/finance-cash" },
+      { label: "Kassalar", href: "/settings-finance?tab=cashboxes", adminOnly: true },
       { label: "Kirim-chiqim toifalari", href: "/finance-tx-types" },
       { label: "To'lov turlari", href: "/settings-finance?tab=payment-methods" },
       { label: "Bonus sabablari", note: "Bonus sabablari ro'yxati hali yo'q" },

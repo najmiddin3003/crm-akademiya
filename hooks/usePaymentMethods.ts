@@ -3,6 +3,7 @@
 import { useSharedList } from "@/hooks/useSharedList";
 
 import type { PaymentMethod } from "@/lib/paymentMethods";
+import { sortPaymentMethods } from "@/lib/paymentMethodUsage";
 
 // To'lov turlarining yagona KLIENT manbasi — Sozlamalar → Moliya → To'lov
 // turlari bilan bir xil (/api/settings-lists?kind=payment-methods).
@@ -16,7 +17,8 @@ export function usePaymentMethods() {
   const { items: methods, loading } = useSharedList<PaymentMethod>(
     "shared:payment-methods",
     "/api/settings-lists?kind=payment-methods",
-    (d) => (d as { items?: PaymentMethod[] }).items ?? [],
+    // Tartib — Sozlamalar → To'lov turlari'da surib qo'yilgani («naqd» doim birinchi).
+    (d) => sortPaymentMethods((d as { items?: PaymentMethod[] }).items ?? []),
   );
 
   return { methods, active: methods.filter((m) => m.active), loading };

@@ -29,7 +29,41 @@ export interface PricedCourse {
  * "narx kiritilmagan" deb olinadi — sahifada ogohlantirish chiqadi,
  * scripts/set-course-prices.mjs qayta yurgiziladi.
  */
-const MIN_MONTHLY_PRICE = 50_000;
+export const MIN_MONTHLY_PRICE = 50_000;
+
+/**
+ * Narx qaysi filial qatoridan o'qiladi — tartib bilan.
+ *
+ * 1+2 HOVUZI (09.10.2026, lib/branchPools.ts): guruhning `branchId` si —
+ * uni yaratgan navbar filiali, bino emas. Avval o'z filiali qatori, u
+ * yo'q yoki o'chiq bo'lsa — hovuzdosh filial qatori. Aks holda bir xil
+ * kursdagi umumiy ro'yxat guruhlari jimgina kurs asosiy narxiga tushardi.
+ */
+export function priceBranchOrder(branchId: number): number[] {
+  return [branchId, ...branchPool(branchId).filter((b) => b !== branchId)];
+}
+
+/** Kurs DARAJASINING oylik narxi shu filial uchun (yuqoridagi tartib). `null` — yo'q. */
+export function levelPriceFor(course: PricedCourse, level: string | undefined | null, branchId: number): number | null {
+  const levelKey = norm(level);
+  if (!levelKey) return null;
+  const lv = (course.levels ?? []).find((l) => norm(l.name) === levelKey);
+  if (!lv) return null;
+  for (const bid of priceBranchOrder(branchId)) {
+    const lb = lv.branches?.find((b) => Number(b.id) === bid && b.enabled);
+    if (lb && Number(lb.summa) >= MIN_MONTHLY_PRICE) return Number(lb.summa);
+  }
+  return null;
+}
+
+/** Kursning ASOSIY (darajasiz) oylik narxi shu filial uchun. `null` — yo'q. */
+export function basePriceFor(course: PricedCourse, branchId: number): number | null {
+  for (const bid of priceBranchOrder(branchId)) {
+    const cb = (course.branches ?? []).find((b) => Number(b.id) === bid && b.enabled);
+    if (cb && Number(cb.price) >= MIN_MONTHLY_PRICE) return Number(cb.price);
+  }
+  return null;
+}
 
 /**
  * Guruh uchun OYLIK narx (yuqoridagi qoida). `null` — topilmadi.
@@ -45,23 +79,5 @@ export function monthlyPriceFor(
   if (!course) return null;
   // Maydoni yo'q eski guruh 1-filialniki (lib/branchScope.ts → branchCondition).
   const branchId = Number(group.branchId) || 1;
-  // 1+2 HOVUZI (09.10.2026, lib/branchPools.ts): guruhning `branchId` si —
-  // uni yaratgan navbar filiali, bino emas. Avval o'z filiali qatori, u
-  // yo'q yoki o'chiq bo'lsa — hovuzdosh filial qatori. Aks holda bir xil
-  // kursdagi umumiy ro'yxat guruhlari jimgina kurs asosiy narxiga tushardi.
-  const order = [branchId, ...branchPool(branchId).filter((b) => b !== branchId)];
-
-  const levelKey = norm(group.level);
-  if (levelKey) {
-    const level = (course.levels ?? []).find((l) => norm(l.name) === levelKey);
-    for (const bid of order) {
-      const lb = level?.branches?.find((b) => Number(b.id) === bid && b.enabled);
-      if (lb && Number(lb.summa) >= MIN_MONTHLY_PRICE) return Number(lb.summa);
-    }
-  }
-  for (const bid of order) {
-    const cb = (course.branches ?? []).find((b) => Number(b.id) === bid && b.enabled);
-    if (cb && Number(cb.price) >= MIN_MONTHLY_PRICE) return Number(cb.price);
-  }
-  return null;
+  return levelPriceFor(course, group.level, branchId) ?? basePriceFor(course, branchId);
 }

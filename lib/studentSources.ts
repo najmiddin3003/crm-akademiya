@@ -1,5 +1,6 @@
 import type { Db } from "mongodb";
-import { SOURCE_OTHER, STUDENT_SOURCES } from "@/constants";
+import { SOURCE_FROM_ORDER, SOURCE_OTHER, STUDENT_SOURCES } from "@/constants";
+import { BOT_SOURCE, SURVEY_SOURCE } from "@/lib/leadSettings";
 
 // "Manba" TANLOVLARI — o'quvchi qo'shish formasidagi ro'yxat.
 //
@@ -29,6 +30,28 @@ export interface StudentSourceOption {
    * harfga o'zgarsa tugma xatosiz, lekin DOIM BO'SH fayl berardi.
    */
   system?: boolean;
+  /**
+   * `false` — «Nofaol» (yangi versiya Sozlamalar → Manbalar, 13.11.2026). Nofaol
+   * manba yangi tanlovlarda (o'quvchi formasi, so'rovnoma, bot) chiqmaydi, lekin
+   * ESKI yozuvlarda matn bo'lib qoladi va hisobotda ko'rinadi. Maydon yo'q — faol
+   * (eski hujjatlar migratsiyasiz shunday o'qiladi).
+   */
+  active?: boolean;
+  /**
+   * Pullik reklama kanalimi — faqat belgi (13.11.2026). Kassadagi «Reklama»
+   * chiqimi bilan bog'lanish hali YO'Q (design/v2/SAVOLLAR.md). Yo'q — bepul.
+   */
+  paid?: boolean;
+}
+
+/**
+ * Tanlov nomi bo'la olmaydigan qiymatlar: lid kanallari (`orders.source` ga
+ * tizim o'zi yozadi — ro'yxatdagi shu nomli tanlov ular bilan qo'shilib ketardi),
+ * "Boshqa" (darvoza, pastdagi izoh) va "Buyurtmadan" (liddan yaratilgan o'quvchi).
+ */
+export function isReservedSourceName(name: string): boolean {
+  const n = name.trim().toLocaleLowerCase("uz");
+  return [SURVEY_SOURCE, BOT_SOURCE, SOURCE_OTHER, SOURCE_FROM_ORDER].some((r) => String(r).toLocaleLowerCase("uz") === n);
 }
 
 /** Qulflangan qiymatlar — yuqoridagi `system` izohiga qarang. */
@@ -47,7 +70,7 @@ function seedNames(): string[] {
  * ikkita so'rov bir vaqtda kelib qolsa ham takror hujjat tug'ilmaydi
  * (ikkalasi ham bir xil `id` ga yozadi).
  */
-export async function listSourceOptions(db: Db): Promise<StudentSourceOption[]> {
+export async function listSourceOptions(db: Db, opts: { all?: boolean } = {}): Promise<StudentSourceOption[]> {
   const col = db.collection(SOURCE_COLLECTION);
   if ((await col.countDocuments({}, { limit: 1 })) === 0) {
     const names = seedNames();
@@ -61,7 +84,10 @@ export async function listSourceOptions(db: Db): Promise<StudentSourceOption[]> 
       ),
     );
   }
-  const rows = await col.find({}, { projection: { _id: 0 } }).sort({ id: 1 }).toArray();
+  // Sukut — faqat FAOL tanlovlar (formalar, so'rovnoma, bot shu yerdan oladi).
+  // `all` — boshqaruv sahifasi uchun (nofaollar ham, qayta yoqish uchun).
+  const filter = opts.all ? {} : { active: { $ne: false } };
+  const rows = await col.find(filter, { projection: { _id: 0 } }).sort({ id: 1 }).toArray();
   return rows as unknown as StudentSourceOption[];
 }
 

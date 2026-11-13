@@ -19,6 +19,11 @@ export function categoryDotCls(name: string): string {
   return TONE[categoryTone(name)].dot;
 }
 
+/** Kategoriya rangidagi och fon + yozuv (Kategoriyalar kartasidagi kurs chiplari). */
+export function categoryBadgeCls(name: string): string {
+  return TONE[categoryTone(name)].badge;
+}
+
 /** «● Chet tillari»; bo'sh — «Kategoriyasiz» (kulrang). */
 export function CategoryBadge({ name }: { name?: string }) {
   const { t } = useT();

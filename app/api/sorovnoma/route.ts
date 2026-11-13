@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { createSurveyLead } from "@/lib/ordersCreate";
 import { phone9, validateSurvey, type SurveySubmission } from "@/lib/survey";
 import { loadSurveyConfig, surveyHash as hash } from "@/lib/surveyServer";
+import { loadSurveyOpen } from "@/lib/surveyOpen";
 
 // POST /api/sorovnoma — ommaviy so'rovnoma javobi (/sorovnoma) → yangi lid.
 //
@@ -55,7 +56,10 @@ export async function POST(req: Request) {
   if (!(Number(body.ms) >= MIN_FILL_MS)) return ok();
 
   const db = await ensureIndexes();
-  const cfg = await loadSurveyConfig(db);
+  const [cfg, open] = await Promise.all([loadSurveyConfig(db), loadSurveyOpen(db)]);
+  // «Sahifa ochiq» o'chirilgan (lib/surveyOpen.ts) — eski ochiq turgan sahifadan
+  // kelgan javob ham lid bo'lmaydi; odamga sahifadagi yopiq matni qaytadi.
+  if (!open) return fail("So'rovnoma vaqtincha yopiq — filialga qo'ng'iroq qiling.", 403);
   const v = validateSurvey(cfg, body);
   if (!v.ok) return fail(v.error);
 

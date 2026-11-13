@@ -1570,6 +1570,207 @@ faqat o'qituvchi, dars boshlanib 5 daqiqa, kechikish — filialning ruxsat etilg
 «Xodim o'zi o'chira oladi (qo'ng'iroq → sozlamalar)» izohi qo'yilmadi — bunday imkon yo'q. Kerakmi? Kanal
 «Telegram — keyingi bosqichda» — o'chiq chip. Sahifa va API faqat admin; eski versiya yon menyusiga band qo'shilmadi.
 
+### 24-qism — Sozlamalar: Kategoriyalar, Kassalar, To'lov turlari, Manbalar, So'rovnoma (13.11.2026)
+
+**271. Narx tarixi yo'q** — QAROR KERAK
+Rasm: «Narx o'zgarsa — yangi guruhlarga darhol, mavjudlariga keyingi oydan. O'tgan oylar qarzi o'zgarmaydi».
+Tizimda narx TARIXI YO'Q: Qarzdorlar hisoboti (lib/debtors.ts) va o'quvchi kartasidagi qarz har oy uchun
+kursning HOZIRGI narxidan sanaladi — narx oshirilsa o'tgan oylar qarzi ham oshadi. Sahifa va oynada buni
+ochiq aytamiz (sariq ogohlantirish). Tuzatish yo'li: narx o'zgarishini sana bilan saqlash (`course_price_history`)
+va qarz hisobida oy boshidagi narxni olish. Qilaylikmi?
+
+**272. «Faqat yangi guruhlarga» — o'chiq** — taxmin (271 ga bog'liq)
+Narx guruhda emas, KURS DARAJASIDA saqlanadi — guruh har oy shundan hisoblanadi. Shuning uchun «faqat yangi
+guruhlarga» imkoni yo'q: variant ko'rsatiladi, lekin o'chiq va izohli. «Mavjud guruhlarga ham» — «darhol»
+(rasmdagi «1-noyabrdan» emas).
+
+**273. «Narx darajasi» = kurs darajasi** — taxmin
+Rasmdagi «1–4-sinf · kichik guruh», «Katta guruh · 1/2-bosqich» — tizimda kurs DARAJALARI (Kurslar → daraja) va
+ularning filial narxi. Kategoriyadagi bir xil nomli, bir xil narxli darajalar bitta qator (Ingliz, Rus, Turk
+«Kichik guruh» 280 000). Narx turlicha bo'lsa — alohida qatorlar, ostida kurs nomlari. Darajasi yo'q kurs —
+«Asosiy narx» qatori. Narx qoidasi Qarzdorlar hisoboti bilan BITTA (lib/coursePrice.ts). Narxi topilmagan
+guruhlar kartada sariq qator bilan («Qarzdorlar hisobotida qarzi sanalmaydi»).
+
+**274. Narx va guruh soni — navbardagi filial bo'yicha** — taxmin
+Rasm: «Guruh — barcha filiallar bo'yicha». Narx har filialda boshqa bo'lishi mumkin, shuning uchun karta
+NAVBARDAGI filial narxini va o'sha filial (1+2 Chortoq — hovuz bilan) tirik guruhlarini (yig'ilmoqda, faol,
+muzlatilgan) ko'rsatadi. Narx o'zgarsa — shu filialga (1+2 da ikkalasiga) yoziladi.
+
+**275. Rasmdagi narx qoidalari tizimda yo'q** — ochiq
+«5–8-sinf o'quvchisi kichik guruhga qo'shilsa — 300 000», «1–5-sinf o'quvchisi katta guruhga qo'shilsa — bosqich
+narxi» — tizimda narx o'quvchining sinfiga EMAS, guruh darajasiga qarab. «Narx qoidalari» kartasida HAQIQIY
+qoidalar yozildi. O'quvchi sinfiga qarab narx kerakmi?
+
+**276. O'quvchi kartasidagi «Kategoriya» — boshqa ro'yxat** — QAROR KERAK
+Rasm: «O'quvchi kartasidagi Kategoriya ham shu ro'yxatdan». Tizimda ikkita narsa: kurs kategoriyasi
+(`offline_courses.category` — shu sahifa) va o'quvchi toifasi (`edu_categories`: «1-4- sinflar», «Chet tili
+bosqich 1/2» …, o'quvchi kartasi, imtihon, lidlar). Taxmin: alohida qoladi; o'quvchi toifalari sahifa pastidagi
+havola orqali eski ko'rinishda. Birlashtiramizmi?
+
+**277. Kategoriya — kurslar guruhi** — taxmin
+Kategoriya alohida ro'yxat emas — kursning maydoni. «Kategoriya qo'shish»da nom + kamida bitta kurs tanlanadi
+(boshqa kategoriyadagi kurs ko'chadi). «Olib tashlash» — kurslar kategoriyasiz qoladi, kurs/guruh/narx o'chmaydi.
+Kursi yo'q bo'sh kategoriya saqlanmaydi.
+
+**278. Kim o'zgartiradi** — ochiq
+Narxni — faqat administrator (Qarzdorlar va qarzga ta'sir qiladi); boshqalarga qalam o'chiq. Kategoriya
+tahriri — sahifa ruxsati borlarga. Nomuvofiqlik: Kurslar sahifasida daraja narxi hamon sahifa ruxsati bilan
+o'zgaradi. U yerda ham faqat admin qilaylikmi?
+
+**279. «Ta'sir» hisobi** — taxmin
+Oylik tushumga ta'sir = shu qatordagi guruhlarning hozirgi o'quvchilari × narx farqi, chegirmalarsiz, faqat shu
+filial. Amallar jurnaliga so'rov (eski → yangi narx, kategoriya, daraja) o'zi yoziladi.
+
+**280. Kassalar sozlamasi — alohida sahifa** — taxmin
+Pul sahifasi (Moliya → Kassalar, /finance-cash) o'zgarmagan. Sozlama — /settings-finance?tab=cashboxes: nomi,
+mas'uli, filiali, bosh kassa, arxiv. Kassani boshqarish tizimda FAQAT administratorda (API shunday) — boshqa xodim
+sahifaga kirsa «Kassalarni faqat administrator sozlaydi» izohi va Moliya → Kassalar havolasi. Menyuda band faqat
+adminga ko'rinsin (adminOnly). Eski versiyada bu tab yo'q.
+
+**281. «Qabul qiladigan to'lov turlari» — tizimda sozlama yo'q** — QAROR KERAK
+Rasmda har kassa o'z turlarini qabul qiladi («4 ta / Rahbar kassasi, Chortoq 1…»). Tizimda bunday cheklov yo'q:
+to'lov oynasi har kassaga hamma faol turni ko'rsatadi. *Taxmin:* ustunlarda HAQIQIY ishlatilish — oxirgi 90 kunda
+shu kassaga shu tur bilan yozilgan tushum (sozlama emas, kuzatuv), izohda shunday deyilgan. Cheklov kerakmi? Kerak
+bo'lsa — kassaga yangi maydon va uni to'lov oynasi, kassa amali, bot va SERVER tekshirishi kerak (pul yo'liga tegadi).
+
+**282. «Xodim faqat o'z filiali kassalarini taniydi» — aslida mas'ul bo'yicha** — taxmin
+Tizimda to'lov oynasidagi kassa ro'yxati FILIALGA emas, MAS'ULGA qarab kesiladi: xodim faqat o'zi mas'ul bo'lgan
+kassani ko'radi, mas'ul bo'lmasa — hech qaysini; rahbar hamma faol kassani. Kartochka matni shunga moslandi,
+ro'yxat filial bo'yicha guruhlangan («Kassa · Mas'ul»). Mas'ulsiz kassa «Biriktirilmagan — tushumni faqat rahbar
+yozadi» bilan ajratiladi.
+
+**283. «Boshqa kassalar pulni faqat bosh kassaga ko'chiradi» — tizimda cheklov yo'q** — QAROR KERAK
+Ko'chirma istalgan kassaga yuboriladi (web, server, botda ham — bot faqat bosh kassani birinchi qo'yadi). Rasmdagi
+jumla olib tashlandi; o'rniga bosh kassa HAQIQATAN nima qilishi: boshqa kassalarning «oxirgi topshiruvdan beri»
+hisobi shu kassaga qabul qilingan ko'chirmadan boshlanadi; kunlik topshiruv hisobotini rahbar va bosh kassa mas'uli
+ko'radi; oylik va botda sukut kassa. Ko'chirishni faqat bosh kassaga cheklaymizmi?
+
+**284. «Rahbar paneli» va «Rahbar kassasi — faqat Rahbar panelida»** — ochiq
+Tizimda «Rahbar paneli» degan joy yo'q. Filial ustunida kassaning haqiqiy filiali (bosh kassada ham); «Ko'chirmalar
+4 ta filialdan» yozuvi qo'yilmadi. Bosh kassa ro'yxatda toj belgisi va «Bosh kassa» yozuvi bilan.
+
+**285. Arxiv: qoldiqli kassa arxivlanmaydi — faqat yangi sahifada** — ochiq
+Yangi sahifa qoldig'i (minus ham) yoki tasdiq kutayotgan ko'chirmasi bor kassani arxivlamaydi («avval Moliya →
+Kassalar'da bosh kassaga ko'chiring»), bosh kassani ham. Server va eski sahifa buni TEKSHIRMAYDI. Serverga ham
+qo'shaylikmi? O'chirish — faqat «Arxiv» ro'yxatida va faqat hech qanday yozuvi yo'q kassa (server 409).
+
+**286. Kassa filiali va «Onlayn to'lov» belgisi** — taxmin
+Filialni API o'zgartirmaydi: yangi kassa navbarda tanlangan filialga ochiladi (1+2 hovuzida — mas'ulning oylik
+filiali), keyin o'zgarmaydi — oynada qulf bilan ko'rsatiladi. «Onlayn to'lov» belgisi tizimda hech narsaga ta'sir
+qilmaydi — yangi oynada yo'q, tahrirda o'zgarmay qoladi.
+
+**287. Mas'ul — faqat «Moderator» lavozimidagilar** — ochiq
+Mas'ul ro'yxati eski oynadagidek /api/moderators (faol moderatorlar, navbardagi filialga kesilgan). Rasmda rahbar
+ham mas'ul. Kassaning hozirgi mas'uli ro'yxatda bo'lmasa (masalan rahbar) ham saqlanadi va tanlanadi; boshqa
+kassada band xodim xira. Boshqa lavozimlarni ham mas'ul qilish kerakmi?
+
+**288. To'lov turlari tartibi — yangi `order` maydoni** — taxmin
+Qatorni sudrab (yoki ⋯ → Yuqoriga/Pastga) tartib saqlanadi: `settings_payment_methods.order`, PUT
+/api/payment-methods. Faqat ro'yxat tartibi — hisob, qoldiq, kalitlarga tegmaydi. Tartib: to'lov oynasi, kassa
+amallari, hisobotlar (usePaymentMethods) va server ro'yxati (loadPaymentMethods → bot). «Naqd» doim birinchi va
+surilmaydi: oylik oynasi sukut bo'yicha birinchi turni oladi. Yangi tur ro'yxat oxiriga tushadi. Moliya →
+Kassalar sahifasida foydalanuvchi o'zi surib qo'ygan shaxsiy tartib (brauzerda) ustun bo'lib qoladi.
+
+**289. To'lov turi rangi tanlanmaydi** — QAROR KERAK
+Rasmda rang tanlanadi. Tizimda rang tur kalitidan (naqd — yashil, plastik/karta — binafsha, terminal — ko'k,
+inkassa — sariq, qolgani — asosiy rang); 6 joy shu qoidaga qaraydi. Yangi turlarning hammasi bir xil rangda
+chiqadi. Rang tanlovi kerakmi? (`color` maydoni + methodDot o'zgarishi.)
+
+**290. Naqd va Plastik nofaol qilinmaydi** — taxmin
+Rasmda faqat Naqd — «tizim turi». Yangi sahifada Naqd va Plastik qulf bilan: nofaol qilinmaydi (kassa hisobi va
+oylikning karta qismi shu ikki kalit bilan). Server va eski sahifa buni to'smaydi. Terminal, Ilova Click — eski
+qoidadagidek o'chirilmaydi, lekin nofaol qilinadi. Yangi sahifada umuman o'chirish yo'q — faqat «Nofaol».
+
+**291. «Kassa kartasida» — faqat administratorga** — taxmin
+Bosh kassaning hozirgi qoldig'i turlar bo'yicha (chiziq + summalar). Bu pul — boshqa xodimga (To'lov turlari
+sahifasiga /settings-finance ruxsati bilan kirgan) karta ko'rsatilmaydi. Turlarni tahrirlash esa eski sahifadagidek
+/settings-finance ruxsati borlarga ochiq.
+
+**292. Lid qaysi manbaga yoziladi** — taxmin
+Har lid BITTA qatorda (jami = lidlar soni): so'rovnoma/botdan kelgan lidda — odam tanlagan «Bizni qayerdan
+bildingiz?» javobi (`orders.heardFrom`), «Boshqa» bo'lsa — kanal («Sayt so'rovnomasi», «Telegram bot»); qo'lda
+qo'shilgan lidda — `orders.source` (lid qo'shilganda shu ism/telefonli o'quvchi kartasi bo'lsa, o'sha kartadagi
+manba). Ikkalasi ham bo'sh — «Ko'rsatilmagan» qatori. Muqobil: «kanal» (sahifa / bot / qo'lda) va «qayerdan bildi»
+ni alohida ikki ustunda ko'rsatish.
+
+**293. «Lid → o'quvchi» qanday sanaladi** — taxmin
+«O'quvchi» = lid holati «Guruhga qo'shildi» (lib/leadHolat.ts → holatOf). Davr (Bu oy / O'tgan oy / Butun davr)
+lid KELGAN sana bo'yicha: «noyabrda kelgan 38 liddan 9 tasi hozirgacha guruhga qo'shilgan». Qamrov — Lidlar
+ro'yxatidagi bilan bir xil (filial + xodim o'zi qo'shganlar). Har qator ostida «kartada N o'quvchi» — o'quvchi
+kartalarida shu manba (eski «O'quvchilar oqimi» soni, butun davr).
+
+**294. «Pullik / Bepul» va «Reklama natijasi»** — QAROR KERAK
+«Turi» endi manbaga yoziladi (`student_sources.paid`), lekin hech narsaga ta'sir qilmaydi — faqat belgi. Rasmdagi
+«Pullik manba kassada «Reklama» chiqimi yozilganda tanlanadi — Reklama natijasi shu bog'lanishdan» tizimda YO'Q:
+kassa chiqimida manba tanlash ham, «Reklama natijasi» sahifasi ham yo'q — havola qo'yilmadi, sahifada halol izoh.
+Savol: kassa → chiqim «Reklama» toifasiga «Manba» maydoni qo'shib, «Reklama natijasi» (sarf ÷ lid / o'quvchi)
+hisobotini quraylikmi?
+
+**295. Manba «Nofaol» va o'chirish** — taxmin
+Yangi maydon `student_sources.active` (yo'q — faol). Nofaol manba yangi tanlovlarda chiqmaydi (o'quvchi formasi,
+so'rovnoma va bot «Qayerdan bildingiz?», MohirAI importi), eski o'quvchi va lidlarda matn bo'lib qoladi va
+hisobotda ko'rinadi. «Tavsiya» (tizimli) nofaol qilinmaydi, oxirgi faol manba ham. Yangi versiyada O'chirish —
+faqat hech qayerda (o'quvchi, lid, javob) ishlatilmagan manbaga. Eski sahifadagi «Manbalar ro'yxati» oynasi
+o'zgarmadi: nofaollarni ko'rmaydi va o'chirishni hamon to'smaydi.
+
+**296. Manba nomi o'zgarsa — lidlar ham** — taxmin
+Ilgari nom o'zgarsa faqat o'quvchi kartalari yangilanardi; endi lidlardagi `source` va `heardFrom` ham (eski
+oynadan ham) — aks holda lid hisobi ikkiga bo'linardi. «Sayt so'rovnomasi», «Telegram bot», «Boshqa»,
+«Buyurtmadan» nomli manba endi qo'shilmaydi (tizim kanallari bilan qo'shilib ketardi).
+
+**297. Manbalar tartibi** — ochiq
+Rasm: «Lid oynasida manbalar shu tartibda chiqadi». Tizimda tartib — qo'shilgan navbat (id), tartiblash yo'q.
+Yuqoriga/pastga surish kerakmi?
+
+**298. Tizim kanallari va «ro'yxatda yo'q» qatorlari** — taxmin
+«Sayt so'rovnomasi» va «Telegram bot» qatorlari doim turadi (🔒, amalsiz, «Bepul»). Lidlarda uchragan, ro'yxatda
+yo'q qiymatlar (eski «Sayt» — 98 lid, qo'lda yozilgan manbalar) alohida xira qatorda. Rasmdagi bot nomi
+(@akademiya_uz_bot) yozilmadi — «O'quvchilar boti» (Temuriylar'da boshqa bot).
+
+**299. Eski «O'quvchilar oqimi» diagrammasi** — ochiq
+Yangi versiyada `/sales-sources` — Sozlamalar → Manbalar; eski diagramma `?view=old` (sahifa pastida havola).
+Yon menyudagi «Sotuv va marketing → O'quvchilar oqimi» ham endi Sozlamalar ichiga olib keladi. Shu qoladimi
+yoki menyu bandi `?view=old` ga / Hisobotlarga ko'chsinmi?
+
+**300. «Sahifa ochiq»** — taxmin
+Yangi bayroq (`settings` → `sorovnoma.page`, sukut — ochiq). O'chirilsa /sorovnoma «So'rovnoma vaqtincha yopiq —
+filialga qo'ng'iroq qiling» ni ko'rsatadi, ochiq turgan eski sahifadan yuborilgan javob ham lid bo'lmaydi.
+Telegram botdagi «Kursga yozilish» ishlayveradi. Savol: bot ham shu tugma bilan yopilsinmi?
+
+**301. Savol qo'shish, majburiylik, tartib** — QAROR KERAK
+Rasmda «+ Savol qo'shish», har savolda majburiy/ixtiyoriy tugmasi va sudrab tartiblash bor. Tizimda savollar
+qotgan: javoblar lid kartasi, Telegram xabari, Excel eksporti va botdagi anketa bilan bog'langan. Sahifada
+haqiqiy 10 savol qadamlar bo'yicha, 🔒 bilan; sozlanadigani — variantlar: yo'nalishlar (yoqish, nomi, keyingi
+savol), fan/til/maktab ro'yxatlari, daraja shkalasi, sinflar, qulay vaqtlar. Filial — Filiallarda, «Qayerdan
+bildingiz» — Manbalarda. Savol qo'shish kerakmi (katta ish)?
+
+**302. «Yuborilgandan keyin» matni** — ochiq
+Matn sahifada qotgan («Qabul qilindi! 24 soat ichida … qo'ng'iroq qilamiz.» + kurs, filial, vaqt, filial
+telefoni). Faqat ko'rsatiladi. Tahrirlash kerakmi (botdagi javob ham alohida)?
+
+**303. Havola va QR** — taxmin
+Havola — joriy domen + `/sorovnoma` (har markaz o'z serverida). Rasmdagi «tizimli24.uz/akademiya/sorovnoma»
+ko'rinishidagi markaz yo'li yo'q. QR — npm `qrcode` (loyihada bor, QR davomat), brauzerda yaratiladi; «QR kod ·
+PNG» — 1024 px.
+
+**304. «Xabar boradi»** — taxmin
+Rasmda rollar («Rahbar / Bosh admin, Qabul admin, Moderator»). Haqiqiy yo'l yozildi: filialning Telegram «Lidlar»
+topigi (Filiallar sozlamasi) va Lidlar bo'limiga ruxsati borlarning qo'ng'irog'i. Bugungi arizalar soni va
+oxirgisi — Lidlar qamrovida.
+
+**305. Telefon ko'rinishi** — taxmin
+Statik, haqiqiy sozlamalardan: sarlavha, 1-qadam yo'nalish plitkalari, qulay vaqt, ism, telefon. Rasmdagi
+«Kursga yozilish», telefon birinchi tartibi haqiqiy sahifada boshqacha — haqiqiysi ko'rsatildi.
+
+**306. Rad sabablari va «Lidlar sozlamalari»** — ochiq
+Yangi «So'rovnoma sahifasi»da rad sabablari yo'q — pastda «Rad sabablari va to'liq Lidlar sozlamalari — eski
+ko'rinishda» (`/settings-sales?tab=leads&view=old`). Lidlar sahifasidagi «Lidlar sozlamalari» endi yangi sahifaga
+olib keladi. Rad sabablari uchun alohida yangi sahifa kerakmi?
+
+**307. Saqlash darhol** — taxmin
+Rasm pastidagi «Bekor qilish / Saqlash» qatori yo'q: har oyna o'zi saqlaydi, yo'nalish tugmasi va «Sahifa ochiq»
+darhol yoziladi. Oxirgi yoqilgan yo'nalishni o'chirib bo'lmaydi (sahifani yopish — «Sahifa ochiq» bilan).
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
