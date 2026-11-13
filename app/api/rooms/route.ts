@@ -1,16 +1,78 @@
 import { NextResponse } from "next/server";
+import type { Db } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
+import { branchForInsert, getBranchScope, pooledBranchInCondition, withBranch, type BranchScope } from "@/lib/branchScope";
+import { expandBranchPools } from "@/lib/branchPools";
+import { groupBoundsIso, ROOM_HOLDING_STATUSES } from "@/lib/groupRules";
 import { parseRoomBranch, sameNameRoomRefusal } from "@/lib/roomBranch";
+import type { OverviewBranch, OverviewGroup, RoomsOverview } from "@/lib/roomOccupancy";
 import type { Room } from "@/lib/rooms";
+import { uzDateIso } from "@/lib/uzTime";
 
 // Xonalar backend'i (MongoDB `rooms`). Demo seed YO'Q — xonalarni
 // foydalanuvchi o'zi qo'shadi.
-export async function GET() {
+//
+// `?view=overview` (23-qism, yangi «Sozlamalar · Xonalar»): RUXSAT ETILGAN
+// barcha filiallarning (hovuz bilan) xonalari + bandlik uchun tirik guruhlar
+// (faqat jadval maydonlari va o'quvchilar SONI) + filiallarning ish vaqti.
+// Sahifa filial chiplari bilan bino almashtiradi — navbar filialini
+// o'zgartirmasdan. Alohida yo'l emas: /groups-rooms ruxsati /api/rooms ga
+// bor, /api/groups va /api/branches ga esa yo'q (lib/apiPermissions.generated.ts).
+async function roomsOverview(db: Db, scope: BranchScope): Promise<RoomsOverview> {
+  const ids = expandBranchPools(scope.allowed);
+  const today = uzDateIso();
+  const [branchRows, roomRows, groupRows] = await Promise.all([
+    db
+      .collection("branches")
+      .find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, name: 1, openFrom: 1, openTo: 1, workDays: 1 } })
+      .sort({ id: 1 })
+      .toArray(),
+    db.collection("rooms").find(pooledBranchInCondition(scope.allowed), { projection: { _id: 0 } }).toArray(),
+    db
+      .collection("groups")
+      .find(
+        { $and: [{ status: { $in: [...ROOM_HOLDING_STATUSES] } }, pooledBranchInCondition(scope.allowed)] },
+        {
+          projection: {
+            _id: 0, id: 1, name: 1, course: 1, day: 1, time: 1, room: 1, status: 1, branchId: 1,
+            startDate: 1, endDate: 1, period: 1, studentIds: 1,
+          },
+        },
+      )
+      .toArray(),
+  ]);
+  const groups: OverviewGroup[] = groupRows.map((g) => {
+    const end = groupBoundsIso(g as { startDate?: string; endDate?: string; period?: string }).end;
+    return {
+      id: Number(g.id),
+      name: String(g.name ?? ""),
+      course: String(g.course ?? ""),
+      day: String(g.day ?? ""),
+      time: String(g.time ?? ""),
+      room: String(g.room ?? ""),
+      status: String(g.status ?? ""),
+      students: Array.isArray(g.studentIds) ? g.studentIds.length : 0,
+      ...(typeof g.branchId === "number" ? { branchId: g.branchId } : {}),
+      expired: Boolean(end && end < today),
+    };
+  });
+  return {
+    branches: branchRows as unknown as OverviewBranch[],
+    rooms: roomRows as unknown as Room[],
+    groups,
+    allowed: scope.allowed,
+    current: scope.branchId,
+  };
+}
+
+export async function GET(req: Request) {
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
   const db = await ensureIndexes();
+  if (new URL(req.url).searchParams.get("view") === "overview") {
+    return NextResponse.json({ ok: true, ...(await roomsOverview(db, scope)) });
+  }
   const col = db.collection("rooms");
   const rows = await col.find(withBranch({}, scope)).sort({ id: -1 }).toArray();
   const rooms = rows.map(({ _id, ...rest }) => rest as unknown as Room);

@@ -5,19 +5,38 @@ import {
   parseGeoRadius,
   parseLateGrace,
   parseLeadTopicId,
+  parseOpenHours,
+  parseWorkDays,
   parseWorkStart,
   type ManagementBranch,
 } from "@/lib/managementBranches";
 import { parseGeoInput } from "@/lib/geo";
+import { ROOM_HOLDING_STATUSES } from "@/lib/groupRules";
 import { getCurrentUser } from "@/lib/auth";
 
 // Boshqaruv → Filiallar backend'i (MongoDB `branches`). Demo seed YO'Q —
 // filiallarni foydalanuvchi o'zi qo'shadi.
-export async function GET() {
+export async function GET(req: Request) {
   const db = await ensureIndexes();
   const col = db.collection("branches");
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const branches = rows.map(({ _id, ...rest }) => rest as unknown as ManagementBranch);
+  // `?stats=1` — «Sozlamalar → Filiallar» (23-qism) jadvalidagi «N guruh · M xona»:
+  // filialdagi TIRIK guruhlar (xonani band qiladigan holatlar) va xonalar soni.
+  // Faqat sonlar — ruxsati kengroq (14 sahifa) bo'lgan GET'dan ham hech narsa sizmaydi.
+  // `branchId` siz eski hujjat — 1-filial (lib/branchScope.ts qoidasi).
+  if (new URL(req.url).searchParams.get("stats") === "1") {
+    const byBranch = [{ $group: { _id: { $ifNull: ["$branchId", 1] }, n: { $sum: 1 } } }];
+    const [groups, rooms] = await Promise.all([
+      db.collection("groups").aggregate<{ _id: number; n: number }>([{ $match: { status: { $in: [...ROOM_HOLDING_STATUSES] } } }, ...byBranch]).toArray(),
+      db.collection("rooms").aggregate<{ _id: number; n: number }>(byBranch).toArray(),
+    ]);
+    const stats: Record<number, { groups: number; rooms: number }> = {};
+    for (const b of branches) stats[b.id] = { groups: 0, rooms: 0 };
+    for (const g of groups) if (stats[g._id]) stats[g._id].groups = g.n;
+    for (const r of rooms) if (stats[r._id]) stats[r._id].rooms = r.n;
+    return NextResponse.json({ ok: true, branches, stats });
+  }
   return NextResponse.json({ ok: true, branches });
 }
 
@@ -79,6 +98,10 @@ export async function POST(req: Request) {
   if (!geo.ok) return NextResponse.json({ ok: false, error: geo.error }, { status: 400 });
   const radius = parseGeoRadius(body.geoRadiusM);
   if (!radius.ok) return NextResponse.json({ ok: false, error: radius.error }, { status: 400 });
+  const hours = parseOpenHours(body.openFrom, body.openTo);
+  if (!hours.ok) return NextResponse.json({ ok: false, error: hours.error }, { status: 400 });
+  const days = parseWorkDays(body.workDays);
+  if (!days.ok) return NextResponse.json({ ok: false, error: days.error }, { status: 400 });
 
   const branch: ManagementBranch = {
     id: nextId,
@@ -91,6 +114,8 @@ export async function POST(req: Request) {
     ...(grace.value ? { lateGraceMin: grace.value } : {}),
     ...(geo.value ? { geo: geo.value } : {}),
     ...(radius.value ? { geoRadiusM: radius.value } : {}),
+    ...(hours.value.openFrom ? { openFrom: hours.value.openFrom, openTo: hours.value.openTo } : {}),
+    ...(days.value ? { workDays: days.value } : {}),
   };
   await col.insertOne({ ...branch });
   return NextResponse.json({ ok: true, branch });

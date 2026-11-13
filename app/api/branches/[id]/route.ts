@@ -5,10 +5,14 @@ import {
   parseGeoRadius,
   parseLateGrace,
   parseLeadTopicId,
+  parseOpenHours,
+  parseWorkDays,
   parseWorkStart,
   type ManagementBranch,
 } from "@/lib/managementBranches";
 import { parseGeoInput } from "@/lib/geo";
+import { getCurrentUser } from "@/lib/auth";
+import { branchInCondition } from "@/lib/branchScope";
 
 // PATCH /api/branches/:id — filialni tahrirlaydi.
 //
@@ -74,6 +78,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (r.value === null) unset.geoRadiusM = 1;
     else set.geoRadiusM = r.value;
   }
+  // Filialning ish vaqti va kunlari (23-qism) — ikkala vaqt birga keladi.
+  if ("openFrom" in body || "openTo" in body) {
+    const h = parseOpenHours(body.openFrom, body.openTo);
+    if (!h.ok) return NextResponse.json({ ok: false, error: h.error }, { status: 400 });
+    if (h.value.openFrom === null) {
+      unset.openFrom = 1;
+      unset.openTo = 1;
+    } else {
+      set.openFrom = h.value.openFrom;
+      set.openTo = h.value.openTo;
+    }
+  }
+  if ("workDays" in body) {
+    const d = parseWorkDays(body.workDays);
+    if (!d.ok) return NextResponse.json({ ok: false, error: d.error }, { status: 400 });
+    if (d.value === null) unset.workDays = 1;
+    else set.workDays = d.value;
+  }
   if (Object.keys(set).length === 0 && Object.keys(unset).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
@@ -101,7 +123,27 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!Number.isFinite(branchId)) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
+  // FAQAT ADMIN va FAQAT BO'SH FILIAL (23-qism, 13.11.2026). Ilgari hech qanday
+  // to'siq yo'q edi: ma'lumoti bor filial o'chsa guruh, o'quvchi, kassa va
+  // xodimlar mavjud bo'lmagan filialga bog'lanib qolardi. Endi faqat xato
+  // qo'shilgan (hech narsa biriktirilmagan) filial o'chiriladi.
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ ok: false, error: "Avtorizatsiya kerak" }, { status: 401 });
+  if (me.role !== "admin") {
+    return NextResponse.json({ ok: false, error: "Filialni faqat administrator o'chira oladi" }, { status: 403 });
+  }
   const db = await ensureIndexes();
+  const inBranch = branchInCondition([branchId]);
+  const used = await Promise.all([
+    ...["groups", "rooms", "pupils", "cashboxes", "orders"].map((c) => db.collection(c).countDocuments(inBranch, { limit: 1 })),
+    db.collection("hr_employees").countDocuments({ branchIds: branchId }, { limit: 1 }),
+  ]);
+  if (used.some((n) => n > 0)) {
+    return NextResponse.json(
+      { ok: false, error: "Filialda guruh, xona, o'quvchi, kassa, lid yoki xodim bor — o'chirib bo'lmaydi" },
+      { status: 409 },
+    );
+  }
   const res = await db.collection("branches").deleteOne({ id: branchId });
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "Filial topilmadi" }, { status: 404 });

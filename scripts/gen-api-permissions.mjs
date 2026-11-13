@@ -184,6 +184,10 @@ const MANUAL = {
   // PATCH/DELETE ni har kirgan odamga ochib qo'yardi. Eski topshiriqlar
   // o'quvchi profilida («Vazifa» tabi) yashaydi — kesim o'shanga.
   "/api/tasks/[id]": ["/students-list"],
+  // Sozlamalar → Bildirishnomalar (23-qism) — FAQAT ADMIN, haqiqiy to'siq handler ichida
+  // (requireAdmin). Sahifa ruxsatlar daraxtida yo'q: cheklangan rol bu yerda 403 oladi,
+  // admin va cheklovsiz rol handler'ga yetadi.
+  "/api/notification-rules": ["/settings-notifications"],
 };
 
 // lib/permissions.ts dagi ALWAYS_ALLOWED_PATHS bilan bir xil bo'lishi SHART

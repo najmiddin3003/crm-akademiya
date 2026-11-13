@@ -31,7 +31,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "Markaz ma'lumotlari", href: "/settings-general" },
       { label: "Filiallar", href: "/management-filiallar" },
       { label: "Xonalar", href: "/groups-rooms" },
-      { label: "Bildirishnomalar", note: "Bildirishnoma sozlamalari hali yo'q" },
+      { label: "Bildirishnomalar", href: "/settings-notifications", adminOnly: true },
     ],
   },
   {

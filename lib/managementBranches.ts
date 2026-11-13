@@ -58,6 +58,108 @@ export interface ManagementBranch {
   geo?: { lat: number; lng: number } | null;
   /** Ruxsat etilgan radius, m (30–2000; bo'sh — 200). */
   geoRadiusM?: number | null;
+  /**
+   * FILIALNING ISH VAQTI (23-qism, 13.11.2026) — binoning ochiq soatlari ("HH:MM").
+   * Xodimning `workStart` idan BOSHQA narsa: bu dars jadvali va xonalar bandligi
+   * (haftalik soat) shu oraliqda hisoblanadi. Yo'q bo'lsa — BRANCH_HOURS_DEFAULT.
+   */
+  openFrom?: string | null;
+  openTo?: string | null;
+  /** Ish kunlari: 1 = Dushanba … 7 = Yakshanba. Yo'q bo'lsa — Du–Sha. */
+  workDays?: number[] | null;
+}
+
+/** Ish vaqti kiritilmagan filial uchun sukut (rasmdagi «Du–Sha · 08:00–22:00»). */
+export const BRANCH_HOURS_DEFAULT = { from: "08:00", to: "22:00", days: [1, 2, 3, 4, 5, 6] } as const;
+
+export const WEEKDAY_SHORT = ["Du", "Se", "Chor", "Pa", "Ju", "Sha", "Ya"] as const;
+
+export interface BranchHours {
+  from: string;
+  to: string;
+  days: number[];
+  /** Filialda o'zi kiritilganmi (yo'q bo'lsa — sukut). */
+  custom: boolean;
+}
+
+/** Filialning ish vaqti — kiritilmagan qismlar sukutdan. */
+export function branchHours(b: Pick<ManagementBranch, "openFrom" | "openTo" | "workDays"> | null | undefined): BranchHours {
+  const from = b?.openFrom || BRANCH_HOURS_DEFAULT.from;
+  const to = b?.openTo || BRANCH_HOURS_DEFAULT.to;
+  const days = b?.workDays?.length ? [...b.workDays].sort((x, y) => x - y) : [...BRANCH_HOURS_DEFAULT.days];
+  return { from, to, days, custom: !!(b?.openFrom || b?.openTo || b?.workDays?.length) };
+}
+
+function toMin(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/** Haftalik ochiq daqiqalar (bandlik foizining maxraji): kunlik oraliq × ish kunlari. */
+export function weeklyOpenMinutes(h: BranchHours): number {
+  return Math.max(0, toMin(h.to) - toMin(h.from)) * h.days.length;
+}
+
+/** «Du–Sha», «Du, Chor, Ju», «Har kuni» — ketma-ket kunlar chiziqcha bilan. */
+export function workDaysLabel(days: readonly number[]): string {
+  const d = [...new Set(days)].filter((x) => x >= 1 && x <= 7).sort((a, b) => a - b);
+  if (d.length === 7) return "Har kuni";
+  if (d.length === 0) return "—";
+  const runs: number[][] = [];
+  for (const x of d) {
+    const last = runs[runs.length - 1];
+    if (last && x === last[last.length - 1] + 1) last.push(x);
+    else runs.push([x]);
+  }
+  return runs
+    .map((r) => (r.length >= 3 ? `${WEEKDAY_SHORT[r[0] - 1]}–${WEEKDAY_SHORT[r[r.length - 1] - 1]}` : r.map((x) => WEEKDAY_SHORT[x - 1]).join(", ")))
+    .join(", ");
+}
+
+/**
+ * Filialning to'liq manzil qatori (ro'yxat, chek): hudud + aniq manzil. Yangi
+ * formada (23-qism) «Manzil» bitta maydon — `address` ga to'liq yoziladi
+ * («Uchqo'rg'on, Eski Agro sug'urta»); eski yozuvlarda hudud (`location`) va
+ * aniq manzil alohida — takrorlanmasin deb hudud manzilda bo'lsa qo'shilmaydi.
+ */
+export function branchAddressLine(b: Pick<ManagementBranch, "location" | "address">): string {
+  const loc = (b.location || "").trim();
+  const addr = (b.address || "").trim();
+  if (!addr) return loc;
+  if (!loc || addr.toLowerCase().includes(loc.toLowerCase())) return addr;
+  return `${loc}, ${addr}`;
+}
+
+/** Telefon — oxirgi 9 raqam («941118855»); yo'q bo'lsa bo'sh. */
+export function branchPhoneDigits(phone: string | null | undefined): string {
+  return String(phone ?? "").replace(/\D/g, "").slice(-9);
+}
+
+export type OpenHoursParse =
+  | { ok: true; value: { openFrom: string | null; openTo: string | null } }
+  | { ok: false; error: string };
+
+/** Ish vaqti: ikkalasi bo'sh (→ sukut) yoki ikkalasi "HH:MM", tugashi boshlanishidan keyin. */
+export function parseOpenHours(fromRaw: unknown, toRaw: unknown): OpenHoursParse {
+  const f = parseWorkStart(fromRaw);
+  const t = parseWorkStart(toRaw);
+  if (!f.ok || !t.ok) return { ok: false, error: "Ish vaqti SS:DD ko'rinishida bo'lsin (masalan 08:00)" };
+  if (!f.value && !t.value) return { ok: true, value: { openFrom: null, openTo: null } };
+  if (!f.value || !t.value) return { ok: false, error: "Ish vaqtining boshlanishi va tugashini kiriting" };
+  if (toMin(t.value) <= toMin(f.value)) return { ok: false, error: "Ish vaqti tugashi boshlanishidan keyin bo'lsin" };
+  return { ok: true, value: { openFrom: f.value, openTo: t.value } };
+}
+
+export type WorkDaysParse = { ok: true; value: number[] | null } | { ok: false; error: string };
+
+/** Ish kunlari: 1–7 sonlar ro'yxati; bo'sh/berilmagan — null (sukut Du–Sha). */
+export function parseWorkDays(raw: unknown): WorkDaysParse {
+  if (raw === null || raw === undefined || raw === "") return { ok: true, value: null };
+  if (!Array.isArray(raw)) return { ok: false, error: "Ish kunlari noto'g'ri" };
+  const days = [...new Set(raw.map(Number))].sort((a, b) => a - b);
+  if (days.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) return { ok: false, error: "Ish kunlari noto'g'ri" };
+  if (days.length === 0) return { ok: false, error: "Kamida bitta ish kunini tanlang" };
+  return { ok: true, value: days };
 }
 
 export type RadiusParse = { ok: true; value: number | null } | { ok: false; error: string };

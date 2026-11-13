@@ -1483,6 +1483,93 @@ Hozircha: eng yangisi tepada, 20 tadan, «Yana ko'rsatish» tugmasi; guruh karta
 Savol: eskilarini bir martalik tozalash kerakmi (masalan, 30 kundan eskisini «Rad etdi — natija yozilmagan» ga),
 yoki ma'lum muddatdan keyin avtomatik arxivga tushsinmi? Yon menyudagi son ham shu sababli katta (233).
 
+### 23-qism — Sozlamalar: Markaz ma'lumotlari, Filiallar, Xonalar, Bildirishnomalar (13.11.2026)
+
+**255. Markaz nomi, logotip, Instagram — faqat ko'rish** — QAROR KERAK
+Rasmda ular shu sahifada tahrirlanadi. Tizimda ular SERVER SOZLAMASIDA (lib/center.ts, har markazning `.env.local`,
+build paytida kodga yoziladi) — ariza, so'rovnoma, natijalar sahifasi, hisobotlar, bot va sahifa sarlavhasi ham shundan
+oladi. Bazaga ko'chirish — ko'p joyni o'zgartirish (har sahifa bazadan o'qishi kerak). *Taxmin:* qulf bilan
+ko'rsatiladi, ostida «O'zgartirish uchun Tizimli yordamiga yozing». Savol: bazaga ko'chiraylikmi?
+
+**256. SMS imzosi o'zgarmaydi** — taxmin
+To'lov SMS'i shabloni Eskiz'da tasdiqlangan (`CENTER_SHORT` + «Murojaat: <telefon>»). Imzo o'zgarsa SMS'lar Eskiz'da
+to'xtaydi — shuning uchun qulf va izoh. «Telegram kanal» maydoni tizimda yo'q — «Kiritilmagan» (qulf).
+
+**257. Chek — endi har chekda filial manzili va telefoni** — taxmin
+«Chek» bo'limi HAQIQIY kassa chekiga ulangan (Kassa → «Chek chiqarish» va ko'rib chiqish oynasi): logotip (sukut
+o'chiq), sarlavha (sukut «<Markaz> CRM»), pastki matn (sukut shior). YANGI: sarlavha ostida JORIY filialning manzili
+va telefoni chiqadi (ilgari kassa nomi edi; «Kassa» qatori joyida). Manzil kassa filialidan emas, NAVBARDAGI filialdan
+— 1+2 Chortoq hovuzida farq qilishi mumkin. Logotip /sorovnoma'niki — OQ, rangli fon uchun; chekda QORA chiqadi.
+Saqlash — faqat admin (`center_profile` kolleksiyasi). «Funksionallik, bayram kunlari, oferta…» eski tablari — sahifa
+pastidagi havola orqali eski ko'rinishda.
+
+**258. Filial «Kod»** — taxmin
+Rasmda «Kod» maydoni. Tizimda filialning kodi — uning raqami (id, 1, 2, 3 …) — barcha bo'limlar shunga bog'langan.
+O'zgartirib bo'lmaydi: faqat ko'rsatiladi (yangi filialda keyingi raqam).
+
+**259. Filial holati, arxiv va o'chirish** — ochiq
+Filialda «arxiv» yo'q — hamma filial «● Faol». O'chirish endi FAQAT admin va FAQAT BO'SH filialga (guruh, xona,
+o'quvchi, kassa, lid, xodim yo'q) — server tekshiradi; ilgari hech qanday to'siq yo'q edi. Savol: filialni yopish
+(arxiv) kerakmi?
+
+**260. Manzil — bitta maydon** — taxmin
+Bazada ikki maydon: `location` (shahar) va `address`. Yangi formada bitta «Manzil» — `address` ga yoziladi; yangi
+filialda `location` = birinchi vergulgacha («Chust, markaziy bozor yonida» → «Chust»). Ko'rinishda ikkalasi
+takrorlanmasdan qo'shiladi. Formada telefon 9 raqam bo'lishi tekshiriladi.
+
+**261. Filial ish vaqti va ish kunlari** — taxmin
+Yangi maydonlar (ish vaqti 08:00–22:00, ish kunlari Du–Sha). Ular Xonalar bandligining maxraji (haftalik soat).
+Kiritilmagan filialda sukut 08:00–22:00, Du–Sha — jadvalda xira. Xodim kechikishi uchun eski «Xodimlar ish
+boshlanishi» alohida qoladi — formadagi yig'ma «Telegram, davomat va joylashuv» bo'limida (topiklar, geo, radius ham
+shu yerda). «Guruh va xona» soni bosilsa shu filialning Guruhlar / Xonalar ro'yxati ochiladi (boshqa filial bo'lsa —
+navbardagi filial ham almashadi).
+
+**262. Xona: guruh sig'imi qayerdan?** — ochiq
+Rasmda «matematika kids guruhining sig'imi 10». Bazada guruhning sig'im maydoni yo'q. *Taxmin:* xona sig'imi
+guruhdagi HOZIRGI o'quvchilar soni bilan solishtiriladi: «204-xona: 8 o'rin, «matematika kids» guruhida 10 o'quvchi —
+2 kishiga joy yetmaydi.» Guruh formasiga sig'im maydoni kerakmi?
+
+**263. Guruhli xonani o'chirish** — QAROR KERAK
+Rasm: «Guruhi bor xona o'chirilmaydi: avval guruhni boshqa xonaga ko'chiring». 27.09.2026 qarori — o'chirish
+TO'SILMAYDI, faqat ogohlantiriladi (guruh xonani nomi bilan eslaydi; shu nomli xona qayta qo'shilsa o'zi ulanadi).
+*Taxmin:* eski qaror qoladi; o'chirish oynasi guruhlarni kun/vaqti bilan ko'rsatadi. Rasmdagidek to'samizmi?
+
+**264. Xona «Holat»** — taxmin
+Xonada holat yo'q — hammasi «● Faol». Kerak bo'lsa keyin «Ta'mirda / Yopiq» qo'shiladi.
+
+**265. Xona bandligi qanday sanaladi** — taxmin
+Tirik guruhlar (yig'ilmoqda, faol, muzlatilgan), muddati tugaganlar kirmaydi; har guruh: hafta kunlari × dars
+davomiyligi. Maxraj — filial ish vaqti × ish kunlari (261). Ish vaqtidan tashqaridagi dars ham sanaladi (foiz 100 dan
+oshishi mumkin, chiziq 100 da to'xtaydi). Pastdagi «ertalab / kechqurun joy bor» — faqat rost bo'lsa (barcha darslar
+ochilishdan ≥ 2 soat keyin / yopilishdan ≥ 2 soat oldin).
+
+**266. Xona: filial chiplari** — taxmin
+Har bino alohida chip (1+2 Chortoq hovuzida ham — xona jismoniy), sukut — navbardagi filial; chip bosilsa navbardagi
+filial o'zgarmaydi. Ma'lumot mavjud GET /api/rooms ning `?view=overview` dan (yangi ruxsat yo'li ochilmadi).
+
+**267. Bildirishnomalar: qo'ng'iroq jadvalni qachon o'qiydi** — QAROR KERAK
+Jadval saqlanadi, lekin qo'ng'iroq hali unga qaramaydi: hozir u yerga yangi arizalar, to'lovlar, topshiriqlar
+bo'lim ruxsati bo'yicha, e'lonlar hammaga tushadi. Davomat, kelmagan va kechikkan xodim — Telegram'ga; lidga 24 soat
+qo'ng'iroq — adminga MohirAI ogohlantirishi; o'quvchi 2 dars qoldirdi, birinchi dars natijasi, referal, to'lov muddati
+— tizimda hali YO'Q. Sahifada halol izoh va har hodisa ustida «Hozir: …». Keyingi bosqich: (1) bor manbalarni rol
+bo'yicha kesish, (2) Telegram'dagi nazorat xabarlarini qo'ng'iroqqa ham yozish, (3) yo'q hodisalarni yaratish.
+Qaysi tartibda?
+
+**268. Bildirishnomalar: ustunlar va rollar** — ochiq
+Rasmdagi 5 ustun tizimda rol emas. Moslash nom bo'yicha: Rahbar = admin + nomida «rahbar/direktor/bosh admin»;
+Menejer = «menejer»; Qabul admin. = «qabul»; O'qituvchi, Moderator — o'rnatilgan rollar. «IT mutaxassisi», «Xizmat
+xodimi» ustunsiz («Doim» qatorlari). Temuriylar'da rollar boshqacha — ustun bo'sh qolishi mumkin («Bu markazda bunday
+rol yo'q»). Muqobil: Rollar sahifasida har rolga ustun tanlash.
+
+**269. Bildirishnomalar: vaqtlar rasmdan farq qiladi** — taxmin
+Rasm: davomat 30 daqiqa, kelmadi 15 daqiqa, kechikdi 5 daqiqa. Tizimda: davomat — dars tugagach 10 daqiqa, kelmadi —
+faqat o'qituvchi, dars boshlanib 5 daqiqa, kechikish — filialning ruxsat etilgan kechikishi. Sahifada haqiqiy qiymatlar.
+«· Nazorat qoidasi» havolasi faqat Nazorat qoidalarida yoqiladigan hodisalarda (davomat, o'qituvchi kelmadi).
+
+**270. Bildirishnomalar: rasmdan olinmaganlar** — ochiq
+«Xodim o'zi o'chira oladi (qo'ng'iroq → sozlamalar)» izohi qo'yilmadi — bunday imkon yo'q. Kerakmi? Kanal
+«Telegram — keyingi bosqichda» — o'chiq chip. Sahifa va API faqat admin; eski versiya yon menyusiga band qo'shilmadi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

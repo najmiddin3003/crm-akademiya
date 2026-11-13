@@ -182,6 +182,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/moderators": ["/finance-cash", "/finance-fin-contract", "/first-lessons", "/orders-list", "/parents", "/students-list"],
   "/api/news": ["/sales-news"],
   "/api/news/[id]": ["/sales-news"],
+  "/api/notification-rules": ["/settings-notifications"],
   "/api/offline-courses": ["/blok-test-turlari", "/groups", "/groups-schedule", "/imtihon", "/management-xodimlar", "/offline-courses", "/orders-list"],
   "/api/offline-courses/[id]": ["/blok-test-turlari", "/groups", "/groups-schedule", "/imtihon", "/management-xodimlar", "/offline-courses", "/orders-list"],
   "/api/offline-courses/[id]/levels": ["/blok-test-turlari", "/groups", "/groups-schedule", "/imtihon", "/management-xodimlar", "/offline-courses", "/orders-list"],
