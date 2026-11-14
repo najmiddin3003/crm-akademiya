@@ -2062,6 +2062,133 @@ qo'shilmaydi. «Tasdiq kutilmoqda» (ijrochi bajargan) kirmaydi — ularga jarim
 Filiallar raqam, xodimlar ism, yozuvlar vaqt bo'yicha (eski tepada — limitdan oshgani pastda). Sahifa ochilganda
 filiallar va birinchi xodim ochiq. «Namuna» belgisi qo'yilmadi.
 
+### 27-qism — Hisobotlar: o'quvchilar va davomat (14.11.2026)
+
+Faol o'quvchilar (Kurs / Guruh / O'qituvchi), Davomat — guruhlar bo'yicha, Davomat — o'qituvchilar bo'yicha —
+367–393. Sarlavha rasmdagidek «Davomat — …» (katalogda `heading`), izoh oldida «Davomat ·» takrori yo'q.
+
+**367. O'rin va «2 ta kursda»** — taxmin
+O'rin = (o'quvchi, guruh) juftligi: jadvallardagi «O'quvchilar» va «Jami» o'rinlarni, «Faol o'quvchilar» kartasi esa
+takrorsiz o'quvchini sanaydi («Kelgan va ketgan» bilan bir xil). Sig'im ham guruh o'rni bo'yicha. «10 nafari 2 ta
+kursda» o'rniga «N nafari 2+ guruhda» (ko'zguda 66 nafar: 63 tasi turli kurslarda, 3 tasi bitta kursning ikki guruhida).
+
+**368. To'lagan / Qarzdor / Muddati kelmagan** — QAROR KERAK
+Tizimda «oylik to'lov sanasi» yo'q, qarz darslar bo'yicha hisoblanadi (Qarzdorlar hisoboti qoidasi). Qarzdor — hisob
+kunida qarz > 0; To'lagan — qarz yo'q va oy oxirigacha darslar ham to'langan; Muddati kelmagan — qolganlari. To'lov
+o'quvchiga yoziladi, shuning uchun holat uning shu filialdagi hamma o'rniga bir xil. Rasmdagi «guruhga qo'shilgan kunga
+qarab to'lov sanasi» qoidasi kerakmi?
+
+**369. O'qituvchi tabi** — taxmin
+Rasm yo'q — Guruh tabi qolipi: filial → o'qituvchilar (avatar, ism, ostida kurslari), ustunlar Guruh tabidagidek. Bir
+nechta filialda dars beradigan o'qituvchi har filialda alohida qatorda.
+
+**370. Kurs kategoriyalari bo'sh** — ochiq
+Bazada 16 kursning HAMMASIDA kategoriya bo'sh, shuning uchun Kurs tabida bitta «Kategoriyasiz» guruhi chiqadi.
+Rasmdagidek bo'lishi uchun kurslarga kategoriya berish kerak (Sozlamalar → O'quv → Kategoriyalar).
+
+**371. Sig'im qayerdan** — QAROR KERAK
+Rasm izohida «guruh sig'imi guruhning o'zida yoziladi». Tizimda sig'im xonada (`rooms.capacity`), Bo'sh o'rinlar ham
+xonadan oladi — biz ham shundan. Bazada 62 xonadan faqat 10 tasida sig'im bor (hammasi 2-filialda): 85 faol guruhdan
+72 tasining sig'imi noma'lum, foiz qolgan 13 guruh bo'yicha. Xonalarga sig'im kiritamizmi yoki guruhga alohida
+«sig'im» maydoni qo'shamizmi?
+
+**372. 1 va 2-Chortoq — bitta qator** — taxmin
+Rasmlarda «Akademiya 1 Chortoq» va «Akademiya 2 Chortoq» alohida. Tizimda bu hovuz: kassa va oylikdan boshqa hamma
+joyda bitta «Akademiya Chortoq». Uchala hisobotda ham bitta qator, filtrda ham bitta. Ikki bino alohida kerakmi?
+
+**373. Oy ustuni (+/−) qatorlar bo'yicha** — taxmin
+Har qatorda «Kelgan va ketgan» qoidasi: o'tgan oy oxirida shu qatorda yo'q edi, hozir bor — «+», aksincha «−». Kursdan
+kursga o'tgan bola kurslarda +1/−1 beradi, Jamida ketgan hisoblanmaydi — kurs qatorlari yig'indisi Jamidan farq qilishi
+mumkin. Jami qatori «Kelgan va ketgan» oyiga teng.
+
+**374. Qarzdorlar kartasi — faqat guruhdagilar** — taxmin
+Kartada hisob kunida guruhda o'qiyotgan qarzdorlar. Qarzdorlar hisobotida guruhdan chiqqan, qarzi qolganlar ham bor
+(bazada 389 ta, faollar orasida 356 ta) — farq izohda, kartada hisobotga havola.
+
+**375. Rasmdagi raqam xatosi** — ma'lumot
+Rasm 49, «3 Uychi → Ona-tili»: To'lagan 1 + Qarzdor 1 = 2, o'quvchi esa 1 ta. Rus tili (15 o'quvchi, 68%) sig'imi ham
+guruhlarga butun songa bo'linmaydi.
+
+**376. Narxi noma'lum guruhlar** — ochiq
+Uchqo'rg'onda 51 o'rin narxi yoki jadvali kiritilmagan guruhlarda: hisob 0, qarzdor chiqmaydi — to'lov holati
+taxminiy (izoh chiqadi). Kurslarga filial narxini kiritish kerak (Oflayn kurslar).
+
+**377. Hisob kuni oralig'i** — taxmin
+Sana — a'zolik tarixi boshidan (20.09.2026) bugungacha. O'tgan oy oxiri tarixdan oldin bo'lsa oy ustuni va «1-…da N»
+o'rnida «—» va izoh. O'tgan kun uchun sig'im hozirgi xona sig'imidan.
+
+**378. Guruh nomi** — taxmin
+Rasmda «Ingliz tili», «IELTS», tizimda guruh nomi kod (MATH, KZINGLIZTILIKIDS). Birinchi qatorda shu nom, ostida
+o'qituvchi; nom bo'sh — «Kurs (N-guruh)». Kurs ustunida kurs, ostida daraja. Nom bosilsa guruh sahifasi ochiladi.
+
+**379. Sig'imi qisman ma'lum qator** — taxmin
+Sig'imi noma'lum guruh foizga ham, «jami o'rin» va «bo'sh»ga ham kirmaydi; sichqoncha olib borilsa «N ta guruhda sig'im
+noma'lum». Hech birida sig'im yo'q — qatorda «—», kartada «xonalarga sig'im kiritilmagan».
+
+**380. «Ketma-ket 2 dars» qoidasi tizimda yo'q** — ochiq
+Rasm ro'yxatni «Nazorat qoidalaridagi ketma-ket 2 dars bildirishnomasi bilan bir xil» deydi, lekin bu bildirishnoma
+yozilmagan. Ta'rif: o'quvchining SHU GURUHDAGI oxirgi belgilari (tanlangan davrda, eng yangisidan orqaga) ketma-ket
+«sababsiz», kamida 2 ta — ro'yxatda; keyingi darsga kelsa chiqadi. «Sababli» zanjirni uzadi, belgilanmagan dars uzmaydi;
+faqat guruhning hozirgi a'zolari. Bildirishnoma yozilganda ham shu ta'rif (`trailingUnexcused`). To'g'rimi yoki davr
+ichidagi har qanday 2+ zanjir (keyin kelgan bo'lsa ham)?
+
+**381. «Nazorat → Qo'ng'iroqlar» bo'limi yo'q** — ochiq
+Rasmdagi izoh («16:42 da qo'ng'iroq — javob bermadi») qo'ng'iroqlar jurnalidan kelishi kerak edi — bunday bo'lim yo'q.
+Izoh davomat belgisidagi izohdan (zanjirdagi eng yangisi). Qo'ng'iroq natijasini yozish kerakmi (alohida ish)?
+
+**382. «qarzdor ham» belgisi** — ochiq
+Rasmdagi izohlardan biri. Avtomatik qo'yilmadi (qo'lda yozilgan izohga o'xshaydi). Ketma-ket qoldirgan o'quvchi
+qarzdor bo'lsa, belgi Qarzdorlar hisobidan avtomatik chiqsinmi?
+
+**383. Ota-ona telefoni** — taxmin
+Bazada otasi/onasi raqami deyarli bo'sh. Tartib: otasi, onasi, keyin o'quvchining o'zi (Qarzdorlar hisobotidagidek);
+o'zi chiqsa tugma ustida «O'quvchining o'z raqami — ota-ona raqami kiritilmagan». Qo'shimcha raqam ham ota-onaniki
+sanalsinmi?
+
+**384. «Davomat nazorati» havolasi** — taxmin
+Bunday sahifa yo'q — havola «Nazorat → Davomat qilinmagan guruhlar» ga qo'yildi.
+
+**385. Qatnashish chizig'i rangi** — taxmin
+90% va yuqori — asosiy rang, pastrog'i — ogohlantirish rangi. Juda past foiz (masalan, 60% dan kam) uchun qizil kerakmi?
+
+**386. «O'qituvchilar bo'yicha» tugmasi va ruxsat** — taxmin
+Davr, filial va kurs so'rov qatorida birga o'tadi. Ikki hisobot ruxsati har xil (o'qituvchilar — «Davomat qilinmagan
+guruhlar» yoki «Davomat analitikasi»); faqat analitika ruxsati bor xodim ikkala tomonga o'tadi. Ruxsati yo'q xodimga
+tugmani yashiraymi?
+
+**387. «Darslar» = belgilangan + belgilanmagan** — taxmin
+Belgilangan — davomati bor kun (jadvaldan tashqari kun ham), belgilanmagan — jadval bo'yicha bo'lishi kerak, belgisi
+yo'q dars. «68 / 70» va «2 belgilanmagan» doim mos. Jadvali tanilmagan guruhda «3 / —» va «jadval yo'q».
+
+**388. «Jurnal yozilgan» (mavzu va uy vazifasi) — tizimda yo'q** — QAROR KERAK
+Dars mavzusi ham, uy vazifasi ham yozilmaydi (Guruh → «Dars jurnali» — faqat davomat va tangalar). Kartochka va ustun
+o'rnida «Guruhlarida davomat» («Guruhlar bo'yicha» bilan bir xil hisob). Dars jurnaliga «mavzu» va «uy vazifasi»
+maydonlarini qo'shamizmi (alohida ish — keyin ustun qaytadi)?
+
+**389. Davomat muddati — 30 emas, 10 daqiqa** — QAROR KERAK
+Rasmda «tugagach 30 daqiqa ichida». Tizimda «davomat qilinmagan» xabari dars tugagach 10 daqiqada ketadi (sozlamada
+o'zgarmaydi) — hisobot ham 10 ni oladi, raqam sahifada ko'rinadi. 30 kerak bo'lsa — Nazorat qoidalarida «necha daqiqa»
+sozlamasi, xabar ham shunga o'tadi (269 bilan bitta savol).
+
+**390. «Vaqtida» / «Kechikib» qanday aniqlanadi** — taxmin
+Darsning BIRINCHI belgisi qo'yilgan payt (davomat tarixi, 20.09.2026 dan): muddatgacha — vaqtida, keyin — kechikib,
+belgi yo'q — belgilanmagan. Kim qo'ygani hisobga olinmaydi: admin keyin belgilasa ham «kechikib». Tarixdan oldingi
+darslar — «vaqti noma'lum».
+
+**391. O'qituvchi — guruhning hozirgi ustozi** — taxmin
+Oy o'rtasida ustoz almashsa, oldingi darslar ham yangisiga yoziladi («Guruhlar bo'yicha» bilan bir xil). Davomatni kim
+belgilagani bo'yicha ajratish kerakmi?
+
+**392. Bugungi hali tugamagan darslar** — ochiq
+«O'qituvchilar bo'yicha»da bugungi, muddati kelmagan belgisiz dars «Belgilanmagan»ga tushmaydi (izohda yoziladi).
+«Guruhlar bo'yicha» (va Nazorat analitikasi) ularni hozircha «Belgilanmagan»da sanaydi — kun davomida ikki sahifadagi
+«Darslar» shu songa farq qiladi. «Guruhlar bo'yicha»ni ham shunday qilaymi? (taklif — ha)
+
+**393. Rasmdagi izohlar** — taxmin
+«Nazorat → Davomat nazoratidagi «O'qituvchilar bo'yicha»» va «O'quv bo'limi → Dars jurnali» — bunday sahifalar yo'q.
+Izohlar haqiqiyga almashtirildi (Sozlamalar → Nazorat qoidalari; «Guruhlar bo'yicha» bilan bir xil hisob; mavzu va uy
+vazifasi yozilmaydi).
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

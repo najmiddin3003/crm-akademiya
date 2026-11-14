@@ -78,9 +78,9 @@ export function ReportShell({
               {t(report.title)}
             </span>
           </nav>
-          <h1 className="text-v2-page text-v2-text">{t(report.title)}</h1>
+          <h1 className="text-v2-page text-v2-text">{t(report.heading ?? report.title)}</h1>
           <p className="mt-0.5 text-v2-small text-v2-text-2">
-            {group ? t(group.label) : ""} · {subtitle ?? t(report.subtitle)}
+            {group && !report.heading ? `${t(group.label)} · ` : ""}{subtitle ?? t(report.subtitle)}
           </p>
         </div>
         <div className="flex items-center gap-2 pt-1">

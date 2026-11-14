@@ -1,6 +1,6 @@
 import type { Db } from "mongodb";
 import { branchInCondition } from "@/lib/branchScope";
-import { groupWeekdays, toIsoDate, type AttendanceStatus } from "@/lib/attendance";
+import { groupWeekdays, isFrozenPupil, toIsoDate, type AttendanceStatus } from "@/lib/attendance";
 import { GROUP_MEMBERSHIPS, groupEndIso, groupStartIso, isoDateOrNull, type GroupMembership } from "@/lib/groupMembership";
 import { groupLabel } from "@/lib/groups";
 
@@ -17,6 +17,14 @@ import { groupLabel } from "@/lib/groups";
 // guruh ochilmagan kunlar «belgilanmagan dars» bo'lib chiqmaydi (eski «Davomat
 // qilinmagan guruhlar» sahifasi boshlanish sanasi yo'q guruhni umuman tashlab yuborardi).
 // «Yig'ilayotgan» guruh darslari boshlanmagan — hisobga kirmaydi.
+//
+// KETMA-KET QOLDIRISH (27-qism, 14.11.2026; `opts.streaks`) — o'quvchining SHU GURUHDAGI
+// belgilari (oraliq ichida) eng yangisidan orqaga: boshqa holat uchraguncha hammasi
+// «sababsiz» va kamida 2 ta bo'lsa — ro'yxatga. Faqat guruhning hozirgi a'zolari
+// (`groups.studentIds`), muzlatilgan/arxivdagi o'quvchi kirmaydi. Keyingi darsga kelgan
+// o'quvchi chiqib ketadi — ro'yxat «hozir qo'ng'iroq kerak»lar. Nazorat qoidalaridagi
+// «O'quvchi ketma-ket 2 dars qoldirdi» bildirishnomasi hali yozilmagan (lib/notificationRules.ts),
+// u yozilganda shu ta'rif (`trailingUnexcused`) ishlatilsin.
 
 interface GroupDoc {
   id: number;
@@ -31,6 +39,7 @@ interface GroupDoc {
   startDate?: string | null;
   endDate?: string | null;
   period?: string | null;
+  studentIds?: number[];
 }
 
 interface MarkDoc {
@@ -38,6 +47,18 @@ interface MarkDoc {
   pupilId: number;
   date: string;
   status: AttendanceStatus | string;
+  note?: string | null;
+  reason?: string | null;
+}
+
+interface StreakPupilDoc {
+  id: number;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  fatherPhone?: string;
+  motherPhone?: string;
+  status?: string;
 }
 
 const norm = (s: string | undefined | null) => String(s ?? "").trim().toLowerCase();
@@ -81,6 +102,45 @@ export interface AttendanceGroupRow {
   lastMarked: string | null;
   /** Jadval tanilmagan — rejadagi darslarni sanab bo'lmadi. */
   noSchedule: boolean;
+  /** Ketma-ket 2+ «sababsiz» qoldirgan hozirgi a'zolar (faqat `opts.streaks` bilan). */
+  streak2?: number;
+}
+
+/** Ketma-ket 2 va undan ko'p dars «sababsiz» qoldirgan o'quvchi (bitta guruhda). */
+export interface AbsenceStreak {
+  pupilId: number;
+  name: string;
+  groupId: number;
+  groupLabel: string;
+  course: string;
+  level: string;
+  branchId: number;
+  /** Qoldirilgan darslar, eskisidan ("YYYY-MM-DD"). */
+  dates: string[];
+  count: number;
+  /** Shu belgilardagi eng yangi izoh (davomat izohi, bo'lmasa sababi); yo'q — "". */
+  note: string;
+  /** Otasi yoki onasi telefoni; ikkalasi ham yo'q bo'lsa — o'quvchining o'zi ("" — yo'q). */
+  phone: string;
+  /** `phone` ota-onaniki. */
+  parentPhone: boolean;
+}
+
+/**
+ * Belgilar eng yangisidan orqaga: boshqa holat uchraguncha kelgan «sababsiz»lar (eskisidan
+ * tartibda). Bir kunda ikki belgi bo'lsa — bittasi olinadi.
+ */
+export function trailingUnexcused<T extends { date: string; status: string }>(marks: readonly T[]): T[] {
+  const desc = [...marks].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const out: T[] = [];
+  let prev = "";
+  for (const m of desc) {
+    if (m.date === prev) continue;
+    prev = m.date;
+    if (m.status !== "sababsiz") break;
+    out.push(m);
+  }
+  return out.reverse();
 }
 
 export interface AttendanceTeacherRow {
@@ -104,12 +164,14 @@ export interface AttendanceReport {
   teachers: AttendanceTeacherRow[];
   totals: { scheduled: number; marked: number; unmarked: number; marks: number; present: number; late: number; excused: number; unexcused: number; rate: number | null };
   courses: string[];
+  /** Ketma-ket 2+ «sababsiz» qoldirganlar (faqat `opts.streaks` bilan). */
+  streaks?: AbsenceStreak[];
 }
 
 export async function computeAttendance(
   db: Db,
   branchIds: readonly number[],
-  opts: { from: string; to: string; course?: string; today: string },
+  opts: { from: string; to: string; course?: string; today: string; streaks?: boolean },
 ): Promise<AttendanceReport> {
   const to = opts.to > opts.today ? opts.today : opts.to;
   const from = opts.from > to ? to : opts.from;
@@ -118,7 +180,22 @@ export async function computeAttendance(
   const all = await db
     .collection<GroupDoc>("groups")
     .find(branchInCondition(branchIds), {
-      projection: { _id: 0, id: 1, name: 1, course: 1, level: 1, teacher: 1, day: 1, branchId: 1, status: 1, archivedAt: 1, startDate: 1, endDate: 1, period: 1 },
+      projection: {
+        _id: 0,
+        id: 1,
+        name: 1,
+        course: 1,
+        level: 1,
+        teacher: 1,
+        day: 1,
+        branchId: 1,
+        status: 1,
+        archivedAt: 1,
+        startDate: 1,
+        endDate: 1,
+        period: 1,
+        ...(opts.streaks ? { studentIds: 1 } : {}),
+      },
     })
     .toArray();
   const courses = [...new Map(all.filter((g) => (g.status || "") !== "archive" && String(g.course ?? "").trim()).map((g) => [norm(g.course), String(g.course).trim()])).values()].sort((a, b) => a.localeCompare(b));
@@ -133,7 +210,10 @@ export async function computeAttendance(
     ids.length
       ? db
           .collection<MarkDoc>("attendance")
-          .find({ groupId: { $in: ids }, date: { $gte: from, $lte: to } }, { projection: { _id: 0, groupId: 1, pupilId: 1, date: 1, status: 1 } })
+          .find(
+            { groupId: { $in: ids }, date: { $gte: from, $lte: to } },
+            { projection: { _id: 0, groupId: 1, pupilId: 1, date: 1, status: 1, ...(opts.streaks ? { note: 1, reason: 1 } : {}) } },
+          )
           .toArray()
       : Promise.resolve([] as MarkDoc[]),
   ]);
@@ -240,5 +320,65 @@ export async function computeAttendance(
     { scheduled: 0, marked: 0, unmarked: 0, marks: 0, present: 0, late: 0, excused: 0, unexcused: 0, rate: null as number | null },
   );
   totals.rate = totals.marks ? totals.present / totals.marks : null;
-  return { from, to, historyStart, groups: rows, teachers, totals, courses };
+  const streaks = opts.streaks ? await absenceStreaks(db, groups, rows, marksBy) : undefined;
+  return { from, to, historyStart, groups: rows, teachers, totals, courses, ...(streaks ? { streaks } : {}) };
+}
+
+/** Ketma-ket 2+ «sababsiz» qoldirganlar; `rows[].streak2` ham shu yerda to'ladi. */
+async function absenceStreaks(db: Db, groups: GroupDoc[], rows: AttendanceGroupRow[], marksBy: Map<number, MarkDoc[]>): Promise<AbsenceStreak[]> {
+  const inReport = new Set(rows.map((r) => r.id));
+  const found: { g: GroupDoc; pupilId: number; run: MarkDoc[] }[] = [];
+  for (const g of groups) {
+    if (!inReport.has(g.id)) continue;
+    const members = new Set((g.studentIds ?? []).map(Number));
+    if (members.size === 0) continue;
+    const byPupil = new Map<number, MarkDoc[]>();
+    for (const m of marksBy.get(g.id) ?? []) {
+      const pid = Number(m.pupilId);
+      if (!members.has(pid)) continue;
+      const list = byPupil.get(pid);
+      if (list) list.push(m);
+      else byPupil.set(pid, [m]);
+    }
+    for (const [pupilId, list] of byPupil) {
+      const run = trailingUnexcused(list);
+      if (run.length >= 2) found.push({ g, pupilId, run });
+    }
+  }
+  for (const r of rows) r.streak2 = 0;
+  if (found.length === 0) return [];
+
+  const ids = [...new Set(found.map((f) => f.pupilId))];
+  const pupils = await db
+    .collection<StreakPupilDoc>("pupils")
+    .find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1, fatherPhone: 1, motherPhone: 1, status: 1 } })
+    .toArray();
+  const byId = new Map(pupils.map((p) => [Number(p.id), p]));
+  const rowById = new Map(rows.map((r) => [r.id, r]));
+
+  const out: AbsenceStreak[] = [];
+  for (const { g, pupilId, run } of found) {
+    const p = byId.get(pupilId);
+    if (!p || isFrozenPupil(p.status)) continue;
+    const parent = String(p.fatherPhone ?? "").trim() || String(p.motherPhone ?? "").trim();
+    let note = "";
+    for (let i = run.length - 1; i >= 0 && !note; i -= 1) note = String(run[i].note ?? "").trim() || String(run[i].reason ?? "").trim();
+    const row = rowById.get(g.id);
+    if (row) row.streak2 = (row.streak2 ?? 0) + 1;
+    out.push({
+      pupilId,
+      name: `${String(p.firstName ?? "").trim()} ${String(p.lastName ?? "").trim()}`.trim() || `#${pupilId}`,
+      groupId: g.id,
+      groupLabel: labelOfGroup(g),
+      course: String(g.course ?? "").trim(),
+      level: String(g.level ?? "").trim(),
+      branchId: Number(g.branchId) || 1,
+      dates: run.map((m) => m.date),
+      count: run.length,
+      note,
+      phone: parent || String(p.phone ?? "").trim(),
+      parentPhone: !!parent,
+    });
+  }
+  return out.sort((a, b) => b.count - a.count || (b.dates[b.dates.length - 1] ?? "").localeCompare(a.dates[a.dates.length - 1] ?? "") || a.name.localeCompare(b.name));
 }

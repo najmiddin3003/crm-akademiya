@@ -43,6 +43,9 @@ export interface ReportDef {
   title: string;
   /** Kartadagi izoh (rasmdagi matn). */
   about: string;
+  /** Sahifa sarlavhasi (h1), karta nomidan farq qilsa — masalan «Davomat — guruhlar bo'yicha».
+   *  Berilsa, izoh oldiga guruh nomi qo'shilmaydi (u sarlavhada bor). */
+  heading?: string;
   /** Sahifa sarlavhasi ostidagi izoh: «guruh · …». */
   subtitle: string;
   /** Eski sahifa ruxsatlari — bittasi yetarli. */
@@ -94,6 +97,7 @@ export const REPORTS: readonly ReportDef[] = [
     slug: "davomat-guruhlar",
     group: "attendance",
     title: "Guruhlar bo'yicha",
+    heading: "Davomat — guruhlar bo'yicha",
     about: "Qatnashish foizi va qoldirilgan darslar",
     subtitle: "guruhlarning qatnashish foizi",
     perms: ["/nazorat-davomat-analytics"],
@@ -102,6 +106,7 @@ export const REPORTS: readonly ReportDef[] = [
     slug: "davomat-oqituvchilar",
     group: "attendance",
     title: "O'qituvchilar bo'yicha",
+    heading: "Davomat — o'qituvchilar bo'yicha",
     about: "Belgilangan darslar va dars jurnali",
     subtitle: "o'qituvchilar davomatni belgilagani",
     perms: ["/nazorat-missed-groups", "/nazorat-davomat-analytics"],

@@ -3,7 +3,8 @@
 import "@fontsource-variable/onest/wght.css";
 import { REPORT_BY_SLUG, type ReportSlug } from "@/lib/reportsCatalog";
 import BonusJarimaReport from "./BonusJarimaReport";
-import { DavomatGuruhlarReport, DavomatOqituvchilarReport } from "./DavomatReports";
+import DavomatGuruhlarReport from "./DavomatGuruhlarReport";
+import DavomatOqituvchilarReport from "./DavomatOqituvchilarReport";
 import FaolOquvchilarReport from "./FaolOquvchilarReport";
 import KelganKetganReport from "./KelganKetganReport";
 import KirimChiqimReport from "./KirimChiqimReport";

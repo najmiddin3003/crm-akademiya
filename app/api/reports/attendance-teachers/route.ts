@@ -1,22 +1,33 @@
 import { NextResponse } from "next/server";
-import { ensureIndexes } from "@/lib/mongodb";
+import { getCurrentUser } from "@/lib/auth";
 import { getBranchScope } from "@/lib/branchScope";
-import { computeAttendance } from "@/lib/reportAttendance";
+import { ensureIndexes } from "@/lib/mongodb";
+import { computeAttendanceTeachers } from "@/lib/reportAttendanceTeachers";
 import { ISO_DAY, reportBranchIds } from "@/lib/reportScope";
+import { canOpenReport, REPORT_BY_SLUG } from "@/lib/reportsCatalog";
 import { uzDateIso } from "@/lib/uzTime";
 
 // GET /api/reports/attendance-teachers — Hisobotlar → Davomat → «O'qituvchilar bo'yicha»
-// (15-qism, 25.10.2026): rejadagi darslar, davomati belgilangani va belgilanmagani (dars
-// jurnali), o'quvchilar qatnashishi — o'qituvchi kesimida.
-//   ?from=YYYY-MM-DD&to=YYYY-MM-DD  (sukut — shu oy boshidan bugungacha)
-//   ?branch=all|<id>  ?course=<nom>
-// Hisob — lib/reportAttendance.ts. Ruxsat — Davomat qilinmagan guruhlar yoki Davomat
-// analitikasi (lib/apiPermissions.generated.ts).
+// (27-qism, 14.11.2026; avval 15-qism): davomat dars tugagach o'z vaqtida belgilanyaptimi —
+// filial → o'qituvchi: darslar, vaqtida, kechikib, belgilanmagan, guruhlarida qatnashish.
+//   ?from=YYYY-MM-DD&to=YYYY-MM-DD  (sukut — shu oy boshidan bugungacha; `to` bugundan oshmaydi)
+//   ?branch=all|<id>                 (hovuz — bitta filial, lib/reportScope.ts)
+// Hisob — lib/reportAttendanceTeachers.ts (darslar va qatnashish — lib/reportAttendance.ts,
+// «Guruhlar bo'yicha» bilan bir xil).
+//
+// RUXSAT shu yerda — hisobot sahifasi bilan bir xil (lib/reportsCatalog.ts, `canOpenReport`):
+// «Davomat qilinmagan guruhlar» yoki «Davomat analitikasi». Qamrov — xodimning filiallari.
 export async function GET(req: Request) {
-  const sp = new URL(req.url).searchParams;
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  const report = REPORT_BY_SLUG["davomat-oqituvchilar"];
+  if (!report || !canOpenReport(report, me.permissions)) {
+    return NextResponse.json({ ok: false, error: "Bu bo'limga ruxsatingiz yo'q" }, { status: 403 });
+  }
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
+  const sp = new URL(req.url).searchParams;
   const today = uzDateIso();
   const from = sp.get("from") || `${today.slice(0, 7)}-01`;
   const to = sp.get("to") || today;
@@ -27,8 +38,6 @@ export async function GET(req: Request) {
   if (!br) return NextResponse.json({ ok: false, error: "Bu filial sizga biriktirilmagan" }, { status: 403 });
 
   const db = await ensureIndexes();
-  const r = await computeAttendance(db, br.ids, { from, to, course: sp.get("course") || undefined, today });
-  // Guruh qatorlari — o'qituvchi ichida ochiladigan ro'yxat uchun (nomi, darslar, jurnal).
-  const groups = r.groups.map((g) => ({ id: g.id, label: g.label, course: g.course, level: g.level, teacher: g.teacher, scheduled: g.scheduled, marked: g.marked, unmarked: g.unmarked, lastMarked: g.lastMarked, noSchedule: g.noSchedule }));
-  return NextResponse.json({ ok: true, branch: br.branch, from: r.from, to: r.to, historyStart: r.historyStart, teachers: r.teachers, groups, totals: r.totals, courses: r.courses });
+  const r = await computeAttendanceTeachers(db, br.ids, { from, to, today });
+  return NextResponse.json({ ok: true, branch: br.branch, ...r });
 }
