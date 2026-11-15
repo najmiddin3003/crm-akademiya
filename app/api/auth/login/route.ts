@@ -7,6 +7,18 @@ import { approvalBlocks, approvalError } from "@/lib/adminApproval";
 import { createSessionToken, newSessionId, SESSION_COOKIE, SESSION_MAX_AGE_SEC, SHORT_SESSION_TTL_MS } from "@/lib/session";
 import { describeUserAgent, type UserSession } from "@/lib/userSessions";
 import { toUz } from "@/lib/uzTime";
+import {
+  blockedMessage,
+  DEVICE_COOKIE,
+  DEVICE_COOKIE_MAX_AGE,
+  guardContext,
+  isSuspicious,
+  loginBlockedUntil,
+  registerLoginFailure,
+  registerLoginSuccess,
+  reportSuspiciousLogin,
+  type GuardContext,
+} from "@/lib/loginGuard";
 
 /** "15.08.2026 | 00:22" — loyihadagi boshqa sanalar bilan bir xil format. */
 function fmtNow(raw: Date): string {
@@ -28,6 +40,7 @@ function auditLogin(
   status: number,
   reason: string | null,
   sid: string | null = null,
+  extra: Record<string, unknown> | null = null,
 ) {
   after(async () => {
     const empId = Number(user?.hrEmployeeId);
@@ -54,9 +67,33 @@ function auditLogin(
       ua: clientUa(req.headers),
       sid,
       branchId: cookieBranch(req),
-      ...(reason ? { details: { reason } } : {}),
+      ...(reason ? { details: { reason, ...(extra ?? {}) } } : {}),
     });
   });
+}
+
+/** Qurilma cookie'si (lib/loginGuard.ts) — yo'q bo'lsa har qanday javobga yoziladi. */
+function withDevice(res: NextResponse, ctx: GuardContext): NextResponse {
+  if (ctx.setDevice) {
+    res.cookies.set(DEVICE_COOKIE, ctx.setDevice, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: DEVICE_COOKIE_MAX_AGE,
+      path: "/",
+    });
+  }
+  return res;
+}
+
+/**
+ * Blok javobi — 429 va `Retry-After`. `ctx` null — yangi qurilma cookie'si
+ * berilmaydi: blokdagi cookie'siz brauzer keyingi safar ham o'sha kalitga tushadi.
+ */
+function blockedReply(until: number, now: number, ctx: GuardContext | null): NextResponse {
+  const res = NextResponse.json({ ok: false, error: blockedMessage(until, now), blockedUntil: until }, { status: 429 });
+  res.headers.set("Retry-After", String(Math.max(1, Math.ceil((until - now) / 1000))));
+  return ctx ? withDevice(res, ctx) : res;
 }
 
 /** Qurilmadagi oxirgi tanlangan filial (navbar cookie'si `branch`) — kirish yozuvi uchun. */
@@ -81,30 +118,53 @@ export async function POST(req: Request) {
 
   const phone = normalizePhone(body.phone);
   const db = await ensureIndexes();
+
+  // KIRISH QOROVULI (lib/loginGuard.ts): bloklangan «IP + qurilma» (yoki IP)
+  // uchun parol umuman solishtirilmaydi — hisob bormi-yo'qmi ham bilinmaydi.
+  const ctx = guardContext(req);
+  const nowMs = Date.now();
+  const blockedUntil = await loginBlockedUntil(db, ctx, nowMs);
+  if (blockedUntil !== null) {
+    auditLogin(db, req, phone, null, 429, "blok davom etmoqda", null, { blockedUntil: new Date(blockedUntil).toISOString() });
+    return blockedReply(blockedUntil, nowMs, null);
+  }
+
+  /** Noto'g'ri urinish: sanaladi, blok tushsa — 429, aks holda odatdagi 401. */
+  const fail = async (u: WithId<Document> | null, reason: string): Promise<NextResponse> => {
+    const out = await registerLoginFailure(db, ctx, phone, nowMs);
+    const block = out.block ?? out.ipBlock;
+    auditLogin(
+      db, req, phone, u, out.blockedUntil !== null ? 429 : 401, reason, null,
+      block ? { block: { number: block.number, minutes: Math.round(block.ms / 60_000), ip: out.ipBlock !== null } } : null,
+    );
+    if (isSuspicious(out)) {
+      const susp = out.ipBlock
+        ? { kind: "ip" as const, block: out.ipBlock }
+        : { kind: "pair" as const, block: out.block! };
+      after(() => reportSuspiciousLogin(db, { ctx, ...susp, totalFails: out.totalFails, phones: out.phones }, nowMs));
+    }
+    if (out.blockedUntil !== null) return blockedReply(out.blockedUntil, nowMs, ctx);
+    return withDevice(NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 }), ctx);
+  };
+
   const user = await db.collection("users").findOne({ phone });
 
-  if (!user || !user.passwordHash) {
-    auditLogin(db, req, phone, null, 401, "hisob topilmadi");
-    return NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 });
-  }
+  if (!user || !user.passwordHash) return fail(null, "hisob topilmadi");
   if (user.status === "frozen") {
     auditLogin(db, req, phone, user, 403, "hisob muzlatilgan");
-    return NextResponse.json({ ok: false, error: "Hisobingiz vaqtincha muzlatilgan. Administratorga murojaat qiling." }, { status: 403 });
+    return withDevice(NextResponse.json({ ok: false, error: "Hisobingiz vaqtincha muzlatilgan. Administratorga murojaat qiling." }, { status: 403 }), ctx);
   }
   if (user.status === "blocked") {
     auditLogin(db, req, phone, user, 403, "hisob bloklangan");
-    return NextResponse.json({ ok: false, error: "Hisobingiz bloklangan. Administratorga murojaat qiling." }, { status: 403 });
+    return withDevice(NextResponse.json({ ok: false, error: "Hisobingiz bloklangan. Administratorga murojaat qiling." }, { status: 403 }), ctx);
   }
-  if (user.status !== "active") {
-    auditLogin(db, req, phone, user, 401, "hisob faol emas");
-    return NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 });
-  }
+  if (user.status !== "active") return fail(user, "hisob faol emas");
 
   const match = await compareSecret(body.password, user.passwordHash);
-  if (!match) {
-    auditLogin(db, req, phone, user, 401, "parol noto'g'ri");
-    return NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 });
-  }
+  if (!match) return fail(user, "parol noto'g'ri");
+
+  // Parol to'g'ri — joriy bosqichdagi xatolar tozalanadi (bosqich emas — lib/loginGuard.ts).
+  await registerLoginSuccess(db, ctx, nowMs);
 
   // IKKI BOSQICH — parol to'g'ri, lekin admin hali tasdiqlamagan
   // (lib/adminApproval.ts). Tekshiruv AYNAN shu yerda, parol
@@ -112,7 +172,7 @@ export async function POST(req: Request) {
   // begona odam ham "bu raqamda hisob bor" degan ma'lumotni olardi.
   if (approvalBlocks(user.adminApproval)) {
     auditLogin(db, req, phone, user, 403, "admin tasdig'i kutilmoqda");
-    return NextResponse.json({ ok: false, error: approvalError(user.adminApproval) }, { status: 403 });
+    return withDevice(NextResponse.json({ ok: false, error: approvalError(user.adminApproval) }, { status: 403 }), ctx);
   }
 
   // Har bir login alohida sessiya (qurilma) yozuvini oladi — "Aktiv qurilmalar"
@@ -149,5 +209,5 @@ export async function POST(req: Request) {
     ...(remember ? { maxAge: SESSION_MAX_AGE_SEC } : {}),
     path: "/",
   });
-  return res;
+  return withDevice(res, ctx);
 }

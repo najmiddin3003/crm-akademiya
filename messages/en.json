@@ -7568,5 +7568,6 @@
   "Bugungi yana {n} dars hali tugamagan yoki {m} daqiqasi o'tmagan — hisobga kirmadi.": "{n} more of today's lessons have not ended yet or their {m} minutes have not passed — not counted.",
   "{n} darsning qachon belgilangani noma'lum — davomat tarixi {date} dan yoziladi; ular vaqtida ham, kechikib ham hisoblanmadi.": "It is unknown when {n} lessons were marked — attendance history is kept from {date}; they are counted neither as on time nor as late.",
   "Davomat — guruhlar bo'yicha": "Attendance — by group",
-  "Davomat — o'qituvchilar bo'yicha": "Attendance — by teacher"
+  "Davomat — o'qituvchilar bo'yicha": "Attendance — by teacher",
+  "Juda ko'p noto'g'ri urinish. Kirish {until} gacha bloklandi.": "Too many failed attempts. Sign-in is blocked until {until}."
 }

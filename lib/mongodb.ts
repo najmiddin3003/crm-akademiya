@@ -408,6 +408,12 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("action_log").createIndex({ "actor.userId": 1, at: -1 }));
   tasks.push(db.collection("action_log").createIndex({ "actor.employeeId": 1, at: -1 }));
   tasks.push(db.collection("action_log").createIndex({ section: 1, at: -1 }));
+  // KIRISH QOROVULI (lib/loginGuard.ts, 15.11.2026): «IP + qurilma» va IP
+  // bo'yicha xatolar/bloklar — `expireAt` da o'zi o'chadi (72 soatlik zanjir
+  // + zaxira). Shubhali kirishlar 1 yil saqlanadi (amallar jurnali kabi).
+  tasks.push(db.collection("login_guard").createIndex({ key: 1 }, { unique: true }));
+  tasks.push(db.collection("login_guard").createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }));
+  tasks.push(db.collection("suspicious_logins").createIndex({ at: 1 }, { expireAfterSeconds: 365 * 86_400, name: "suspicious_logins_ttl" }));
   tasks.push(db.collection("support_analytics").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("roles").createIndex({ id: 1 }, { unique: true }));
   // `key` — lavozim kaliti (teacher/moderator). Ruxsatlar shu bo'yicha
