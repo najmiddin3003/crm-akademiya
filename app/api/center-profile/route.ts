@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
 import { getBranchScope } from "@/lib/branchScope";
-import { branchAddressLine, branchPhoneDigits } from "@/lib/managementBranches";
+import { receiptBranchOf } from "@/lib/managementBranches";
 import { cleanReceiptProfile, type ReceiptBranch } from "@/lib/receiptProfile";
 
 // GET /api/center-profile — chek sozlamasi + joriy filialning manzili va telefoni.
@@ -20,12 +20,7 @@ async function currentBranch(): Promise<ReceiptBranch | null> {
   const db = await ensureIndexes();
   const b = await db.collection("branches").findOne({ id: scope.branchId });
   if (!b) return null;
-  const digits = branchPhoneDigits(b.phone as string | undefined);
-  return {
-    name: String(b.name ?? ""),
-    address: branchAddressLine({ location: String(b.location ?? ""), address: String(b.address ?? "") }),
-    phone: digits ? `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}` : "",
-  };
+  return receiptBranchOf(b);
 }
 
 export async function GET() {

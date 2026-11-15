@@ -2,6 +2,7 @@ import type { AttendanceMark } from "@/lib/attendance";
 import type { MonthlyExam, UzbmbExam } from "@/lib/imtihon";
 import type { PaymentRow } from "@/lib/studentBot/data";
 import type { PupilAddress } from "@/lib/pupilsData";
+import type { StudentCabinet } from "@/lib/studentCabinetTypes";
 
 // /api/student-web/me javobining SHAKLI — server va klient shu yerda
 // uchrashadi. Alohida fayl, chunki marshrut server, komponent esa
@@ -57,4 +58,9 @@ export interface StudentMe {
   /** Joriy oy to'lovi qayd etilganmi. */
   due: { unpaid: boolean; month: string };
   addresses: PupilAddress[];
+  /**
+   * Yangi kabinet (v2, 28-qism — lib/studentCabinet.ts). Hisob xato bersa null —
+   * eski kabinet unga tayanmaydi va baribir ochiladi.
+   */
+  cabinet: StudentCabinet | null;
 }

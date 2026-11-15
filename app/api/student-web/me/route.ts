@@ -17,6 +17,7 @@ import {
 import { dueFor } from "@/lib/studentBot/dues";
 import { authStudentWeb } from "@/lib/studentBot/webapp";
 import { studentCoinSummary } from "@/lib/gamification/studentPage";
+import { buildStudentCabinet } from "@/lib/studentCabinet";
 
 // O'QUVCHI WEB SAHIFASINING YAGONA MA'LUMOT MANBAI.
 //
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
 
-  const [branch, groups, payments, exams, months, marks, names] = await Promise.all([
+  const [branch, groups, payments, exams, months, marks, names, cabinet] = await Promise.all([
     branchName(db, (pupil as { branchId?: number }).branchId),
     loadGroups(db, pupil.id),
     loadPayments(db, pupil, 50),
@@ -66,6 +67,11 @@ export async function POST(req: Request) {
     attendanceMonths(db, pupil.id),
     loadAttendance(db, pupil.id),
     loadPupilNames(db, user.links.map((l) => l.pupilId)),
+    // Yangi kabinet (v2, 28-qism). Xato bersa null — eski kabinet unga tayanmaydi.
+    buildStudentCabinet(db, pupil).catch((e) => {
+      console.error("[student-web] cabinet", e);
+      return null;
+    }),
   ]);
   const tasks = await loadTasks(db, groups.map((g) => g.id));
   const due = await dueFor(db, pupil);
@@ -126,5 +132,6 @@ export async function POST(req: Request) {
     // Joriy oy to'lovi qayd etilganmi — kabinetdagi eslatma uchun.
     due,
     addresses: pupil.addresses ?? [],
+    cabinet,
   });
 }

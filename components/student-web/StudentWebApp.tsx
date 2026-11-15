@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { StudentMe } from "@/components/student-web/types";
 import { useT } from "@/components/shared/Language";
 import StudentGame from "@/components/gamification/student/StudentGame";
+import CabinetV2 from "@/components/student-web/v2/CabinetV2";
+import { applyStudentTheme, storedStudentTheme, useStudentUi } from "@/components/student-web/v2/studentPrefs";
 
 // O'QUVCHI WEB SAHIFASI — botdagi tugma orqali Telegram ichida ochiladi.
 //
@@ -17,6 +19,11 @@ import StudentGame from "@/components/gamification/student/StudentGame";
 // /api/student-web/me da, imzo tekshiruvidan keyin quriladi. Shu bois
 // bu fayldagi hech narsani o'zgartirib boshqa o'quvchining ma'lumotini
 // ochib bo'lmaydi — so'rovda o'quvchi id'si umuman yo'q.
+//
+// YANGI KO'RINISH (v2, 28-qism): javobda `cabinet` bo'lsa va shu qurilmada
+// «Eski ko'rinish» tanlanmagan bo'lsa — components/student-web/v2/CabinetV2.
+// Pastdagi eski kabinet o'zgarmagan: `cabinet` hisobi xato bersa (null) yoki
+// o'quvchi eskisini tanlasa shu ochiladi; tepasida «Yangi ko'rinish» tugmasi.
 
 const TG_SDK = "https://telegram.org/js/telegram-web-app.js";
 
@@ -129,6 +136,7 @@ export default function StudentWebApp() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<TabKey>("profil");
   const [month, setMonth] = useState("");
+  const [ui, setUi] = useStudentUi();
 
   const load = useCallback(async (initData: string) => {
     try {
@@ -163,9 +171,10 @@ export default function StudentWebApp() {
       app.ready();
       app.expand();
       // Telegram mavzusiga moslashamiz — sahifa ilova ichida ochilgani
-      // uchun yorug'/tungi rejim o'sha yerdagidek bo'lishi tabiiy.
-      if (app.colorScheme === "dark") document.documentElement.classList.add("dark");
-      else document.documentElement.classList.remove("dark");
+      // uchun yorug'/tungi rejim o'sha yerdagidek bo'lishi tabiiy. Yangi
+      // kabinet menyusida mavzu qo'lda tanlangan bo'lsa — o'sha ustun.
+      const saved = storedStudentTheme();
+      applyStudentTheme(saved ? saved === "dark" : app.colorScheme === "dark");
       void load(app.initData);
     };
 
@@ -205,6 +214,10 @@ export default function StudentWebApp() {
     );
   }
 
+  if (data.cabinet && ui !== "old") {
+    return <CabinetV2 me={data} initData={tgApp()?.initData ?? ""} onClassic={() => setUi("old")} />;
+  }
+
   const p = data.profile;
   const marks = month
     ? data.attendance.marks.filter((m) => m.date.startsWith(month))
@@ -212,6 +225,15 @@ export default function StudentWebApp() {
 
   return (
     <main className="mx-auto w-full max-w-[1100px] p-3 sm:p-5">
+      {data.cabinet ? (
+        <button
+          type="button"
+          onClick={() => setUi("new")}
+          className="mb-3 w-full rounded-2xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-[13px] font-bold text-primary transition hover:bg-primary/15"
+        >
+          {t("Yangi ko'rinishga o'tish")}
+        </button>
+      ) : null}
       <header className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center gap-3.5">
           <div className="grid size-14 shrink-0 place-items-center rounded-full bg-primary text-lg font-extrabold text-white sm:size-16 sm:text-xl">

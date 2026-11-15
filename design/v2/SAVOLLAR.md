@@ -2189,6 +2189,89 @@ belgilagani bo'yicha ajratish kerakmi?
 Izohlar haqiqiyga almashtirildi (Sozlamalar → Nazorat qoidalari; «Guruhlar bo'yicha» bilan bir xil hisob; mavzu va uy
 vazifasi yozilmaydi).
 
+### 28-qism — O'quvchi kabineti (Telegram Mini App /oquvchi) (15.11.2026)
+
+Rasmlar 55–58: Asosiy va To'lovlar (yorug' + qorong'i). Darslar, Natijalar, Tanga tablarining rasmi yo'q — shu
+ikki rasm tilida qurildi. Eski kabinet o'zgarmagan, menyudagi «Eski ko'rinish» bilan ochiladi.
+
+**394. To'lov muddati — tizimda yo'q** — QAROR KERAK
+Rasmda «muddati 5-oktabr», «har oy 5-sanasigacha», «muddat 2- va 5-noyabr». Guruh ham, filial ham to'lov kunini
+saqlamaydi — muddatlar chizilmadi, o'rniga qarz qaysi oy(lar)dan ekani yoziladi («oktabr», «sentabr–oktabr»).
+Guruhga (yoki filialga) «to'lov kuni» maydonini qo'shamizmi?
+
+**395. To'lovda guruh yozilmaydi** — QAROR KERAK
+Kassada to'lov qaysi guruh uchun ekani saqlanmaydi (faqat «qaysi oy uchun»). To'lov tarixidagi «Guruh» ustuni olib
+tashlandi. «Oylar bo'yicha» jadvalida pul guruhlarga hisob bilan taqsimlanadi: oyga yozilgan to'lov shu oyning
+guruhlarini (guruh raqami tartibida) yopadi, ortgani eng eski yopilmagan oyga o'tadi. Jami qarz har doim to'g'ri, lekin
+qaysi guruh to'langani — taxmin. Kassir to'lov olayotganda guruhni ham tanlasinmi?
+
+**396. Qarz = «Qarzdorlar» hisobi bilan bir xil, shuning uchun 279 994** — QAROR KERAK
+Kabinetdagi qarz xodimlar «Qarzdorlar» hisobotidagi raqamga aynan teng (dev bazada 878 o'quvchidan 878 tasi mos):
+o'tgan darslar × bitta dars narxi − to'langan. Dars narxi butun so'mga yaxlitlanadi, shu sabab oylik 280 000 bo'lgan
+guruh katagida «279 994» (21 538 × 13 dars), «Keyingi oy» kartasida 579 991 (sarlavhada oylik 580 000) chiqadi.
+Ota-onaga g'alati ko'rinadi. Ikki yo'l: (a) shunday qolsin — raqam kassadagi bilan bir xil; (b) to'liq o'tgan oy uchun
+oylik narx yozilsin — xodim hisoboti ham shunga o'tadi (bitta qoida). Qaysi biri?
+
+**397. «Namuna», qo'ng'iroqcha, «Taklif qilish» kartasi** — taxmin
+Chizilmadi: o'quvchi uchun bildirishnomalar ro'yxati ham, referal (do'stni taklif qilish, sovg'a) hisobi ham tizimda
+yo'q. Kerak bo'lsa — alohida ish.
+
+**398. Yangi ko'rinish sukut bo'yicha** — taxmin
+Hamma o'quvchi yangi kabinetni ko'radi. Ism menyusida: rol, ota-onada farzandlar ro'yxati (faqat ko'rish — almashtirish
+botdagi «Boshqa profil» tugmasida), «Mening ma'lumotlarim» (eski Profil va Manzil tablari o'rnida), Mavzu
+(Yorug'/Qorong'i; tanlanmasa — Telegram mavzusi), «Eski ko'rinish» (shu qurilmada eslab qolinadi; eski kabinet tepasida
+«Yangi ko'rinishga o'tish»). Yangi kabinet hisobi xato bersa eski kabinet ochiladi. Telefonda tablar pastki panelda.
+
+**399. Ota-ona ochganda** — taxmin
+«Salom, Diyora!» o'rniga sarlavhada farzand ismi, ostida «Farzandingiz kabineti · …». To'g'rimi?
+
+**400. Davomat chizig'i rangi** — taxmin
+90% va yuqori — yashil, 75–89% — sariq (rasmdagi 80%), 75% dan past — qizil. 385 bilan bir xil qilish kerakmi?
+
+**401. «Bu hafta» va belgisiz darslar** — taxmin
+Hafta — bugungi kun turgan Dushanba–Yakshanba (yakshanba kuni deyarli hammasi o'tgan darslar). O'tgan, lekin davomati
+qo'yilmagan dars — «Belgilanmagan» (kulrang), davom etayotgani — «Hozir». Rasmda bunday holatlar yo'q.
+
+**402. Chek ota-onada** — taxmin
+Telegram ichida «Chop etish» ko'p telefonda ishlamaydi — asosiy tugma «Rasm sifatida saqlash» (chek rasmga chiziladi,
+telefonda ulashish oynasi ochiladi; yangi paket qo'shilmadi). Sarlavha «TO'LOV CHEKI» (qaytarilgan pul — «QAYTARISH
+CHEKI»), bekor qilingan to'lov cheki «BEKOR QILINGAN» belgisi bilan. Ichki qatorlar (Tranzaksiya, Ustoz, Izoh) yo'q,
+«Qaysi oy uchun» bor. Chekdagi filial — o'quvchining filiali (to'lov boshqa filial kassasiga qilingan bo'lsa ham).
+Telegram'ning fayl yuklash usuli (alohida server manzili kerak) qilinmadi — kerakmi?
+
+**403. Ro'yxat chegaralari** — taxmin
+To'lov tarixi — oxirgi 200 ta (ko'p bo'lsa «yana N ta» izohi). «Oylar bo'yicha» — 6 ustun (4 o'tgan oy, joriy, kelgusi);
+undan oldingi qarz jadval ostida bitta qatorda. Darslar haftasi — o'tgan oyning 1-kunidan bugun + 21 kungacha;
+eskiroq oylar «Davomat» kartasida oy tanlab ko'riladi.
+
+**404. Kelgusi oyga oldindan to'langan pul** — ochiq
+Oldindan to'langan pul «Oldindan to'langan» bo'lib ko'rinadi, kelgusi oy katagi esa «kelgusi oy» bo'lib qoladi
+(«to'langan» belgisi yo'q). Kelgusi oy katagida «to'langan» ham ko'rsataymi?
+
+**405. Chekka holatlar (pul)** — taxmin
+Arxivlangan guruh «Guruhlarim»da yo'q (qarzi bo'lsa «Oylar bo'yicha»da qatori bor). Sanasi kelajakdagi to'lov tarixda
+bor, qarzga kirmaydi (Qarzdorlar hisobotidagidek). Ikki filialda o'qiydigan o'quvchida kabinet jamini ko'rsatadi,
+hisobot esa har filialni alohida. Qaytarim to'lovlardan katta bo'lsa, ortig'i «jadvaldagi oylardan oldingi qarz»ga
+yoziladi.
+
+**406. Tanga tabi** — ochiq
+Tepada qisqa xulosa (balans, shu oyda, eng yaxshi o'rin, istak), ostida mavjud o'yin bo'limi — u o'z salomlashuvi va
+balansini ham chizadi (balans ikki marta ko'rinadi) va eski uslubda. O'yin bo'limini v2 ga ko'chirish — alohida qism.
+«Eng yaxshi o'rin» joriy oyda tangasi bor guruhlardan olinadi (hamma 0 da bo'lsa ko'rsatilmaydi).
+
+**407. Hafta kunlari qisqartmasi** — taxmin
+Rasmda «Chor / Pa / Ya», tizimdagi umumiy qisqartma «Cho / Pay / Yak» — butun sayt bilan bir xil bo'lishi uchun
+umumiysi qoldirildi.
+
+**408. Natijalar sinalmagan** — ochiq
+Sarhisob natijalari bazada bo'sh (03.11 tozalangan) — «Natijalar» tabi va «So'nggi natija» kartasi namunaviy
+ma'lumotda tekshirildi. Birinchi sarhisob kiritilgach haqiqiy ma'lumotda ko'rib chiqiladi.
+
+**409. Filiallarda manzil va telefon** — ochiq (ma'lumot)
+To'lov joyi qatori Sozlamalar → Filiallar'dagi manzil va telefondan olinadi; hozir filiallarda faqat joylashuv bor,
+telefon bo'sh (qator telefonsiz chiqadi). Shuningdek guruh #162 tugash sanasi boshlanish sanasiga teng (02.09.2026) —
+4 o'quvchining hisobi 0; sanani tuzatish kerak.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

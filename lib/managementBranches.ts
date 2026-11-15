@@ -1,3 +1,5 @@
+import type { ReceiptBranch } from "@/lib/receiptProfile";
+
 // Boshqaruv → Filiallar (sidebar: Boshqaruv > Filiallar, href
 // /management-filiallar). MongoDB `branches` kolleksiyasi.
 //
@@ -133,6 +135,25 @@ export function branchAddressLine(b: Pick<ManagementBranch, "location" | "addres
 /** Telefon — oxirgi 9 raqam («941118855»); yo'q bo'lsa bo'sh. */
 export function branchPhoneDigits(phone: string | null | undefined): string {
   return String(phone ?? "").replace(/\D/g, "").slice(-9);
+}
+
+/** Ko'rsatish uchun telefon — «94 111 88 55»; raqam yo'q — bo'sh. */
+export function branchPhoneLine(phone: string | null | undefined): string {
+  const digits = branchPhoneDigits(phone);
+  return digits ? `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}` : "";
+}
+
+/**
+ * Filial hujjati → chekdagi filial qatori (nom, manzil, telefon): kassa cheki
+ * (app/api/center-profile) va o'quvchi kabineti (lib/studentCabinet.ts) bir xil yozadi.
+ */
+export function receiptBranchOf(b: Record<string, unknown> | null | undefined): ReceiptBranch {
+  if (!b) return { name: "", address: "", phone: "" };
+  return {
+    name: String(b.name ?? ""),
+    address: branchAddressLine({ location: String(b.location ?? ""), address: String(b.address ?? "") }),
+    phone: branchPhoneLine(b.phone as string | null | undefined),
+  };
 }
 
 export type OpenHoursParse =

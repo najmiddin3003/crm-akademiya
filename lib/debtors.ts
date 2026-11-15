@@ -1,4 +1,4 @@
-import type { Db } from "mongodb";
+import type { Db, Document } from "mongodb";
 import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import { withBranch, type BranchScope } from "@/lib/branchScope";
 import { studentBalanceMatch } from "@/lib/studentRefund";
@@ -92,16 +92,102 @@ export function lessonPriceOf(monthly: number | null, day: string | undefined | 
 }
 
 /** Guruh darslari hali boshlanmagan holat (lib/groupRules.ts → "gathering"). */
-const NOT_STARTED_STATUS = "gathering";
+export const NOT_STARTED_STATUS = "gathering";
 
 const minIso = (a: string, b: string | null) => (b !== null && b < a ? b : a);
 const maxIso = (a: string, b: string | null) => (b !== null && b > a ? b : a);
 
 /** "2026-09" → oyning birinchi va oxirgi kuni ("YYYY-MM-DD"). */
-function monthBounds(month: string): { from: string; to: string } {
+export function monthBounds(month: string): { from: string; to: string } {
   const [y, m] = month.split("-").map(Number);
   const last = new Date(y, m, 0).getDate();
   return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
+}
+
+// ── BITTA QOIDA, IKKI O'QUVCHI ──────────────────────────────────────────
+// Quyidagi uch bo'lak computeDebtors ichida ham, o'quvchi kabinetida ham
+// (lib/studentCabinet.ts, 28-qism) ishlatiladi: kabinetdagi «Qarz» xodim
+// «Qarzdorlar» hisobotida ko'rgan raqam bilan AYNAN bir xil bo'lishi shart
+// (ota-ona markazga qo'ng'iroq qilganda). Nusxa ko'chirilmasin — shu yerda.
+
+/** Bitta a'zolik oralig'ining hisob chegaralari (membershipSpan). */
+export interface MembershipSpan {
+  /** Hisoblab bo'lmaslik sabablari (bo'sh — hammasi joyida). */
+  issues: DebtIssue[];
+  monthlyPrice: number | null;
+  lessonPrice: number | null;
+  /** Hisob boshlanadigan kun: max(joinedAt, guruh boshi), joinedAt yo'q — guruh boshi; noma'lum — null. */
+  start: string | null;
+  /** Hisob sanasidan MUSTAQIL tugash chegarasi (chiqarilgan, guruh oxiri, arxiv, muzlatilgan); yo'q — null. */
+  bound: string | null;
+  /** Hisob tugaydigan kun = min(asOf, bound). */
+  end: string;
+  /** Darslar sanaladimi (start ma'lum va `issues` bo'sh). */
+  ok: boolean;
+}
+
+/**
+ * A'zolik oralig'i (`group_memberships` yozuvi) bo'yicha: qaysi kundan qaysi kungacha
+ * darslar sanaladi va bitta dars narxi. Darslari hali boshlanmagan (gathering) guruh — null.
+ * Qoida — fayl boshidagi izoh (BOSHLANGAN KUN, TUGASH KUNI, NARX).
+ */
+export function membershipSpan(
+  g: Pick<GroupDoc, "day" | "status" | "startDate" | "endDate" | "period" | "archivedAt">,
+  m: Pick<GroupMembership, "joinedAt" | "leftAt">,
+  p: Pick<Pupil, "status" | "statusChangedAt">,
+  asOf: string,
+  monthlyPrice: number | null,
+): MembershipSpan | null {
+  if ((g.status || "") === NOT_STARTED_STATUS) return null;
+
+  const issues: DebtIssue[] = [];
+  const lessonPrice = lessonPriceOf(monthlyPrice, g.day);
+  if (monthlyPrice === null) issues.push("price");
+  if (groupWeekdays(g.day).length === 0) issues.push("schedule");
+
+  // Boshlangan kun: a'zolik sanasi, bo'lmasa guruh boshi; guruh boshidan
+  // oldin sanalmaydi.
+  const groupStart = groupStartIso(g);
+  const joined = isoDateOrNull(m.joinedAt);
+  const start = joined !== null ? maxIso(joined, groupStart) : groupStart;
+  if (start === null) issues.push("start");
+
+  // Tugash chegarasi (hisob sanasidan MUSTAQIL qismi): chiqarilgan kun,
+  // guruh tugashi, arxivlangan kun, muzlatilgan kun. Muzlatilgan o'quvchi
+  // guruhda qoladi, lekin dars olmaydi; arxivlangan esa a'zolikdan
+  // chiqariladi (leftAt).
+  const bounds: (string | null)[] = [isoDateOrNull(m.leftAt), groupEndIso(g)];
+  if ((g.status || "") === "archive") bounds.push(isoDateOrNull(g.archivedAt));
+  if (pupilStatusOf(p) === "Muzlatilgan") bounds.push(isoDateOrNull(p.statusChangedAt));
+  let bound: string | null = null;
+  for (const b of bounds) if (b !== null) bound = bound === null ? b : minIso(bound, b);
+  const end = minIso(asOf, bound);
+
+  return { issues, monthlyPrice, lessonPrice, start, bound, end, ok: start !== null && issues.length === 0 };
+}
+
+/** To'langan pul yozuvlari sharti: balans qoidasi (studentBalanceMatch) + sana oralig'i. */
+export function paidMatch(from: string | null, to: string): Document {
+  return { $and: [studentBalanceMatch(), { date: from ? { $gte: from, $lte: to } : { $lte: to } }] };
+}
+
+/**
+ * To'lov yozuvi KIMGA hisoblanadi: `pupilId` bor — o'sha o'quvchiga; yo'q (eski yozuv) —
+ * ism bo'yicha (`trim().toLowerCase()`); ismi ham bo'sh — hech kimga (null).
+ */
+export type PaidOwner = { pupilId: number } | { name: string } | null;
+
+export function paidOwnerOf(pupilId: unknown, studentName: unknown): PaidOwner {
+  const pid = Number(pupilId);
+  if (Number.isFinite(pid)) return { pupilId: pid };
+  const key = norm(String(studentName ?? ""));
+  return key ? { name: key } : null;
+}
+
+/** `paidOwnerOf` natijasi shu o'quvchimi. */
+export function isPaidBy(owner: PaidOwner, p: Pick<Pupil, "id" | "firstName" | "lastName">): boolean {
+  if (owner === null) return false;
+  return "pupilId" in owner ? owner.pupilId === p.id : owner.name === norm(pupilFullName(p));
 }
 
 /**
@@ -154,7 +240,7 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
     db
       .collection("transaction_entries")
       .aggregate<{ _id: { pupilId?: unknown; name?: unknown }; total: number; last?: string | null }>([
-        { $match: { $and: [studentBalanceMatch(), { date: from ? { $gte: from, $lte: to } : { $lte: to } }] } },
+        { $match: paidMatch(from, to) },
         // Tanga evaziga chegirma ham TO'LANGAN hisoblanadi (lib/transactionEntries.ts →
         // discountSom): markaz kechgan qism qarz bo'lib qolmasin.
         //
@@ -203,13 +289,10 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
     const legacy = new Map<string, number>();
     for (const r of rows) {
       const total = Number(r.total) || 0;
-      const pid = Number(r._id?.pupilId);
-      if (Number.isFinite(pid)) {
-        byId.set(pid, (byId.get(pid) ?? 0) + total);
-        continue;
-      }
-      const key = norm(String(r._id?.name ?? ""));
-      if (key) legacy.set(key, (legacy.get(key) ?? 0) + total);
+      const owner = paidOwnerOf(r._id?.pupilId, r._id?.name);
+      if (owner === null) continue;
+      if ("pupilId" in owner) byId.set(owner.pupilId, (byId.get(owner.pupilId) ?? 0) + total);
+      else legacy.set(owner.name, (legacy.get(owner.name) ?? 0) + total);
     }
     if (legacy.size > 0) {
       for (const p of pupils) {
@@ -290,34 +373,11 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
     const g = groupById.get(m.groupId);
     const p = pupilById.get(m.pupilId);
     if (!g || !p) continue;
-    if ((g.status || "") === NOT_STARTED_STATUS) continue;
-
-    const issues: DebtIssue[] = [];
-    const monthlyPrice = monthlyOf(g);
-    const lessonPrice = lessonPriceOf(monthlyPrice, g.day);
-    if (monthlyPrice === null) issues.push("price");
-    if (groupWeekdays(g.day).length === 0) issues.push("schedule");
-
-    // Boshlangan kun: a'zolik sanasi, bo'lmasa guruh boshi; guruh boshidan
-    // oldin sanalmaydi.
-    const groupStart = groupStartIso(g);
-    const joined = isoDateOrNull(m.joinedAt);
-    const start = joined !== null ? maxIso(joined, groupStart) : groupStart;
-    if (start === null) issues.push("start");
-
-    // Tugash chegarasi (hisob sanasidan MUSTAQIL qismi): chiqarilgan kun,
-    // guruh tugashi, arxivlangan kun, muzlatilgan kun. Muzlatilgan o'quvchi
-    // guruhda qoladi, lekin dars olmaydi; arxivlangan esa a'zolikdan
-    // chiqariladi (leftAt).
-    const bounds: (string | null)[] = [isoDateOrNull(m.leftAt), groupEndIso(g)];
-    if ((g.status || "") === "archive") bounds.push(isoDateOrNull(g.archivedAt));
-    if (pupilStatusOf(p) === "Muzlatilgan") bounds.push(isoDateOrNull(p.statusChangedAt));
-    let bound: string | null = null;
-    for (const b of bounds) if (b !== null) bound = bound === null ? b : minIso(bound, b);
-    const end = minIso(asOf, bound);
-
-    const ok = start !== null && issues.length === 0;
-    const counted = ok ? lessonDaysBetween(g.day, start, end) : { count: 0, last: null };
+    // Darslari boshlanmagan (gathering) guruh — null, sanalmaydi.
+    const span = membershipSpan(g, m, p, asOf, monthlyOf(g));
+    if (span === null) continue;
+    const { issues, monthlyPrice, lessonPrice, start, bound, end, ok } = span;
+    const counted = ok && start !== null ? lessonDaysBetween(g.day, start, end) : { count: 0, last: null };
     for (const issue of issues) addIssue(g, issue);
     if (ok && start !== null && lessonPrice !== null && counted.count > 0) addMonthCharges(m.pupilId, g.day, start, end, lessonPrice);
 
