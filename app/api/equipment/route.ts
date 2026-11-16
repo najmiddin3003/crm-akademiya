@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import type { Equipment } from "@/lib/equipment";
+import { equipmentExtras, type Equipment } from "@/lib/equipment";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import { toUz } from "@/lib/uzTime";
 
 // Jihozlar backend'i (MongoDB `equipment`). Demo seed YO'Q — jihozlarni
@@ -11,16 +12,21 @@ function fmtNow(raw: Date): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export async function GET() {
+// `?scoped=1` — faqat navbar filiali (yangi versiya, 31-qism). Eski sahifa hamon hammasini ko'radi:
+// eski yozuvlarda filial yo'q (1-filial hisoblanadi) — boshqa filialda ular birdan yo'qolmasin.
+export async function GET(req: Request) {
+  const scoped = new URL(req.url).searchParams.get("scoped") === "1";
+  const scope = scoped ? await getBranchScope() : null;
+  if (scoped && !scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
   const db = await ensureIndexes();
   const col = db.collection("equipment");
-  const rows = await col.find({}).sort({ id: -1 }).toArray();
+  const rows = await col.find(scope ? withBranch({}, scope) : {}).sort({ id: -1 }).toArray();
   const equipment = rows.map(({ _id, ...rest }) => rest as unknown as Equipment);
   return NextResponse.json({ ok: true, equipment });
 }
 
 export async function POST(req: Request) {
-  let body: Partial<Equipment>;
+  let body: Partial<Equipment> & Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -32,6 +38,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Jihoz nomini kiriting" }, { status: 400 });
   }
 
+  const extras = equipmentExtras(body);
+  if (extras.error) return NextResponse.json({ ok: false, error: extras.error }, { status: 400 });
+  // Yangi jihoz — navbar filialiga (jihoz jismoniy — aniq bitta binoda turadi).
+  const scope = await getBranchScope();
   const db = await ensureIndexes();
   const col = db.collection("equipment");
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
@@ -45,6 +55,8 @@ export async function POST(req: Request) {
     inventoryCode,
     price: parseFloat(String(body.price ?? "")) || 0,
     createdAt: fmtNow(new Date()),
+    ...extras.set,
+    ...(scope ? { branchId: scope.branchId } : {}),
   };
   await col.insertOne({ ...equipment });
   return NextResponse.json({ ok: true, equipment });

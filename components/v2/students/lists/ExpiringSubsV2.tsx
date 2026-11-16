@@ -37,8 +37,8 @@ import {
   fmtNum,
   fmtPhone,
   matchQuery,
-  useStudentLists,
 } from "./listKit";
+import { useStudentLists } from "./useStudentLists";
 import { toStudentRow } from "./rowAdapters";
 
 // YANGI VERSIYA — O'QUVCHILAR → JORIY OYDA OBUNASI TUGAYDIGANLAR (30-qism, rasm, yorug'/qorong'i).

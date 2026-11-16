@@ -40,6 +40,7 @@ export interface Group {
   startDate?: string;
   endDate?: string;
   studentIds?: number[]; // guruhga qo'shilgan o'quvchilar (pupils.id)
+  capacity?: number | null; // Sig'im (o'rin) — yangi versiya «Yangi guruh» (31-qism); yo'q — xona sig'imi
 }
 
 /**

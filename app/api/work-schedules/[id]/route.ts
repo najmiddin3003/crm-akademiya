@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import type { WorkSchedule } from "@/lib/workSchedules";
+import { scheduleExtras, type WorkSchedule } from "@/lib/workSchedules";
 
 // PATCH /api/work-schedules/:id — ish rejimini tahrirlaydi.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!Number.isFinite(scheduleId)) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
-  let body: Partial<WorkSchedule>;
+  let body: Partial<WorkSchedule> & Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -24,6 +24,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (typeof body.code === "string") set.code = body.code.trim();
   if (typeof body.active === "boolean") set.active = body.active;
+  const extras = scheduleExtras(body);
+  if (extras.error) return NextResponse.json({ ok: false, error: extras.error }, { status: 400 });
+  Object.assign(set, extras.set);
   if (Object.keys(set).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }

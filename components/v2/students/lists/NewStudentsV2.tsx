@@ -39,8 +39,8 @@ import {
   fmtNum,
   fmtPhone,
   matchQuery,
-  useStudentLists,
 } from "./listKit";
+import { useStudentLists } from "./useStudentLists";
 import { toStudentRow } from "./rowAdapters";
 
 // YANGI VERSIYA — O'QUVCHILAR → YANGI O'QUVCHILAR (30-qism, rasm «Yangi o'quvchilar», yorug'/qorong'i).

@@ -973,6 +973,42 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   Server — `GET /api/students/lists` (lib/studentLists.ts; tanlov qoidalari lib/studentListsTypes.ts). Eski ko'rinish —
   `?classic=1`. Rasmdan farqlar — `SAVOLLAR.md` 410–419.
 
+## Guruh va Boshqaruv — Yangi guruh, Barcha vazifalar, Guruh o'quvchilari, Jihozlar, Yangi xodim, Ish jadvallari (31-qism, yorug'/qorong'i, 16.11.2026)
+
+- **Yangi guruh** (o'ngdan panel, 560 px): bo'limlar `caption text-3` sarlavha bilan — Guruh (nomi; Kurs + Daraja;
+  Oylik narx — `surface-2` faqat o'qish maydoni, fan nuqtasi + qalin summa, kurs narxidan; Sig'im «12 o'rin»; Guruh
+  holati Yig'ilmoqda / Aktiv va Ta'lim turi — segmentlar) → Dars jadvali (kunlar — tabletkalar «✓ Toq kunlar», Juft,
+  Hafta kunlari, Boshqa kunlar → 7 kun tugmasi; sarlavha yonida «Du, Ch, Ju»; Boshlanish sanasi · vaqti · Davomiyligi;
+  O'qituvchi + Yordamchi, ostida «… band»; Xona — kartalar: raqam katta, sig'im `caption`, sig'im kam — `warning`,
+  band — o'chiq, tanlangan — `brand-bg` + ✓; ostida izoh «Sig'im 12 ga faqat 205-xona yetadi»; hammasi bo'sh bo'lsa
+  `success-bg` qator «O'qituvchi va xona … da bo'sh · Jadvalda ko'rish») → «+ Qo'shimcha» (uzuq chegara, ochiladi).
+  Pastda chapda «☐ Keyin o'quvchi qo'shish», o'ngda «Bekor qilish» + «✓ Guruhni saqlash».
+- **Barcha vazifalar**: `info-bg` qator + «Tanga qoidalari →»; tablar (tagiga chiziq) Hammasi / Uy vazifasi / Test va
+  imtihon; filtrlar Vazifa nomi, Guruh, O'qituvchi, «Berilgan: oy ×»; jadval Vazifa (qalin + tur belgisi `brand-bg` /
+  `violet-bg` + «berilgan 09.10») · Guruh (fan nuqtasi, o'qituvchi) · Muddat (sana + «muddati o'tdi» `surface-2` /
+  «2 kun qoldi» `info-bg`) · Maks. ball · ⋯. «Vazifa berish» — o'ngdan panel.
+- **Guruh o'quvchilari**: bitta jadval, guruhlar bo'limlarga bo'lingan — `surface-2` sarlavha qatori (fan nuqtasi,
+  qalin nom, «o'qituvchi · kunlar vaqt · xona», holat belgisi, o'ngda 80 px chiziq + «6 / 12 o'rin», kerak bo'lsa
+  `warning` «xonada 8 o'rin»); a'zo qatori: o'quvchi, Qo'shilgan, Holati (Yangi `info` / Faol `success`), Davomat ·
+  joriy oy («2 / 2 dars», kelmagani 0 — `danger`), Balans, «Ko'chirish» + ⋯; pastda izoh.
+- **Jihozlar**: 4 ko'rsatkich bitta kartada (Jami jihoz «91 dona · 10 nom», Umumiy qiymati, Ta'mirda `warning`,
+  Kafolati 30 kunda tugaydi); xonalar tabletkalari, o'ngda Turi / Holati; jadval Jihoz (qalin + «INV · turi») · Xona
+  («5 ta xonada») · Soni · Holati (Ishlayapti `success` / Ta'mirda `warning` + izoh «lampa · 9-oktabrdan») · Qiymati
+  (qalin + «450 000 × 24») · Olingan (sana + manba) · Mas'ul.
+- **Yangi xodim** (o'ngdan panel): Shaxsiy (Ism, Familiya, Telefon «+998» + «Login shu raqam · parol SMS bilan»,
+  Tug'ilgan sana) → Ish (Rol «O'qituvchi · o'z guruhlari», Yo'nalish, Ishga kirgan sana, Ish jadvali, Filiallar —
+  chiplar + «+ Filial qo'shish», o'qituvchiga «Guruhni biriktirish» kartalari) → Oylik (Hisoblash usuli segment, Oklad
+  + «Oktabr: 580 645 · 18/31 kun», Foiz %); pastda «☑ Login berish».
+- **Ish jadvallari**: `info-bg` qator; Faol / Arxiv (kichik segment), qidiruv, Filial, Rol; jadval Jadval (rangli nuqta +
+  qalin + kimlar uchun) · Ish vaqti (qalin + tanaffus) · Ish kunlari (7 ta kun belgisi, ishlaydigani `brand-bg`;
+  «guruh kunlari», «har 3-kunda») · Haftada · Xodimlar (avatarlar + «8 xodim · 3 filialda»); tanlangan qator `brand-bg`
+  + chapda 3 px. Pastda tanlangan jadval: sarlavha + «Xodimlar · 8», «Tahrirlash»; haftalik chiziq 06:00–22:00 (ish vaqti
+  brend, tanaffus `warning-bg`, dam olish kuni yozuvi), o'ngda «Qoidalar» (rangli nuqta + qalin nom + izoh); pastda izoh.
+- Kodda: `components/v2/groups/` — GroupFormDrawerV2, GroupTasksV2, GroupStudentsV2, EquipmentV2;
+  `components/v2/employees/` — EmployeeCreateDrawerV2, WorkSchedulesV2. Server — `GET /api/groups/roster`
+  (lib/groupRoster.ts); yangi maydonlar: `groups.capacity`, jihoz (lib/equipment.ts → equipmentExtras), ish jadvali
+  (lib/workSchedules.ts → scheduleExtras), `login` (lib/hrEmployeeCreate.ts). Rasmdan farqlar — `SAVOLLAR.md` 420–428.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

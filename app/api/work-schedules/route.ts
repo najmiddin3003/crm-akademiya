@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import type { WorkSchedule } from "@/lib/workSchedules";
+import { scheduleExtras, type WorkSchedule } from "@/lib/workSchedules";
 
 // Boshqaruv → Ish jadvali backend'i (MongoDB `work_schedules`). Demo seed
 // YO'Q — jadvallarni foydalanuvchi o'zi qo'shadi.
@@ -13,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  let body: Partial<WorkSchedule>;
+  let body: Partial<WorkSchedule> & Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -25,6 +25,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Nomini kiriting" }, { status: 400 });
   }
 
+  const extras = scheduleExtras(body);
+  if (extras.error) return NextResponse.json({ ok: false, error: extras.error }, { status: 400 });
   const db = await ensureIndexes();
   const col = db.collection("work_schedules");
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
@@ -35,6 +37,7 @@ export async function POST(req: Request) {
     name,
     code: (body.code || "").trim(),
     active: body.active !== false,
+    ...extras.set,
   };
   await col.insertOne({ ...schedule });
   return NextResponse.json({ ok: true, schedule });

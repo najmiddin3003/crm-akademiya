@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import type { Equipment } from "@/lib/equipment";
+import { equipmentExtras, type Equipment } from "@/lib/equipment";
 
 // PATCH /api/equipment/:id — jihozni yangilaydi (Jihozlar → tahrirlash).
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!Number.isFinite(equipmentId)) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
-  let body: Partial<Equipment>;
+  let body: Partial<Equipment> & Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -20,6 +20,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (typeof body.name === "string") set.name = body.name.trim();
   if (typeof body.inventoryCode === "string" && body.inventoryCode.trim()) set.inventoryCode = body.inventoryCode.trim();
   if (body.price !== undefined) set.price = parseFloat(String(body.price)) || 0;
+  const extras = equipmentExtras(body);
+  if (extras.error) return NextResponse.json({ ok: false, error: extras.error }, { status: 400 });
+  Object.assign(set, extras.set);
   if (Object.keys(set).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }

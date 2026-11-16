@@ -29,8 +29,8 @@ import {
   downloadCsv,
   fmtPhone,
   matchQuery,
-  useStudentLists,
 } from "./listKit";
+import { useStudentLists } from "./useStudentLists";
 
 // YANGI VERSIYA — O'QUVCHILAR → O'QUVCHILAR MANZILLARI (30-qism, rasm, yorug'/qorong'i).
 //

@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, CalendarCheck, Download, History, ListFilter, MoreH
 import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
-import GroupFormModal from "@/components/groups/GroupFormModal";
+import GroupFormDrawerV2 from "./GroupFormDrawerV2";
 import { useGroupsList, type GroupsListInitial } from "@/components/groups/useGroupsList";
 import ActionMenu, { type ActionMenuEntry } from "@/components/v2/ui/ActionMenu";
 import ColumnsControl from "@/components/v2/ui/ColumnsControl";
@@ -43,7 +43,7 @@ import { useGroupColumns, type GroupColumnKey, type GroupSortKey } from "./group
 //
 // Ma'lumot, filtr, sanash, import va eksport — eski sahifa bilan BITTA manbadan
 // (components/groups/useGroupsList.ts, lib/groupsList.ts, lib/groupsExport.ts).
-// Guruh qo'shish/tahrirlash oynasi hozircha eski. Taxminlar: SAVOLLAR 42–50.
+// Guruh qo'shish/tahrirlash — o'ngdan panel (./GroupFormDrawerV2.tsx, 31-qism). Taxminlar: SAVOLLAR 42–50.
 
 function fmtNum(n: number): string {
   return n.toLocaleString("ru-RU").replace(/,/g, " ");
@@ -532,8 +532,8 @@ export default function GroupsListV2({ initialGroups, initialFrozenPupils }: Gro
       </div>
 
       {/* Oynalar — hozircha eski ko'rinishda (bo'limma-bo'lim almashadi). */}
-      {(addOpen || addFromUrl) && <GroupFormModal groups={groups} onClose={closeAdd} onSaved={upsert} />}
-      {editFor && <GroupFormModal group={editFor} groups={groups} onClose={() => setEditFor(null)} onSaved={upsert} />}
+      {(addOpen || addFromUrl) && <GroupFormDrawerV2 onClose={closeAdd} onSaved={upsert} />}
+      {editFor && <GroupFormDrawerV2 group={editFor} onClose={() => setEditFor(null)} onSaved={upsert} />}
     </div>
   );
 }

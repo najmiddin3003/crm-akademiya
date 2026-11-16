@@ -36,8 +36,8 @@ import {
   fmtPhone,
   matchQuery,
   todayIso,
-  useStudentLists,
 } from "./listKit";
+import { useStudentLists } from "./useStudentLists";
 
 // YANGI VERSIYA — O'QUVCHILAR → OTA-ONA (30-qism, rasm «Ota-ona», yorug'/qorong'i).
 //

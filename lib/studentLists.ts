@@ -1,6 +1,7 @@
 import type { Db, Document } from "mongodb";
 import { withBranch, withPupilBranch, type BranchScope } from "@/lib/branchScope";
-import { computeDebtors, monthBounds } from "@/lib/debtors";
+import { computeDebtors, isPaidBy, monthBounds, paidMatch, paidOwnerOf } from "@/lib/debtors";
+import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import type { DebtorRow } from "@/lib/debtorsTypes";
 import { monthlyPriceFor, type PricedCourse } from "@/lib/coursePrice";
 import { GROUP_MEMBERSHIPS, isoDateOrNull, type GroupMembership } from "@/lib/groupMembership";
@@ -95,7 +96,7 @@ export async function buildStudentLists(db: Db, scope: BranchScope, asOf: string
   const phonesOf = (p: Pupil) => [p.phone, p.fatherPhone, p.motherPhone].map(d9).filter((x) => x.length === 9);
   const allPhones = [...new Set(pupilDocs.flatMap(phonesOf))];
 
-  const [memberships, leadsOfPupils, referralLeads, botUsers, smsRows] = await Promise.all([
+  const [memberships, leadsOfPupils, referralLeads, botUsers, smsRows, paidRows] = await Promise.all([
     db
       .collection<GroupMembership>(GROUP_MEMBERSHIPS)
       .find({ pupilId: { $in: ids }, groupId: { $in: groups.map((g) => g.id) } }, { projection: { _id: 0, groupId: 1, pupilId: 1, joinedAt: 1, leftAt: 1 } })
@@ -120,7 +121,42 @@ export async function buildStudentLists(db: Db, scope: BranchScope, asOf: string
           .find({ date: { $gte: `${month}-01`, $lte: monthEnd } }, { projection: { _id: 0, phone: 1, date: 1, moderator: 1 } })
           .toArray()
       : Promise.resolve([] as Document[]),
+    // To'lovlar — guruhdan MUSTAQIL (Qarzdorlar hisobi faqat darsi boshlangan guruhlar a'zolarini
+    // qaytaradi: «Yig'ilmoqda» guruhdagi yoki guruhsiz o'quvchining to'lovi u yerda yo'q).
+    db
+      .collection("transaction_entries")
+      .aggregate<{ _id: { pupilId?: unknown; name?: unknown }; total: number; last?: string | null }>([
+        { $match: paidMatch(null, asOf) },
+        {
+          $group: {
+            _id: { pupilId: "$pupilId", name: "$studentName" },
+            total: { $sum: ENTRY_PAID_EXPR },
+            last: { $max: { $cond: [{ $gt: [ENTRY_PAID_EXPR, 0] }, { $ifNull: ["$date", null] }, null] } },
+          },
+        },
+      ])
+      .toArray(),
   ]);
+
+  // O'quvchi → to'langan va oxirgi to'lov (pupilId bo'yicha; eski yozuvlar — ism bo'yicha).
+  const paidById = new Map<number, { total: number; last: string | null }>();
+  const legacyPaid: { owner: { name: string }; total: number; last: string | null }[] = [];
+  const addPaid = (id: number, total: number, last: string | null) => {
+    const cur = paidById.get(id) ?? { total: 0, last: null };
+    cur.total += total;
+    if (last && (!cur.last || last > cur.last)) cur.last = last;
+    paidById.set(id, cur);
+  };
+  for (const r of paidRows) {
+    const owner = paidOwnerOf(r._id?.pupilId, r._id?.name);
+    if (!owner) continue;
+    const last = typeof r.last === "string" && r.last ? r.last.slice(0, 10) : null;
+    if ("pupilId" in owner) addPaid(owner.pupilId, Number(r.total) || 0, last);
+    else legacyPaid.push({ owner, total: Number(r.total) || 0, last });
+  }
+  if (legacyPaid.length) {
+    for (const p of pupilDocs) for (const l of legacyPaid) if (isPaidBy(l.owner, p)) addPaid(p.id, l.total, l.last);
+  }
 
   const debtNow = new Map<number, DebtorRow>(today.rows.map((r) => [r.id, r]));
   const debtEnd = new Map<number, DebtorRow>(atMonthEnd.rows.map((r) => [r.id, r]));
@@ -231,14 +267,15 @@ export async function buildStudentLists(db: Db, scope: BranchScope, asOf: string
       lastGroup: closed[0] ?? null,
       firstJoinedAt,
       fromFirstLesson: firstLesson.has(p.id),
-      paid: now?.paid ?? end?.paid ?? 0,
-      debt: now?.debt ?? 0,
-      debtMonthEnd: end?.debt ?? 0,
+      paid: now?.paid ?? paidById.get(p.id)?.total ?? 0,
+      // Hisobda yo'q (darsi boshlanmagan / guruhsiz) — hisoblangani 0, to'lagani haqdorlik.
+      debt: now?.debt ?? -(paidById.get(p.id)?.total ?? 0),
+      debtMonthEnd: end?.debt ?? -(paidById.get(p.id)?.total ?? 0),
       unpaid: now?.unpaid ?? null,
       monthlyTotal,
       monthState,
       dueDate,
-      lastPaymentDate: now?.lastPayment?.date ?? null,
+      lastPaymentDate: now?.lastPayment?.date ?? paidById.get(p.id)?.last ?? null,
       fatherName: s(p.fatherName),
       fatherPhone: s(p.fatherPhone),
       fatherWork: s(p.fatherWork),

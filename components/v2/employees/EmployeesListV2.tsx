@@ -8,6 +8,7 @@ import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
 import { useToast } from "@/components/ui/Toast";
 import AddEmployeeModal from "@/components/employees/AddEmployeeModal";
+import EmployeeCreateDrawerV2 from "./EmployeeCreateDrawerV2";
 import EmployeeTaxModal from "@/components/employees/EmployeeTaxModal";
 import EmployeePlastikModal from "@/components/employees/EmployeePlastikModal";
 import type { HrEmployeeFull } from "@/components/employees/employeeExtras";
@@ -678,8 +679,8 @@ export default function EmployeesListV2() {
         )}
       </div>
 
-      {/* Oynalar — hozircha eski ko'rinishda (bo'limma-bo'lim almashadi). */}
-      {(addOpen || addFromUrl) && <AddEmployeeModal onClose={closeAdd} onCreated={(emp) => setRows((prev) => [emp, ...prev])} />}
+      {/* «Yangi xodim» — o'ngdan panel (31-qism); tahrirlash va qolgan oynalar hozircha eski ko'rinishda. */}
+      {(addOpen || addFromUrl) && <EmployeeCreateDrawerV2 onClose={closeAdd} onCreated={(emp) => setRows((prev) => [emp as HrEmployeeFull, ...prev])} />}
       {editFor && (
         <AddEmployeeModal
           employee={editFor}

@@ -43,8 +43,8 @@ import {
   matchQuery,
   monthName,
   monthRange,
-  useStudentLists,
 } from "./listKit";
+import { useStudentLists } from "./useStudentLists";
 import { toStudentRow } from "./rowAdapters";
 
 // YANGI VERSIYA — O'QUVCHILAR → AKTIV O'QUVCHILAR (30-qism, rasm «Aktiv o'quvchilar», yorug'/qorong'i).

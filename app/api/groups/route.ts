@@ -131,6 +131,9 @@ export async function POST(req: Request) {
     endDate: input.endDate || "",
   };
   if (input.assistant) group.assistant = input.assistant;
+  // Sig'im (yangi versiya, 31-qism) — 1..500 butun son; boshqasi e'tiborsiz.
+  const cap = Math.floor(Number((body as { capacity?: unknown }).capacity));
+  if (Number.isFinite(cap) && cap >= 1 && cap <= 500) group.capacity = cap;
   await col.insertOne({ ...group, branchId });
   return NextResponse.json({ ok: true, group });
 }

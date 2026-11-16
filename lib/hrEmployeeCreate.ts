@@ -60,7 +60,17 @@ function pickExtras(body: HrEmployeeExtra): Required<HrEmployeeExtra> {
   };
 }
 
-export type CreateEmployeeBody = Partial<HrEmployee> & HrEmployeeExtra & { branchIds?: unknown; payrollBranchId?: unknown };
+export type CreateEmployeeBody = Partial<HrEmployee> &
+  HrEmployeeExtra & {
+    branchIds?: unknown;
+    payrollBranchId?: unknown;
+    /**
+     * «Login berish» (yangi versiya «Yangi xodim», 31-qism). `false` — kirish hisobi (`users`) va
+     * faollashtirish SMS'i YARATILMAYDI: xodim «Login hisoblari»da «yo'q» holatida turadi, keyin
+     * Boshqaruv → Rollar → «Login berish» bilan beriladi (Excel importidagi kabi). Berilmasa — true.
+     */
+    login?: boolean;
+  };
 
 export type CreateEmployeeResult =
   | { ok: true; employee: HrEmployee & HrEmployeeExtra; smsSent: boolean; smsSimulated: boolean }
@@ -197,6 +207,8 @@ export async function createHrEmployee(
     return { ok: false, error: "Ishdan ketgan sana ishga kirgan sanadan oldin bo'lishi mumkin emas", status: 400 };
   }
   await col.insertOne({ ...employee });
+
+  if (body.login === false) return { ok: true, employee, smsSent: false, smsSimulated: false };
 
   // DIQQAT: bu HAQIQIY lahza — `createdAt` va taklif muddati shundan
   // hisoblanadi. `uzNow()` (siljitilgan sana) bo'lmasligi kerak, aks holda

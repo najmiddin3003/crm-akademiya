@@ -36,8 +36,8 @@ import {
   fmtPhone,
   matchQuery,
   monthRange,
-  useStudentLists,
 } from "./listKit";
+import { useStudentLists } from "./useStudentLists";
 
 // YANGI VERSIYA — O'QUVCHILAR → ARXIV O'QUVCHILAR (30-qism, rasm «Arxiv o'quvchilar», yorug'/qorong'i).
 //

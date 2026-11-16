@@ -24,7 +24,7 @@ import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import AddStudentModal from "@/components/groups/AddStudentModal";
-import GroupFormModal from "@/components/groups/GroupFormModal";
+import GroupFormDrawerV2 from "@/components/v2/groups/GroupFormDrawerV2";
 import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import V2Confirm from "@/components/v2/form/V2Confirm";
 import { fmtSum, initialsOf } from "@/components/v2/employees/employeeBits";
@@ -382,7 +382,7 @@ export default function GroupDetailV2({ id, initialTab }: { id: number; initialT
         />
       )}
       {editOpen && (
-        <GroupFormModal
+        <GroupFormDrawerV2
           group={g}
           onClose={() => setEditOpen(false)}
           onSaved={() => {

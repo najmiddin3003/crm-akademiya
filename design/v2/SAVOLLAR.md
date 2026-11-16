@@ -2335,6 +2335,62 @@ o'quvchi» bo'yicha: shu o'quvchi tavsiya qilgan lidlar va ulardan o'quvchiga ay
 Rasmlarda Aktiv va Arxivda «Yana filtrlar» bor, ichi ko'rinmaydi — Aktivda o'rniga «O'qituvchi» chip'i, Arxivda Kurs.
 Pastki qator — rasmdagidek «10 qator» (10/25/50/100). Sanalar o'zbekcha («14-oktabr») — interfeys ingliz tilida ham.
 
+### 31-qism — Yangi guruh, Barcha vazifalar, Guruh o'quvchilari, Jihozlar, Yangi xodim, Ish jadvallari (16.11.2026)
+
+Olti ekran yorug' va qorong'i rasmlari bo'yicha. Eski ko'rinish — `?classic=1` (oynalar — eski sahifalarda eskicha).
+Yo'l-yo'lakay 30-qism xatosi tuzatildi: «Yig'ilmoqda» guruhdagi (yoki guruhsiz) o'quvchining to'lovi O'quvchilar
+bo'limi ro'yxatlarida ko'rinmasdi — to'lagan o'quvchi «Yangi» va «0 so'm» chiqardi.
+
+**420. Vazifa topshirildi / tekshirildi — tizimda yo'q** — QAROR KERAK
+Rasmda «Topshirdi 4/6», «Tekshirildi», «Tekshirilmagan» tabi, «Muddati o'tib topshirmaganlar» paneli va «Dars jurnalida
+yozilgan uy vazifasi shu yerga o'zi tushadi». Bazada vazifa bor (nomi, turi, muddati, maks. ball), lekin o'quvchi uni
+topshirgani va ball yozilmaydi; darsdagi «uy vazifasi ✓/✗» (Tanga berish) vazifaga bog'lanmagan. Shu sabab bu ustun va
+panellar chizilmadi. Qurilsinmi: o'qituvchi har vazifa uchun o'quvchilarga «topshirdi / ball» qo'yadi (guruh
+sahifasida), shu yerda progress, ota-onaga SMS — topshirmaganlarga?
+
+**421. Vazifa turlari** — taxmin
+Bazadagi turlar: Vazifa, Test, Imtihon, Loyiha, Manba. Rasmda ikkita — «Uy vazifasi» (= Vazifa) va «Test». Tab «Test va
+imtihon» — Test + Imtihon. Yangi vazifa — o'ngdan panel (rasm yo'q).
+
+**422. Jihozlar — yangi maydonlar va kassa** — taxmin
+Turi, xona(lar), soni, holat (Ishlayapti / Ta'mirda / Ishlamaydi + izoh, qachondan), olingan sana va qayerdan, mas'ul,
+kafolat tugashi, filial — yangi maydonlar (eski 3 maydon — nom, inventar kodi, narx — o'zgarmagan). Eski yozuvlarda
+bo'sh: xona «—», soni 1, holat Ishlayapti. Rasmdagi «kassadagi «Xo'jalik va jihozlar» chiqimidan bir bosishda» va «har yili
+1-sentabrda inventarizatsiya eslatmasi» yo'q — kerakmi? Yangi sahifa faqat joriy filial jihozlarini ko'rsatadi (filiali
+yo'q eski yozuv — 1-filial).
+
+**423. Ish jadvali va kechikish** — QAROR KERAK
+Jadval hozircha shablon: xodimga biriktiriladi, lekin kechikish undan EMAS — o'qituvchida birinchi darsiga, boshqalarda
+xodim kartasidagi ish vaqtiga qarab o'lchanadi. Yangi xodim panelida jadval tanlansa, uning vaqti xodimning ish vaqti
+bo'ladi. Jadval vaqti o'zgarganda biriktirilgan xodimlarning ish vaqti ham o'zgarsinmi (va tanaffus, dam olish kunlari
+hisobga olinsinmi)? «Erta ketish» qoidasi ham yo'q — kerakmi?
+
+**424. Guruh — oylik narx va sig'im** — taxmin
+Oylik narx guruhda saqlanmaydi — kurs/daraja narxidan (Sozlamalar → Kurslar) ko'rsatiladi, tanlab o'zgartirilmaydi
+(rasmdagi «320 000 so'm · 1/2-bosqich» tanlovi o'rniga). Guruhga alohida narx kerakmi? Sig'im — yangi maydon
+(`capacity`); kiritilmagan guruhda xona sig'imi olinadi. Holat — yangi guruhda Yig'ilmoqda / Aktiv (tahrirda Muzlatilgan
+ham). «Har kuni» o'rniga «Hafta kunlari» (Du–Ju) — mavjud qiymat; dam olish kunisiz «har kuni» kerak bo'lsa «Boshqa
+kunlar»dan.
+
+**425. Guruh o'quvchilari — «Guruhga qo'shish» va holat** — taxmin
+«Guruhga qo'shish» — oyna: guruh, o'quvchi, qaysi kundan (rasm yo'q). Holat: «Yangi» — O'quvchilar bo'limi qoidasi (410),
+qolganlari «Faol». «Davomat · joriy oy» — shu oyda davomat qilingan darslar (o'quvchi qo'shilgandan keyin) va kelgani.
+«Qo'shilgandan beri kelmagan» — oxirgi ~6 oy davomati bo'yicha.
+
+**426. Yangi xodim — maydonlar** — taxmin
+Rasmdagi maydonlar bilan: jinsi ism oxiridan (…a — ayol) taxmin qilinadi, xodim kartasida tuzatiladi; email, foto,
+izoh, daraja/bandlik, maxsus maydonlar — xodim kartasida (eski oyna). Oklad — birinchi tanlangan filialning ish haqi
+qatori (Ishga olish oynasidagi kabi). «Guruhni biriktirish» — tanlangan guruhning o'qituvchisi yangi xodimga almashadi
+(rasmdagi «To'qnashuv yo'qoladi …» matni o'rniga «O'qituvchi X → Y ga almashadi»). Xodimni tahrirlash — hozircha eski oyna.
+
+**427. «Login berish» o'chiq** — taxmin
+Kirish hisobi va SMS yaratilmaydi; xodim «Rollar → Login hisoblari»da «yo'q» holatida, login keyin o'sha yerdan
+beriladi (Excel importidagi kabi).
+
+**428. Ish jadvallari — filial va xodimlar** — taxmin
+Jadvallar hamma filial uchun umumiy; xodimlar — ko'rinadigan filial(lar) xodimlari (xodim — `branchAssignments[].scheduleId`).
+Biriktirilgan xodimi bor jadval o'chirilmaydi (arxivga olinadi). Sidebar'dagi nom «Ish jadvali» — rasmda «Ish jadvallari».
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
