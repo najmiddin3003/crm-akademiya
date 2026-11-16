@@ -191,7 +191,7 @@ export const IMPLEMENTED_ROUTES = new Set([
   // Imtihon (Oylik imtihon | UzBMB — ikkalasi ham /imtihon, tab `?tab=` da)
   "/imtihon",
   // Moliya
-  "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll",
+  "/finance-cash", "/finance-handover", "/finance-bonus", "/finance-penalty", "/finance-payroll",
   "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow",
   "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract",
   "/finance-sync",

@@ -188,6 +188,8 @@ export const SIDEBAR_ITEMS = [
           title: "Amallar",
           items: [
             { label: "Kassalar", href: "/finance-cash", medium: true, primary: true },
+            // Yangi versiya (32-qism): filial kassalari pulni rahbar kassasiga topshiradi.
+            { label: "Kunlik topshiruv", href: "/finance-handover" },
             { label: "Bonus", href: "/finance-bonus" },
             { label: "Jarima", href: "/finance-penalty" },
             { label: "Oylik chiqarish", href: "/finance-payroll" },

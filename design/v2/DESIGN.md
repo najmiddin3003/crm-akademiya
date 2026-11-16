@@ -1009,6 +1009,27 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   (lib/groupRoster.ts); yangi maydonlar: `groups.capacity`, jihoz (lib/equipment.ts → equipmentExtras), ish jadvali
   (lib/workSchedules.ts → scheduleExtras), `login` (lib/hrEmployeeCreate.ts). Rasmdan farqlar — `SAVOLLAR.md` 420–428.
 
+## Moliya — Kunlik topshiruv (32-qism, rasmlar «Kunlik topshiruv», «Qabul qilish oynasi», yorug'/qorong'i, 16.11.2026)
+
+- **Sahifa** (`/finance-handover`, yon menyuda Moliya → Kassalar ostida): sarlavha + «bugun, 16-noyabr | 18:00», o'ngda
+  «Hisobot» (CSV); `info-bg` qator (ko'chirma — kirim emas, farqqa izoh majburiy).
+- **Kartalar** «Bugun topshirilishi kerak» (o'ngda «3 kassa · 1 970 000 so'm»): avatar + kassa nomi + egasi; holat belgisi —
+  Tasdiq kutilmoqda `info` (karta chegarasi `brand`), N kun topshirilmagan / Hali topshirmagan `warning`, Bugun
+  topshirgan `neutral`, Topshirilgan (kassa bo'sh) `success`; katta summa + «so'm kassada» / «so'm topshirildi»; usullar (nuqta + qalin summa,
+  naqd birinchi); pastda «Oxirgi topshiruv: sana | vaqt · farq»; tugmalar «Qabul qilish» + «🔔 Eslatish» yoki kassir
+  jo'natgan bo'lsa «✓ Tasdiqlash» + «Qaytarish».
+- **Oy jadvali** «Noyabrdagi topshiruvlar»: Kassa / Oy tanlovlari (`V2Select` «value»); ustunlar Sana · Kassa (qalin +
+  egasi) · Naqd · Plastik · Jami (qalin) · Farq (`danger`) · Qabul qildi · Holat (belgi + izoh); «Jami» qatori `surface-2`,
+  Jami summa `brand`, o'ngda «Kassalar → Rahbar kassasi ko'chirmalari bilan bir xil». Ostida 3 ta izoh (ikonka + matn).
+- **Qabul oynasi** (markazda, 520 px): tizim bo'yicha (naqd / plastik / jami) `surface-2` qutida; «Naqd pulni sanash» —
+  8 ta kupyura qatori (200 000 … 1 000), − / son / + va qator jami; plastik maydoni + «☐ Kartamga tushganini tekshirdim»;
+  farq qatori (`success-bg` «Farq yo'q» / `danger-bg` «Farq −260 000»), farq bo'lsa izoh majburiy; pastda ko'chirma
+  izohi, «Bekor qilish» + «Qabul qilish · summa». Qaytarish — kichik oyna, sabab majburiy.
+- Kodda: `components/v2/finance/DailyHandoverV2.tsx` (ikkala versiyada shu sahifa — eski versiyada bu sahifa yo'q edi);
+  server `lib/dailyHandover.ts` (+ `lib/dailyHandoverTypes.ts` — klient uchun), `GET/POST /api/cashboxes/daily`.
+  Ko'chirma — mavjud `applyCashboxTransferTo` / `decideTransferAs`; yozuv — `cash_handovers` (kupyuralar, farq, izoh,
+  kim qabul qildi). Rasmdan farqlar — `SAVOLLAR.md` 429–433.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

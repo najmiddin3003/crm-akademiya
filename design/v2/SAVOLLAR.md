@@ -2391,6 +2391,34 @@ beriladi (Excel importidagi kabi).
 Jadvallar hamma filial uchun umumiy; xodimlar — ko'rinadigan filial(lar) xodimlari (xodim — `branchAssignments[].scheduleId`).
 Biriktirilgan xodimi bor jadval o'chirilmaydi (arxivga olinadi). Sidebar'dagi nom «Ish jadvali» — rasmda «Ish jadvallari».
 
+### 32-qism — Moliya: Kunlik topshiruv, Moliyaviy reja, Shartnomalar, Integratsiyalar, Oylik chiqarish (16.11.2026)
+
+Qism bo'laklarga bo'lib qilinmoqda; birinchisi — Kunlik topshiruv (yangi sahifa `/finance-handover`).
+
+**429. Kassir telefonidagi ko'rinish qurilmadi** — taxmin
+Rasmdagi «Kassir · mobil» ekrani (kassir o'zi sanab «Topshirish» bosadi) alohida qurilmadi: kassir hozirgidek Kassalar
+sahifasidan (yoki xodimlar botidan) rahbar kassasiga ko'chirma jo'natadi — u shu sahifada «Tasdiq kutilmoqda» bo'lib
+chiqadi va rahbar «Tasdiqlash» / «Qaytarish» bosadi. Kassir jo'natmasa, rahbar «Qabul qilish» bilan o'zi sanab oladi
+(ko'chirma shu zahoti yoziladi va tasdiqlanadi). Kassirga alohida mobil ekran kerakmi?
+
+**430. «Eslatish» — qo'lda** — QAROR KERAK
+«Eslatish» kassa egasiga xodimlar botida xabar yuboradi (bot ulanmagan bo'lsa — xato chiqadi). Avtomatik eslatma
+(masalan, har kuni 19:00 da topshirmaganlarga) qilinmadi — kerakmi va soat nechada?
+
+**431. Qisman topshirish — qolgan pul kassada qoladi** — taxmin
+Rahbar sanagan summa tizimdagidan kam bo'lsa — sanalgani ko'chiriladi, farq izoh bilan tarixda qoladi, qolgan pul
+tizimda filial kassasida turaveradi (keyingi kartada ko'rinadi). Sanalgan summa tizimdagidan KO'P bo'lsa — qabul
+qilinmaydi (kassada bunday pul yo'q). Kamomad avtomatik jarimaga yozilmaydi — rahbar Moliya → Jarima'dan qo'lda.
+
+**432. Boshqa to'lov turlari** — taxmin
+Topshiruvga faqat naqd va plastik kiradi (rasmdagidek). Click/Payme/bank o'tkazmasi kabi turlar filial kassasida qoladi
+— oynada «bu topshiruvga kirmaydi» deb yoziladi. Ular ham topshirilishi kerakmi?
+
+**433. Kim ko'radi va «N kun topshirilmagan»** — taxmin
+Sahifani admin va rahbar (asosiy) kassa egasi ochadi; ruxsat — «Kassalar» bilan bir qatorda. Kartalar — asosiy bo'lmagan,
+arxivlanmagan kassalar. «N kun topshirilmagan» — oxirgi qabuldan beri o'tgan kun (kassada pul bo'lsa); umuman
+topshirmagan kassa — «Hali topshirmagan».
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

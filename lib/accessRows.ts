@@ -56,7 +56,7 @@ const FINANCE_SPLIT: { key: string; label: string; hint: string; paths: string[]
     key: "finance-cash",
     label: "Moliya · Kassalar",
     hint: "kirim, chiqim, ko'chirish, tranzaksiyalar",
-    paths: ["/finance-cash", "/finance-cashflow", "/finance-transactions", "/finance-tx-types", "/finance-planned", "/finance-fin-contract", "/finance-sync"],
+    paths: ["/finance-cash", "/finance-handover", "/finance-cashflow", "/finance-transactions", "/finance-tx-types", "/finance-planned", "/finance-fin-contract", "/finance-sync"],
   },
   { key: "finance-payroll", label: "Moliya · Oylik", hint: "oylik, avans, bonus, jarima", paths: ["/finance-payroll", "/finance-bonus", "/finance-penalty"] },
   {
