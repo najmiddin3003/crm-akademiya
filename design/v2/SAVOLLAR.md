@@ -2272,6 +2272,69 @@ To'lov joyi qatori Sozlamalar → Filiallar'dagi manzil va telefondan olinadi; h
 telefon bo'sh (qator telefonsiz chiqadi). Shuningdek guruh #162 tugash sanasi boshlanish sanasiga teng (02.09.2026) —
 4 o'quvchining hisobi 0; sanani tuzatish kerak.
 
+### 30-qism — O'quvchilar bo'limi: Yangi, Aktiv, Arxiv, Obunasi tugaydiganlar, Ota-ona, Manzillar (16.11.2026)
+
+Olti sahifa yorug' va qorong'i rasmlari bo'yicha. Hammasi bitta yig'ma javobdan (`GET /api/students/lists`) — pul qoidasi
+Qarzdorlar hisoboti bilan bir xil. Eski ko'rinish — `?classic=1`.
+
+**410. «Yangi o'quvchi» kim?** — taxmin (36-savol bilan)
+Bazada «Yangi» holati yo'q. Rasm: «guruhga qo'shilgan, birinchi oy to'lovi hali to'liq emas; birinchi oy to'liq to'langach
+avtomatik Aktivga o'tadi». *Taxmin:* holati Aktiv, hozir guruhda o'qiyotgan, birinchi a'zoligi so'nggi 62 kun ichida
+boshlangan va to'langani hali guruh(lar)ning bir oylik narxiga yetmagan. Shu shart bajarilmay qolishi bilan o'quvchi o'zi
+«Aktiv o'quvchilar»ga o'tadi (holat bazada o'zgartirilmaydi). Eski «Yangi o'quvchilar» (Yangi holatidagi LIDLAR) —
+`?classic=1`. «birinchi darsdan / to'g'ridan» — o'quvchiga bog'langan lid kartasida birinchi dars yozilgan-yozilmagani.
+
+**411. To'lov kuni — qayerdan?** — taxmin (394-savol bilan)
+Rasmdagi «To'lov kuni · 15-okt», «Obuna tugaydi 14-oktabr» uchun bazada alohida maydon yo'q. *Taxmin:* o'quvchi kartasidagi
+«To'lov sanasi» (`paymentDate`) kuni, u bo'lmasa birinchi guruhga qo'shilgan kuni (masalan 17-sentabrda kelgan — har oy
+17-si). Joriy oy holati: oy oxirigacha hisob yopilgan — «To'langan»; o'tgan oydan qarz — «Qarzdor · N oy»; faqat joriy
+oy ochiq — to'lov kuni kelmagan bo'lsa «To'lov kuni · sana», o'tgan bo'lsa «Qarzdor · oy». Guruhga (yoki filialga) to'lov
+kuni maydoni qo'shilsa — o'sha olinadi.
+
+**412. Balans — dars bo'yicha hisob** — QAROR KERAK (396-savol bilan)
+Balans = to'langan − bugungacha o'tgan darslar narxi (Qarzdorlar hisobi). Oy boshida to'lagan o'quvchi oy o'rtasida
+«+138 459 so'm» haqdor bo'lib ko'rinadi (oyning qolgan darslari hali o'tmagan); rasmda esa to'laganlar «0 so'm». Rasmdagi
+mantiq — obuna: to'lagan kuni butun oy hisoblanadi. Qaysi biri? (a) dars bo'yicha qolsin — kassa va hisobot bilan bir
+xil; (b) obuna bo'yicha — to'lov kunidan keyingi to'lov kunigacha bitta oylik.
+
+**413. «Keyingi to'lov»** — taxmin
+Rasmdagidek: guruh(lar)ning oylik narxi − balansdagi ortiqcha («300 000 − 40 000 balansda»). Ortiqcha — 412-savoldagi dars
+bo'yicha hisobdan, shu sabab oy o'rtasida ko'pincha «… balansda» chiqadi. Narx kiritilmagan guruhda — joriy oyni yopish
+uchun kerak summa.
+
+**414. Avtomatik SMS eslatma yo'q** — QAROR KERAK
+Rasm: «Avtomatik eslatma yoqilgan: obuna tugashidan 3 kun oldin ota-onaga SMS ketadi (18-qismdagi «To'lov eslatmasi»
+shabloni)». Tizimda bunday avtomatika yo'q — bor narsa: o'quvchilar botiga ulangan ota-onaga oyning 25-kuni va oxirgi kuni
+Telegram eslatmasi (`STUDENT_BOT_PUSH_ENABLED`). Qatorda shu yozildi, SMS — qo'lda (bitta yoki belgilanganlarga birdaniga).
+«Eslatma» ustuni — shu oyda o'quvchi yoki ota-ona raqamiga ketgan oxirgi SMS (SMS jurnali); «avtomatik» — tizim yuborgani,
+«qo'lda · kim» — xodim. Avtomatik SMS kerakmi (pullik, Eskiz shabloni tasdiqlanishi kerak)?
+
+**415. Ota-ona kabineti** — taxmin
+«Kirgan» — o'quvchilar botida shu o'quvchiga ota-ona sifatida bog'langan odam bor (sana — bog'langan kun). «Taklif ketdi /
+Taklif · sana» — Ota-ona sahifasidagi «Kabinetga taklif» SMS'i yuborilgan (`pupils.parentInvitedAt`, yangi maydon).
+O'quvchi o'zi kirgani hisobga olinmaydi. Taklif matni tahrirlanadi; {link} — botning havolasi (bot sozlanmagan bo'lsa —
+bo'sh, oynada ogohlantirish). Eskiz tasdiqlamagan matn yuborilmasligi mumkin — shablon kerak.
+
+**416. Manzil maydonlari** — taxmin
+Rasmdagi Mahalla, Mo'ljal, Turi (Doimiy / Ijara) bazada yo'q edi — o'quvchi kartasiga uchta yangi maydon qo'shildi
+(`mahalla`, `addressLandmark`, `housing`), «Manzil qo'shish» oynasidan yoziladi. Manzil matni — avvalgi «Uy manzili».
+Rasmdagi «Chortoqdan tashqaridan 9» uchun shahar/tuman maydoni yo'q — o'rniga «Mahallasi noma'lum». Mahalla erkin matn
+(bor mahallalar tavsiya); ro'yxatini Sozlamalarda yuritish kerakmi? Profil sahifasida bu maydonlar hali ko'rinmaydi.
+
+**417. Arxiv — «oldingi holati», «arxivdan qaytganlar»** — ochiq
+Rasmda sabab ostida «oldingi holati: Aktiv / Yangi» va xulosada «2026-yilda arxivdan qaytganlar 3». Holat tarixi bazada
+saqlanmaydi (faqat oxirgi holat va sanasi) — ikkalasi chizilmadi, xulosada o'rniga «Jami arxivda». Sabab — erkin matn:
+birinchi « — » gacha sabab, qolgani izoh (chiplar shu sabab bo'yicha). Holat tarixini yozishni boshlaymizmi?
+
+**418. «Taklif qilgani» va «… orqali»** — taxmin
+Referal kodi hali yo'q (Referallar moduli — keyingi qism). «5 kishi · 3 tasi to'ladi» — lid kartasidagi «Referal bergan
+o'quvchi» bo'yicha: shu o'quvchi tavsiya qilgan lidlar va ulardan o'quvchiga aylanib to'lov qilganlari. Yangi o'quvchilardagi
+«DIYORA27 orqali» o'rniga tavsiya qilganning ismi.
+
+**419. «Yana filtrlar» va sahifa o'lchami** — taxmin
+Rasmlarda Aktiv va Arxivda «Yana filtrlar» bor, ichi ko'rinmaydi — Aktivda o'rniga «O'qituvchi» chip'i, Arxivda Kurs.
+Pastki qator — rasmdagidek «10 qator» (10/25/50/100). Sanalar o'zbekcha («14-oktabr») — interfeys ingliz tilida ham.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

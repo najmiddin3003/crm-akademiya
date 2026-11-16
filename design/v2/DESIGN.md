@@ -931,6 +931,48 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   lib/reportStudents.ts, lib/reportAttendance.ts, lib/reportScope.ts, lib/debtors.ts (`unpaid`, `lastPayment`,
   `parentPhone`). Rasmdan farqlar — `SAVOLLAR.md` 221–233.
 
+## O'quvchilar bo'limi — 6 ta ro'yxat (30-qism, rasmlar «Yangi / Aktiv / Arxiv o'quvchilar», «Joriy oyda obunasi tugaydiganlar», «Ota-ona», «O'quvchilar manzillari», yorug'/qorong'i, 16.11.2026)
+
+Hammasi «Sahifa qolipi — ro'yxat» ustida: sarlavha + izoh «filial · …», o'ngda Export (+ asosiy amal); filtr qatori
+(qidiruv → chip'lar → o'ngda «Ustunlar»); xulosa «N ta … • … • …»; jadval (belgilash, bosh harflar doirasi + qalin ism +
+telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Rasmdagi «Namuna» — dizayner izohi, interfeysda yo'q.
+
+- **Umumiy qismlar**: holat «tabletkalari» (h 32, `rounded-full`, tanlangani `brand-bg` + brend chegara + brend matn, son
+  `text-3`) — Aktiv va Ota-onada; guruh katagi — fan nuqtasi + «Kurs · bosqich», ostida o'qituvchi `small text-3`
+  (+«+1 guruh»); holat belgilari (`rounded-full`, nuqta + matn): `success-bg` «To'langan», «Kirgan · 11-okt»; `danger-bg`
+  «Qarzdor · 2 oy»; `info-bg` «Taklif ketdi» / «Taklif · 3-okt»; `surface-2` «To'lov kuni · 15-okt», «Kirmagan».
+- **Yangi o'quvchilar**: tepada `info-bg` qator (ⓘ + matn, o'ngda «Birinchi darsga yozilganlar →»); filtrlar Kurs, Guruh,
+  Birinchi to'lov; xulosa «N ta yangi o'quvchi • Birinchi to'lov kutilmoqda … so'm • Ota-ona kabinetida N tasi»; ustunlar
+  Guruh · Qo'shilgan (sana + «birinchi darsdan / to'g'ridan») · Birinchi oy to'lovi («160 000 / 320 000» + 6 px brend
+  progress) · Ota-ona kabineti · Manba (+ brend «… orqali»); qatorda «To'lov» + ⋯.
+- **Aktiv o'quvchilar**: tabletkalar Hammasi / «{Oy} to'langan» / Qarzdor / To'lov kuni kelmagan; asosiy amal «To'lov
+  qabul qilish»; ustunlar Guruh · {joriy oy} (belgi) · Balans (o'ngda, «+80 000 so'm» yashil, «−640 000 so'm» qizil) ·
+  Oxirgi to'lov · Taklif qilgani («5 kishi» qalin + «3 tasi to'ladi»).
+- **Arxiv o'quvchilar**: tepada `surface-2` blok «Ketish sabablari · davr» — sabab chiplari (oq, chegara, son qalin;
+  bosilsa jadval shu sabab bilan) + «Hisobotda ko'rish →»; filtr «Arxivlangan: davr ×» (sukut oxirgi 2 oy), Kurs;
+  ustunlar Oxirgi guruh · Arxivlangan · O'qidi («2 oy», «2 hafta») · Sabab (sabab + izoh `text-3`) · Balans; qatorda
+  «↺ Qaytarish» + ⋯; pastda izoh.
+- **Obunasi tugaydiganlar**: `surface-2` qator (soat ikonkasi + avtomatik eslatma matni + «Sozlash»); filtrlar Kurs,
+  Eslatma; ism ostida «ota-ona: telefon»; Obuna tugaydi («14-oktabr» + kichik belgi «2 kun» — 3 kungacha `warning-bg`);
+  Keyingi to'lov (qalin, ostida «300 000 − 40 000 balansda»); Eslatma («Yuborildi · 11-okt» + «avtomatik / qo'lda · kim»
+  yoki «Yuborilmagan»); qatorda 💬 + «To'lov». Belgilansa jadval tepasida `brand-bg` qator: «N ta tanlandi», «Bekor
+  qilish», «✈ Eslatma yuborish · N SMS» → SMS oynasi.
+- **Ota-ona**: asosiy amal «✈ Kabinetga taklif · N»; tabletkalar Hammasi / Kabinetga kirgan / Taklif yuborilgan / Kirmagan;
+  filtrlar Qarindoshligi, Balans; xulosa «N ta ota-ona • N ta farzand • N oilada 2 va undan ko'p farzand»; ustunlar Kim ·
+  Farzandlari (har farzand — fan nuqtasi + qalin ism, ostida guruh) · Ish joyi · Umumiy balans · Kabinet; qatorda 📞 💬 ⋯.
+- **O'quvchilar manzillari**: tepada ikki blok — chapda «Mahallalar bo'yicha» (eng ko'p 5 ta: nom · 8 px brend chiziq ·
+  «24 · 20%»; ostida «Yana N ta mahalla — N», «Mahalla kiritilmagan — N»), o'ngda 300 px uch qatorli karta (Manzil
+  kiritilgan «112 / 118», Ijara uyda yashaydi, Mahallasi noma'lum + «Reklama natijasi →»); ustunlar Mahalla (qalin;
+  bo'lmasa «Kiritilmagan» `text-3`) · Manzil (bo'lmasa brend «+ Manzil qo'shish») · Mo'ljal · Turi · Manba; manzilsiz
+  qator `surface-2`.
+- **Oynalar** (rasm yo'q, «Formalar» qoidasi): «To'lov eslatmasi» / «Kabinetga taklif» — kimlarga ro'yxati (raqami yo'q —
+  qizil), shablon, matn ({name} {amount} {date} {link}), namuna; «Manzil qo'shish» — Mahalla, Manzil, Mo'ljal, Turi
+  (Doimiy / Ijara segment).
+- Kodda: `components/v2/students/lists/` — listKit (ma'lumot hook'i, qolip, kataklar, belgilar), NewStudentsV2,
+  ActiveStudentsV2, ArchiveStudentsV2, ExpiringSubsV2, ParentsV2, StudentAddressesV2, BulkSmsDialogV2, AddressDialogV2.
+  Server — `GET /api/students/lists` (lib/studentLists.ts; tanlov qoidalari lib/studentListsTypes.ts). Eski ko'rinish —
+  `?classic=1`. Rasmdan farqlar — `SAVOLLAR.md` 410–419.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

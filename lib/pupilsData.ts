@@ -79,6 +79,14 @@ export interface Pupil {
   motherWork?: string;
   /** Uy manzili. */
   address?: string;
+  /** Mahalla (O'quvchilar manzillari, yangi versiya 30-qism). */
+  mahalla?: string;
+  /** Mo'ljal («21-maktab yonida»). */
+  addressLandmark?: string;
+  /** Yashash turi: "Doimiy" | "Ijara". */
+  housing?: string;
+  /** Ota-onaga kabinet (o'quvchilar boti) taklifi yuborilgan kun ("YYYY-MM-DD"). */
+  parentInvitedAt?: string;
   /** O'qish joyi (maktab/litsey). */
   studyPlace?: string;
   note?: string;

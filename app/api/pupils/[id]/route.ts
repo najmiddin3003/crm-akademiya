@@ -21,6 +21,10 @@ const EDITABLE = [
   "targetUniversity", "fatherName", "fatherPhone", "fatherWork",
   "motherName", "motherPhone", "motherWork", "address", "studyPlace", "note",
   "moderator", "source",
+  // O'quvchilar manzillari (yangi versiya, 30-qism) — «Manzil qo'shish» oynasi.
+  "mahalla", "addressLandmark", "housing",
+  // Ota-ona → «Kabinetga taklif» yuborilgan kun ("YYYY-MM-DD").
+  "parentInvitedAt",
 ] as const;
 
 /**
@@ -94,6 +98,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const set: Record<string, unknown> = {};
   for (const key of EDITABLE) {
     if (key in body) set[key] = typeof body[key] === "string" ? (body[key] as string).trim() : body[key];
+  }
+
+  if ("parentInvitedAt" in set && set.parentInvitedAt !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(String(set.parentInvitedAt))) {
+    return NextResponse.json({ ok: false, error: "Sana YYYY-MM-DD ko'rinishida bo'lsin" }, { status: 400 });
+  }
+  if ("housing" in set && !["", "Doimiy", "Ijara"].includes(String(set.housing))) {
+    return NextResponse.json({ ok: false, error: "Yashash turi: Doimiy yoki Ijara" }, { status: 400 });
   }
 
   if (Number.isFinite(Number(body.debtLimit))) set.debtLimit = Number(body.debtLimit);
