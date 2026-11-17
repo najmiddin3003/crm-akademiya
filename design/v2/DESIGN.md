@@ -1030,6 +1030,52 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   Ko'chirma — mavjud `applyCashboxTransferTo` / `decideTransferAs`; yozuv — `cash_handovers` (kupyuralar, farq, izoh,
   kim qabul qildi). Rasmdan farqlar — `SAVOLLAR.md` 429–433.
 
+## Gamifikatsiya — Tanga berish, Reyting, Hamyonlar, Guruhlar musobaqasi, Do'kon, Sozlamalar, Tangalarim (33-qism, yorug'/qorong'i, 17.11.2026)
+
+- **Tanga berish** (`/gamification-lesson`, `?groupId=`): sarlavha + «Bugungi dars · sana, hafta kuni · vaqt · xona · ustoz»,
+  o'ngda guruh tanlovi va «🏆 Guruh reytingi». Uch bo'lakli karta: Davomat · avtomatik (belgilar «N keldi · +5» `success`,
+  «N kelmadi · −10» `danger`, «N sababli · 0», belgilanmagan — `warning`; «Davomatga o'tish»), Darsdagi faollik · guruhga
+  («26 / 30 tanga», «qoldi 4» `warning`, chiziq), Bugun guruhga («+104», «+124 berildi · −20 ayirildi»). Sarhisob kartasi
+  (`info-bg` ikonka, chegaralar tabletkalari, muddat). Jadval: O'quvchi (🔥 N dars · ● balans), Davomat, Uy vazifasi
+  (✓ +5 `success` / ✗ −5 `danger`), Faollik +1…+5 (tanlangani `brand` to'la; limitdan oshadigani o'chiq), «± Sabab» + sabab
+  chiplari + «ayirildi N / 20», Sarhisob o'tgan → joriy, Bugun; pastda «Qoidalar». Har amaldan keyin pastda qora qator
+  «Ism · amal · ±N» + «↶ Ortga · 8» (soniya sanog'i). ≤1024 px — o'quvchi kartalari (✓ ✗, «− Faollik +3 +», ±).
+- **Sabab bo'yicha tanga** (oyna, telefonda pastdan): Balans va «Bugun qo'lda ayirildi N / 20» kartalari, «+ Berish / − Ayirish»
+  segment, sabablar — radio kartalar (tanlangani `brand` chegara + `brand-bg`; limit tugagani o'chiq + sababi `warning`),
+  oraliqli sababda miqdor qadamchasi, izoh, `info-bg` oqibat qatori; tugma «N tanga ayirish / berish».
+- **Reyting · guruh ichida** (`?groupId=`): «Oktabr | Jami» segment, guruh, «Ekranga chiqarish» (`primary`). Uchlik `surface-2`
+  ichida (2 · 1 · 3, birinchisi `brand-bg` + `brand` chegara, 👑 `warning-bg`), daraja belgisi, «89 reyting tangasi», «bugun +35 ·
+  balans ● 412». Jadval: O'rin (1–3 rangli doira), Daraja (`LevelBadge`: raqam doirada; 1 — neytral, 2 — `success`, 3 — `info`,
+  4 — `violet`, 5 — `warning`), Reyting tangasi (chiziq + son), Bugun, Balans, O'quvchilarga («👁 Top-5» / «faqat o'ziga»); top-5
+  dan keyin `surface-2` ajratgich qator. O'ngda: «Qanday hisoblanadi», «Sentabr yakuni» (uchlik), «Guruhlar musobaqasida · N-o'rin».
+- **Hamyonlar** (yon menyuda «O'quvchilar» o'rniga): 5 ko'rsatkich kartasi (oxirgisi — darajalar chizig'i), Hammasi / Faol /
+  Muzlatilgan tabletkalari, qidiruv, Toifa / Daraja / Guruh chiplari; jadval O'quvchi (toifa · sinf), Guruh(lar) (fan nuqtasi),
+  Daraja, Oy (+N), Jami topilgan, Balans, Holat (Faol `success` / Muzlatilgan `info` + «8-oktabrdan · arxivda»), ›.
+- **O'quvchi hamyoni** (o'ngdan panel, 620 px): Balans (`warning-bg`), Daraja (chiziq, ««Bilimdon»gacha 288»), Uzluksiz davomat;
+  «± Sabab bo'yicha tanga», «Do'st olib keldi», «🎁 Sovg'a berish»; Guruhlar jadvali; Nishonlar 5 ustunli to'r (olinmagani uzuq
+  chegara, kulrang); Istaklari (♥, «Tanga yetadi», «Berish»); Tanga tarixi (filtr tabletkalari) va «O'quvchi havolasi va Telegram».
+- **Guruhlar musobaqasi**: filial tablari, oy; peshqadam banneri `brand-bg` (🏆, guruh, «o'rtacha tanga», «Oy tugashiga N kun»,
+  «● G'olib o'quvchilariga +30 tangadan» `warning-bg`); jadval (o'rtacha — chiziq, 1-o'rin `warning`), kam o'quvchili guruh
+  `surface-2` qatorda «Qatnashmaydi · 5 tadan kam»; o'ngda «Qanday hisoblanadi», o'tgan oy g'olibi (👑), boshqa filiallar.
+- **Do'kon**: «Sovg'alar» (sukut) | «So'rovlar». Byudjet kartasi (filiallar ustunlari, chiziq, «Cheklanmagan» `warning`), toifa
+  segmenti + ombor, kartalar (tepasi `brand-bg` / chegirma `violet-bg` / tugagan `surface-2`; tur va ♥N belgilari, narx, toifa,
+  ombor qatori — kam `warning`, tugagan `danger`), «Berish» + ✎; pastda «O'quvchilar istaklari» (ism chiplari `success-bg`) va
+  «Oyda berilganlar». **Sovg'a berish** oynasi: sovg'a kartasi, qidiruv + «♥ Istak qilganlar · N», radio ro'yxat («Tanga yetadi»
+  `success-bg`, «Yetmaydi · 241 / 250» neytral), `info-bg` oqibat qutisi (balans, daraja, byudjet, ombor).
+- **Sozlamalar → Tanga tizimi**: modul kartasi (almashtirgich), Cheklovlar (qator: nom + izoh, o'ngda 80 px maydon + birlik),
+  Toifalar va chegirma (`violet-bg` chegirma kartasi), Guruhlar musobaqasi («Taklif» `violet` belgi), Darajalar (nom, chegara,
+  «Hozir · N faol hamyon»; o'zgargan qator `brand-bg`, «27 → 58 o'quvchi · chegara 300 edi»), Doimiy qoidalar (`surface-2`);
+  o'zgarish bo'lsa pastda yopishqoq qator «● N ta o'zgarish saqlanmagan · …» + «Bekor qilish» / «O'zgarishni saqlash».
+- **Sozlamalar → Tanga sabablari**: `info-bg` 🔒 izoh; bitta jadval, guruh qatorlari «● Tanga beriladi N ta sabab» / «● Tanga
+  ayiriladi · N tasi to'xtatilgan»; Sabab (🔒 tizim, «izoh majburiy» `warning-bg`), Tanga (`success` / `danger`), Kim beradi,
+  Cheklov, Faol (almashtirgich), ✎ va 🗑 (tizimda o'chiq).
+- **O'quvchi kabineti → Tangalarim** (telefon): Balansim (`warning-bg`, 44 px son, «Do'kon — sovg'alar»), Darajam / Ketma-ket
+  kartalari, «Reyting · Top-5» (guruh segmenti, «siz» qatori `brand-bg`), Nishonlarim (gorizontal aylanadi), Istaklarim.
+- Kodda: `components/v2/gamification/` — LessonV2 (+ ReasonDialogV2, lessonTypes), RankingGroupV2, levelBits (LevelBadge,
+  CoinDot), WalletsV2 + WalletDrawerV2, CompetitionV2, ShopV2 → ShopBoardV2 + GiveDialogV2; `components/v2/settings/` —
+  CoinSystemV2, CoinRulesV2 (yangilandi); `components/student-web/v2/TangaTab.tsx`. `PageShell flow` — bir nechta bo'limli
+  sahifa o'zi aylanadi; `V2Dialog` `footer` ixtiyoriy. Rasmdan farqlar — `SAVOLLAR.md` 434–444.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

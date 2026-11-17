@@ -2419,6 +2419,61 @@ Sahifani admin va rahbar (asosiy) kassa egasi ochadi; ruxsat — «Kassalar» bi
 arxivlanmagan kassalar. «N kun topshirilmagan» — oxirgi qabuldan beri o'tgan kun (kassada pul bo'lsa); umuman
 topshirmagan kassa — «Hali topshirmagan».
 
+### 33-qism — Gamifikatsiya: Tanga berish, Reyting, Hamyonlar, Guruhlar musobaqasi, Do'kon, Sozlamalar, Tangalarim (17.11.2026)
+
+13 ta ekran (yorug' va qorong'i). Gamifikatsiya moduli tizimda bor edi (TZ v1.4) — yangi dizayn mavjud server ustiga
+qurildi; eski ko'rinish — `?classic=1`. 32-qismning qolgan bo'laklari (Moliyaviy reja, Shartnomalar, Integratsiyalar,
+Oylik chiqarish) to'xtatib turildi — keyin davom etadi.
+
+**434. Faollik — bitta qiymat** — taxmin
+Rasmdagidek +1…+5 dan BITTASI tanlanadi, qayta bosish — olib tashlaydi. Serverda faollik qo'shiladigan yozuv: kattaroq
+qiymat tanlansa farq qo'shiladi, kichigi tanlansa avvalgi yozuv(lar) qaytarilib yangisi yoziladi. Boshqa xodim yozgan
+faollikni faqat o'sha xodim yoki direktor o'zgartiradi. Guruh limitidan oshadigan tugma o'chiq.
+
+**435. «Ortga» — 8 soniya** — taxmin
+Tanga berish sahifasida pastdagi qora qator 8 soniya turadi va sanaydi (umumiy bildirishnomalar 5 soniya). Uy vazifasi
+qaytarilsa avvalgi belgi tiklanadi.
+
+**436. Reyting — endi guruh ichida** — taxmin
+Yangi versiyada «Reyting» guruh bo'yicha (rasmdagidek). 11-qismdagi filial bo'yicha umumiy ro'yxat yo'qolmadi —
+`?scope=branch` (o'ng ustunda havola). «Ekranga chiqarish» — avvalgi proyektor ko'rinishi.
+
+**437. «O'quvchilar» → «Hamyonlar»** — taxmin
+Yon menyuda nom o'zgardi (ikkala versiyada). Paneldagi «Sovg'a berish» — Do'konga o'tadi (sovg'a tanlanadi); istakdagi
+«Berish» — shu o'quvchi bilan berish oynasi. Telegram bog'lanishini uzish va havolani qayta yaratish — eski oynada
+(`?classic=1` → o'quvchi).
+
+**438. Musobaqa — g'olibga tanga va «kamida N o'quvchi»** — QAROR KERAK
+Ikkalasi tizimda yo'q edi — yangi sozlama bo'lib qo'shildi (Sozlamalar → Tanga tizimi): «G'olib guruhning har bir
+o'quvchisiga» (sukut **0** — yozilmaydi) va «Qatnashish — kamida» (sukut **1** — cheklovsiz). Ya'ni hozircha avvalgidek
+ishlaydi. Rasmdagi 30 tanga va 5 o'quvchini yoqaylikmi? Tanga oy yakunida (1-sanadagi tunda) guruhsiz yozuv bo'lib
+tushadi — keyingi oy reytingiga kirmaydi; teng 1-o'rinli guruhlarning hammasiga.
+
+**439. Darajani pasaytirish** — QAROR KERAK
+Rasmda «Keyin chegarani oshirsangiz, erishganlar o'z darajasida qoladi — daraja hech qachon pasaymaydi». Hozirgi server
+chegara o'zgarganda hamyondagi darajani qayta hisoblaydi — chegara OSHIRILSA ba'zilar pastroq darajada ko'rinadi (nishon
+qoladi). Rasmdagidek qilish kerakmi (daraja — erishilgan eng yuqorisi)?
+
+**440. Do'kon — «So'rovlar» saqlandi** — taxmin
+Rasmda faqat sovg'alar ko'rinishi; o'quvchi kabinetidan so'rov yuborish (11-qism) ishlab turibdi, shu sabab «So'rovlar»
+tabi qoldi, «Sovg'alar» — birinchi va sukut. To'lovga chegirmani berish — eski oyna (kurs tanlanadi). Oyna sarlavhasida
+admin ismi yo'q (filial va vaqt bor).
+
+**441. Sovg'a byudjeti — eski sahifada** — taxmin
+Sozlamalar → Gamifikatsiya → «Sovg'a byudjeti» eski tabga olib boradi (rasm yo'q).
+
+**442. Kabinet — Tangalarim** — taxmin
+Rasmdagi ko'rinish — yangi; «Do'kon — sovg'alar», «+ Istak qo'shish», «hammasi» — avvalgi to'liq ko'rinish (do'kon, tarix,
+istak qo'shish), «← Tangalarim» bilan qaytiladi.
+
+**443. Tanga sabablari — «Kim beradi» matni** — taxmin
+Tizim sabablarida tizimdagi matn («Avto · Davomat bo'limi», «Ustoz · ✓ tugmasi»), rasmdagi qisqa variant emas. «Darsga
+tayyorlanmay keldi» — bazadagi to'liq nomi bilan («(daftar, kitob yo'q)»).
+
+**444. Telefon ko'rinishi (ustoz)** — taxmin
+«Tanga berish (ustoz) · Telefon» alohida sahifa emas — o'sha sahifa telefonda kartalarga o'tadi; pastki menyu — mavjud
+xodim qobig'i.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
