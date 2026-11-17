@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, ClipboardList, Minus, X } from "lucid
 import { useT } from "@/components/shared/Language";
 import type { CabinetGroup, CabinetLesson } from "@/lib/studentCabinetTypes";
 import { Bar, Card, CardHead, Empty, FanDot, Pill, addDays, initials, timeRange, useCabinetFmt, weekdayOf, type CabinetTabProps } from "./bits";
+import LessonRatingCard from "./LessonRatingCard";
 import {
   MARK_CELL,
   MARK_DOT,
@@ -38,7 +39,7 @@ function useDaysText() {
   };
 }
 
-export default function DarslarTab({ me, cab }: CabinetTabProps) {
+export default function DarslarTab({ me, cab, initData }: CabinetTabProps) {
   const { t } = useT();
   const groups = cab.groups;
   const perWeek = groups.reduce((s, g) => s + (g.status === "gathering" ? 0 : g.weekdays.length), 0);
@@ -56,6 +57,8 @@ export default function DarslarTab({ me, cab }: CabinetTabProps) {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Telefonda tartib: hafta → davomat → vazifalar → guruhlar; kengda guruhlar chapda. */}
         <div className="flex min-w-0 flex-col gap-4">
+          {/* 34-qism: kelgan darsni baholash va «Oxirgi baholarim». */}
+          <LessonRatingCard cab={cab} initData={initData} />
           <WeekCard me={me} cab={cab} />
           <div className="hidden lg:block">
             <GroupsCard groups={groups} />
