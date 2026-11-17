@@ -252,6 +252,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/sms-templates/[id]": ["/sales-sms"],
   "/api/stories": ["/sales-stories"],
   "/api/stories/[id]": ["/sales-stories"],
+  "/api/student-contracts": ["/finance-fin-contract"],
   "/api/student-reports": ["/management-xodimlar", "/reports-cancelled", "/reports-cancelled-attend", "/reports-diff-payments", "/reports-discounts", "/reports-leave-reasons"],
   "/api/student-sources": ["/sales-sources"],
   "/api/student-sources/options": ["/imtihon", "/orders-list", "/sales-sources", "/students-list"],

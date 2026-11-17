@@ -212,7 +212,7 @@ export const SIDEBAR_ITEMS = [
             { label: "Tranzaksiya turi", href: "/finance-tx-types" },
             { label: "Tranzakisyalar", href: "/finance-transactions" },
             { label: "Rejalashtirilgan xarajatlar", href: "/finance-planned" },
-            { label: "Shartnoma", href: "/finance-fin-contract" },
+            { label: "Shartnomalar", href: "/finance-fin-contract" },
             { label: "Sinxronizatsiya", href: "/finance-sync" },
           ],
         },
