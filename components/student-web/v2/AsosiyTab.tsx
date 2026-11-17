@@ -19,6 +19,7 @@ import {
   type CabinetTabProps,
   type Tone,
 } from "./bits";
+import { NewsFeed, StoriesStrip } from "./CabinetFeed";
 
 // ASOSIY TAB (28-qism, rasmlar 55–56) — kunning qisqa manzarasi: keyingi dars,
 // shu hafta, guruhlar; o'ngda pul, davomat, tanga va so'nggi natija.
@@ -540,7 +541,7 @@ function ResultCard({ cab, go }: { cab: StudentCabinet; go: CabinetTabProps["go"
 
 // ── Tab ──────────────────────────────────────────────────────────────
 
-export default function AsosiyTab({ me, cab, go }: CabinetTabProps) {
+export default function AsosiyTab({ me, cab, go, initData }: CabinetTabProps) {
   const { t } = useT();
   const fmt = useCabinetFmt();
   const parent = me.profile.role === "parent";
@@ -562,6 +563,8 @@ export default function AsosiyTab({ me, cab, go }: CabinetTabProps) {
         </p>
       </div>
 
+      <StoriesStrip items={me.feed?.stories ?? []} initData={initData} />
+
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)] lg:items-start">
         <div className="flex flex-col gap-4 max-lg:contents">
           <div className="max-lg:order-1">
@@ -573,6 +576,11 @@ export default function AsosiyTab({ me, cab, go }: CabinetTabProps) {
           <div className="max-lg:order-7">
             <GroupsCard cab={cab} />
           </div>
+          {me.feed?.news.length ? (
+            <div className="max-lg:order-8">
+              <NewsFeed items={me.feed.news} initData={initData} today={cab.today} />
+            </div>
+          ) : null}
         </div>
         <div className="flex flex-col gap-4 max-lg:contents">
           <div className="max-lg:order-2">

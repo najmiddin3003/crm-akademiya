@@ -1,3 +1,4 @@
+import type { CabinetFeedItem } from "@/lib/cabinetNewsTypes";
 import type { AttendanceMark } from "@/lib/attendance";
 import type { MonthlyExam, UzbmbExam } from "@/lib/imtihon";
 import type { PaymentRow } from "@/lib/studentBot/data";
@@ -63,4 +64,6 @@ export interface StudentMe {
    * eski kabinet unga tayanmaydi va baribir ochiladi.
    */
   cabinet: StudentCabinet | null;
+  /** Yangiliklar va hikoyalar (36-qism, lib/cabinetNews.ts) — shu o'quvchi/ota-onaga mo'ljallanganlari. */
+  feed?: { news: CabinetFeedItem[]; stories: CabinetFeedItem[] };
 }

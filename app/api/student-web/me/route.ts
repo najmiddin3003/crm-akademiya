@@ -18,6 +18,7 @@ import { dueFor } from "@/lib/studentBot/dues";
 import { authStudentWeb } from "@/lib/studentBot/webapp";
 import { studentCoinSummary } from "@/lib/gamification/studentPage";
 import { buildStudentCabinet } from "@/lib/studentCabinet";
+import { cabinetFeed } from "@/lib/cabinetNews";
 
 // O'QUVCHI WEB SAHIFASINING YAGONA MA'LUMOT MANBAI.
 //
@@ -80,6 +81,11 @@ export async function POST(req: Request) {
   const game = await studentCoinSummary(db, pupil.id).catch(() => null);
   const next = nextLesson(groups);
   const link = user.links.find((l) => l.pupilId === pupil.id);
+  // Yangiliklar va hikoyalar (36-qism) — xato bersa kabinet baribir ochiladi.
+  const feed = await cabinetFeed(db, pupil.id, Number((pupil as { branchId?: number }).branchId) || 1, link?.role === "parent" ? "parent" : "student").catch((e) => {
+    console.error("[student-web] feed", e);
+    return { news: [], stories: [] };
+  });
 
   return NextResponse.json({
     ok: true,
@@ -133,5 +139,6 @@ export async function POST(req: Request) {
     due,
     addresses: pupil.addresses ?? [],
     cabinet,
+    feed,
   });
 }

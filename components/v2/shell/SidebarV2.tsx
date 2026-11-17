@@ -29,7 +29,7 @@ import {
 import { branchPool, collapseBranchPools } from "@/lib/branchPools";
 import { isPathAllowed } from "@/lib/permissions";
 import { BetaBadge } from "./DevNotice";
-import { HOME_KEY, V2_BOTTOM_KEYS, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_HREFS, V2_ITEM_LABELS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
+import { HOME_KEY, V2_BOTTOM_KEYS, V2_EXTRA_ITEMS, V2_ICONS, V2_HIDDEN_ITEMS, V2_ITEM_HREFS, V2_ITEM_LABELS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
 import { usePopover } from "./usePopover";
 
 // YANGI VERSIYA YON MENYUSI (design/v2/DESIGN.md → «Navigatsiya — yon menyu»).
@@ -123,6 +123,7 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
   const V2_COUNT_KEYS: Record<string, string> = { firstLessons: "firstLessonsWaiting" };
 
   const renderSubItem = (it: SidebarMenuItem, key: string) => {
+    if (V2_HIDDEN_ITEMS.has(it.href)) return null;
     const locked = isLockedRoute(it.href);
     const href = V2_ITEM_HREFS[it.href] ?? it.href;
     const active = isActive(href);

@@ -55,6 +55,7 @@ const PUBLIC = [
   // yozuvidan topiladi (lib/studentBot/webapp.ts). Marshrut faqat O'QIYDI.
   "/api/student-web/me",
   "/api/student-web/rating",
+  "/api/student-web/seen",
   // GAMIFIKATSIYA — O'QUVCHI SAHIFASI (TZ 5.8). Chaqiruvchi — o'quvchi yoki
   // ota-onasi, CRM sessiyasi yo'q. Himoya: shaxsiy havoladagi tasodifiy token
   // (43 belgi, faqat shu o'quvchi, faqat istak qo'shish) yoki Mini App'da

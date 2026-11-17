@@ -96,6 +96,12 @@ export const V2_ITEM_LABELS: Record<string, string> = {
  * eski hisobotlar — yangi katalogdagi hisobotga. Ruxsat va qulf eski manzil bo'yicha tekshiriladi
  * (yangi hisobot ham o'sha ruxsat bilan ochiladi — lib/reportsCatalog.ts). Eski versiya menyusi o'zgarmaydi.
  */
+/**
+ * Yangi versiyada menyuda ko'rsatilmaydigan bandlar (36-qism, 17.11.2026): «Hikoya» — «Yangiliklar va
+ * hikoyalar» sahifasiga qo'shilgan (/sales-stories manzili ham o'sha sahifani ochadi).
+ */
+export const V2_HIDDEN_ITEMS = new Set(["/sales-stories"]);
+
 export const V2_ITEM_HREFS: Record<string, string> = {
   "/reports-funnel": "/reports/sotuv-voronkasi",
   "/reports-leave-reasons": "/reports/ketish-sabablari",
