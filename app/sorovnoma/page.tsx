@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import "@fontsource-variable/manrope/wght.css";
 import "@fontsource-variable/ibm-plex-sans/wght.css";
 import SurveyPage from "@/components/leads/SurveyPage";
+import { findActiveLink } from "@/lib/campaignLinks";
 import { ensureIndexes } from "@/lib/mongodb";
 import { loadSurveyConfig } from "@/lib/surveyServer";
 import { loadSurveyOpen } from "@/lib/surveyOpen";
@@ -29,20 +30,37 @@ import "./sorovnoma.css";
 
 export const metadata: Metadata = {
   title: `${CENTER_NAME} — Bepul sinov darsi`,
-  description: "Fanlar, chet tillari va Prezident maktabiga tayyorlov — bepul sinov darsiga 1 daqiqada yoziling.",
+  description:
+    "Fanlar, chet tillari va Prezident maktabiga tayyorlov — bepul sinov darsiga 1 daqiqada yoziling.",
   ...(IS_AKADEMIYA ? { icons: { icon: "/sorovnoma/favicon.png" } } : {}),
 };
 
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>;
+}) {
   await connection();
   const db = await ensureIndexes();
-  const [loaded, open] = await Promise.all([loadSurveyConfig(db), loadSurveyOpen(db)]);
+  const { c } = await searchParams;
+  const [loaded, open, link] = await Promise.all([
+    loadSurveyConfig(db),
+    loadSurveyOpen(db),
+    c ? findActiveLink(db, c) : null,
+  ]);
+  // Kampaniya havolasi (`?c=KOD`, 36-qism) — manba havoladan olinadi, «Bizni qayerdan bildingiz?» so'ralmaydi.
+  const campaign =
+    link && loaded.manbalar.includes(link.source)
+      ? { code: link.code, source: link.source }
+      : link
+        ? { code: link.code, source: "" }
+        : null;
   // «Sahifa ochiq» o'chirilgan (lib/surveyOpen.ts) — yo'nalishsiz konfiguratsiya:
   // SurveyPage o'zining «So'rovnoma vaqtincha yopiq» holatini ko'rsatadi.
   const config = open ? loaded : { ...loaded, yonalishlar: [] };
   return (
     <div className="srv">
-      <SurveyPage config={config} />
+      <SurveyPage config={config} campaign={campaign} />
     </div>
   );
 }

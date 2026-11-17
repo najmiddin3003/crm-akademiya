@@ -282,6 +282,7 @@ export const SIDEBAR_ITEMS = [
         { label: "Marketing", href: "/sales-marketing", icon: "i-trending-up", medium: true },
         { label: "O'quvchilar oqimi", href: "/sales-sources", icon: "i-bar-chart" },
         { label: "Savdo plani", href: "/sales-plan", icon: "i-bar-chart" },
+        { label: "Kampaniya havolalari", href: "/sales-campaigns", icon: "i-megaphone" },
         { label: "Yangiliklar", href: "/sales-news", icon: "i-file-plus" },
         { label: "Hikoya", href: "/sales-stories", icon: "i-book" },
         { label: "SMS shablonlari", href: "/sales-sms", icon: "i-monitor" },

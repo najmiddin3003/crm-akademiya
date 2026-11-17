@@ -52,7 +52,7 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/s
 // (01.11.2026). Havolasi Imtihon → Sarhisob'dagi tugmadan; ma'lumot sahifa
 // bilan serverda keladi (lib/publicResults.ts — ochiq API yo'q), telefonlar
 // serverda yashiriladi.
-const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me", "/xodim", "/natijalar"];
+const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/s", "/me", "/xodim", "/natijalar"];
 
 /** Ekran qulflangan bo'lsa ham ishlashi kerak bo'lgan API'lar. */
 const LOCKED_ALLOWED_API = new Set([

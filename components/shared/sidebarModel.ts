@@ -202,7 +202,7 @@ export const IMPLEMENTED_ROUTES = new Set([
   // Boshqaruv
   "/management-xodimlar", "/management-cv", "/management-rollar", "/management-filiallar", "/management-ish-jadvali",
   // Sotuv va marketing
-  "/sales-marketing", "/sales-sources", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages", "/sales-referrals",
+  "/sales-marketing", "/sales-sources", "/sales-plan", "/sales-campaigns", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages", "/sales-referrals",
   // Hisobotlar (finance-*/nazorat-* takrorlari yuqorida bor)
   "/reports-funnel", "/reports-balance", "/reports-unpaid", "/reports-diff-payments", "/reports-cancelled", "/reports-discounts",
   "/reports-teachers-perf", "/reports-admins-perf", "/reports-leave-reasons", "/reports-rooms", "/reports-served", "/reports-cancelled-attend",

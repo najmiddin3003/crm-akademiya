@@ -1,14 +1,32 @@
 "use client";
 import { CENTER_LOGO, CENTER_NAME } from "@/lib/center";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { Loader2, Moon, Sun } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
 import { LANGS, type Lang } from "@/lib/i18n";
-import { darajaInfo, hasDaraja, type LeadFan, type LeadYonalish } from "@/lib/leadSettings";
+import {
+  darajaInfo,
+  hasDaraja,
+  type LeadFan,
+  type LeadYonalish,
+} from "@/lib/leadSettings";
 import { LANGS as LANG_LABELS } from "@/lib/navbar";
-import { maskSurveyPhone, phone9, type SurveyConfig, type SurveySubmission } from "@/lib/survey";
+import {
+  maskSurveyPhone,
+  phone9,
+  type SurveyConfig,
+  type SurveySubmission,
+} from "@/lib/survey";
 import { SurveyIcon, hasFlag } from "./surveyIcons";
 
 // OMMAVIY SO'ROVNOMA — «Bepul sinov darsiga yoziling» (/sorovnoma).
@@ -41,7 +59,23 @@ function splitLabel(v: string): [string, string] {
   return [v, ""];
 }
 
-function Opt({ on, icon, title, sub, tel, onClick, fallback }: { on: boolean; icon: string; title: string; sub?: string; tel?: string; onClick: () => void; fallback?: string }) {
+function Opt({
+  on,
+  icon,
+  title,
+  sub,
+  tel,
+  onClick,
+  fallback,
+}: {
+  on: boolean;
+  icon: string;
+  title: string;
+  sub?: string;
+  tel?: string;
+  onClick: () => void;
+  fallback?: string;
+}) {
   return (
     <button type="button" className="opt" aria-pressed={on} onClick={onClick}>
       <span className={`oi ${hasFlag(icon) ? "f" : ""}`}>
@@ -62,7 +96,17 @@ function Opt({ on, icon, title, sub, tel, onClick, fallback }: { on: boolean; ic
   );
 }
 
-function QHead({ badge, badgeCls = "", eyebrow, title }: { badge: string; badgeCls?: string; eyebrow: string; title: string }) {
+function QHead({
+  badge,
+  badgeCls = "",
+  eyebrow,
+  title,
+}: {
+  badge: string;
+  badgeCls?: string;
+  eyebrow: string;
+  title: string;
+}) {
   return (
     <div className="qhead">
       <span className={`qbadge ${badgeCls}`}>
@@ -76,23 +120,67 @@ function QHead({ badge, badgeCls = "", eyebrow, title }: { badge: string; badgeC
   );
 }
 
-function DirArt({ id, salom, fade }: { id: string; salom: string; fade: boolean }): ReactNode {
+function DirArt({
+  id,
+  salom,
+  fade,
+}: {
+  id: string;
+  salom: string;
+  fade: boolean;
+}): ReactNode {
   if (id === "fan") {
     return (
       <svg viewBox="0 0 120 90" aria-hidden="true">
         <g className="orbit" fill="none" stroke="#150e7a" strokeWidth="3">
           <ellipse cx="60" cy="45" rx="36" ry="12" />
-          <ellipse cx="60" cy="45" rx="36" ry="12" transform="rotate(60 60 45)" />
-          <ellipse cx="60" cy="45" rx="36" ry="12" transform="rotate(120 60 45)" />
+          <ellipse
+            cx="60"
+            cy="45"
+            rx="36"
+            ry="12"
+            transform="rotate(60 60 45)"
+          />
+          <ellipse
+            cx="60"
+            cy="45"
+            rx="36"
+            ry="12"
+            transform="rotate(120 60 45)"
+          />
         </g>
         <circle className="core" cx="60" cy="45" r="6" fill="#291ddb" />
-        <text className="floaty sym-1" x="4" y="20" fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
+        <text
+          className="floaty sym-1"
+          x="4"
+          y="20"
+          fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif"
+          fontWeight="800"
+          fontSize="17"
+          fill="#150e7a"
+        >
           x²
         </text>
-        <text className="floaty f2 sym-2" x="100" y="18" fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif" fontWeight="800" fontSize="18" fill="#291ddb">
+        <text
+          className="floaty f2 sym-2"
+          x="100"
+          y="18"
+          fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif"
+          fontWeight="800"
+          fontSize="18"
+          fill="#291ddb"
+        >
           π
         </text>
-        <text className="floaty f3 sym-1" x="98" y="86" fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
+        <text
+          className="floaty f3 sym-1"
+          x="98"
+          y="86"
+          fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif"
+          fontWeight="800"
+          fontSize="17"
+          fill="#150e7a"
+        >
           ∑
         </text>
       </svg>
@@ -108,8 +196,19 @@ function DirArt({ id, salom, fade }: { id: string; salom: string; fade: boolean 
   }
   return (
     <svg viewBox="0 0 120 90" aria-hidden="true">
-      <path className="star" d="M60 5l3.5 7.6 8.3.9-6.2 5.6 1.8 8.2L60 23.1l-7.4 4.2 1.8-8.2-6.2-5.6 8.3-.9z" fill="#ffd400" />
-      <g className="bld" fill="none" stroke="#fff" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
+      <path
+        className="star"
+        d="M60 5l3.5 7.6 8.3.9-6.2 5.6 1.8 8.2L60 23.1l-7.4 4.2 1.8-8.2-6.2-5.6 8.3-.9z"
+        fill="#ffd400"
+      />
+      <g
+        className="bld"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="3"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      >
         <path d="M26 44L60 31l34 13z" />
         <path d="M30 48h60" />
         <path d="M37 52v24M51 52v24M69 52v24M83 52v24" />
@@ -152,7 +251,10 @@ function groupFans(fanlar: LeadFan[]): { nom: string; items: LeadFan[] }[] {
   return out;
 }
 
-const smooth = () => (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth") as ScrollBehavior;
+const smooth = () =>
+  (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth") as ScrollBehavior;
 
 /** Sahifa ochilgandan beri o'tgan vaqt (ms) — faqat hodisa ichida chaqiriladi. */
 const clockMs = () => performance.now();
@@ -161,9 +263,16 @@ const clockMs = () => performance.now();
 const THUMB_HALF = 13;
 
 /** Shkala foizi (0–100) → tugma markazining CSS joyi. */
-const tickLeft = (pct: number) => `calc(${THUMB_HALF}px + (100% - ${THUMB_HALF * 2}px) * ${pct / 100})`;
+const tickLeft = (pct: number) =>
+  `calc(${THUMB_HALF}px + (100% - ${THUMB_HALF * 2}px) * ${pct / 100})`;
 
-export default function SurveyPage({ config }: { config: SurveyConfig }) {
+export default function SurveyPage({
+  config,
+  campaign = null,
+}: {
+  config: SurveyConfig;
+  campaign?: { code: string; source: string } | null;
+}) {
   const { t } = useT();
   const [lang, setLang] = useLang();
   const [isDark, toggleTheme] = useTheme();
@@ -177,7 +286,7 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
   const [vaqt, setVaqt] = useState<string | null>(null);
   const [ism, setIsm] = useState("");
   const [tel, setTel] = useState("+998 ");
-  const [manba, setManba] = useState<string | null>(null);
+  const [manba, setManba] = useState<string | null>(campaign?.source || null);
   const [izoh, setIzoh] = useState("");
   const [website, setWebsite] = useState("");
   const [step, setStep] = useState<Step>(1);
@@ -223,17 +332,25 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
     if (!dragRef.current) return;
     dragRef.current = false;
     setDragging(false);
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId))
+      e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  const yon: LeadYonalish | null = cfg.yonalishlar.find((y) => y.id === yonId) ?? null;
+  const yon: LeadYonalish | null =
+    cfg.yonalishlar.find((y) => y.id === yonId) ?? null;
   const daraja = yon ? hasDaraja(yon.id) : false;
   const branch = cfg.filiallar.find((b) => b.id === filial) ?? null;
   const steps = cfg.bosqichlar;
   const stepPct = 100 / Math.max(1, steps.length - 1);
   const info = darajaInfo({ lvl, test }, steps);
   const nearIdx = Math.round(lvl / stepPct);
-  const cities = useMemo(() => [...new Set(cfg.filiallar.map((b) => b.shahar).filter(Boolean))].join(" · "), [cfg.filiallar]);
+  const cities = useMemo(
+    () =>
+      [...new Set(cfg.filiallar.map((b) => b.shahar).filter(Boolean))].join(
+        " · ",
+      ),
+    [cfg.filiallar],
+  );
 
   // To'ldirish vaqti sanog'i — sahifa ochilgan lahzadan (spamdan himoya).
   useEffect(() => {
@@ -258,7 +375,10 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
     };
   }, []);
 
-  const scrollCard = () => requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: smooth(), block: "start" }));
+  const scrollCard = () =>
+    requestAnimationFrame(() =>
+      cardRef.current?.scrollIntoView({ behavior: smooth(), block: "start" }),
+    );
 
   const pickYon = (id: string) => {
     const first = yonId === null;
@@ -277,7 +397,8 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
     // Keyingi savol (daraja/sinf) ekrandan pastda qolsa — unga suriladi.
     requestAnimationFrame(() => {
       const el = nextRef.current;
-      if (el && el.getBoundingClientRect().top > window.innerHeight - 120) el.scrollIntoView({ behavior: smooth(), block: "center" });
+      if (el && el.getBoundingClientRect().top > window.innerHeight - 120)
+        el.scrollIntoView({ behavior: smooth(), block: "center" });
     });
   };
 
@@ -298,10 +419,13 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
   };
 
   const submit = async () => {
-    if (ism.trim().length < 3) return setErr(t("Ism familiyani to'liq yozing."));
-    if (phone9(tel).length !== 9) return setErr(t("Telefon raqamni to'liq kiriting."));
+    if (ism.trim().length < 3)
+      return setErr(t("Ism familiyani to'liq yozing."));
+    if (phone9(tel).length !== 9)
+      return setErr(t("Telefon raqamni to'liq kiriting."));
     if (!manba) return setErr(t("Bizni qayerdan eshitganingizni belgilang."));
-    if (!yon || !fan || !branch || !vaqt) return setErr(t("Barcha savollarga javob bering."));
+    if (!yon || !fan || !branch || !vaqt)
+      return setErr(t("Barcha savollarga javob bering."));
     setErr("");
     setSending(true);
     const body: SurveySubmission = {
@@ -318,12 +442,25 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
       website,
       // Referal havolasi (29-qism): `/sorovnoma?ref=KOD` — lid taklif qiluvchiga yoziladi.
       ...(refCode() ? { ref: refCode() } : {}),
+      // Kampaniya havolasi (36-qism): `/s/KOD` → `?c=KOD` — manba havoladan, lidga kampaniya kodi yoziladi.
+      ...(campaign ? { c: campaign.code } : {}),
     };
     try {
-      const res = await fetch("/api/sorovnoma", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch("/api/sorovnoma", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
       const data = await res.json().catch(() => null);
       if (!data?.ok) {
-        setErr(t(String(data?.error || "Yuborib bo'lmadi — birozdan keyin qayta urinib ko'ring.")));
+        setErr(
+          t(
+            String(
+              data?.error ||
+                "Yuborib bo'lmadi — birozdan keyin qayta urinib ko'ring.",
+            ),
+          ),
+        );
         return;
       }
       setBack(false);
@@ -364,7 +501,13 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
         <div className="topbar">
           <div className="seg" role="group" aria-label={t("Til")}>
             {LANGS.map((code: Lang) => (
-              <button type="button" key={code} className={lang === code ? "on" : ""} onClick={() => setLang(code)} aria-pressed={lang === code}>
+              <button
+                type="button"
+                key={code}
+                className={lang === code ? "on" : ""}
+                onClick={() => setLang(code)}
+                aria-pressed={lang === code}
+              >
                 {LANG_LABELS[code].short}
               </button>
             ))}
@@ -381,20 +524,43 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
         </div>
         <div className="hero">
           {/* eslint-disable-next-line @next/next/no-img-element -- statik logotip, o'lchami CSS'da */}
-          {CENTER_LOGO ? <img className="logo" src={CENTER_LOGO} alt={t(CENTER_NAME)} width={382} height={95} /> : <p className="logo" style={{ fontWeight: 700, fontSize: 24, height: "auto" }}>{t(CENTER_NAME)}</p>}
+          {CENTER_LOGO ? (
+            <img
+              className="logo"
+              src={CENTER_LOGO}
+              alt={t(CENTER_NAME)}
+              width={382}
+              height={95}
+            />
+          ) : (
+            <p
+              className="logo"
+              style={{ fontWeight: 700, fontSize: 24, height: "auto" }}
+            >
+              {t(CENTER_NAME)}
+            </p>
+          )}
           <h1>
             <em>{t("Bepul")}</em> {t("sinov darsiga yoziling")}
           </h1>
         </div>
 
         {cfg.yonalishlar.length === 0 ? (
-          <p className="ask">{t("So'rovnoma vaqtincha yopiq — filialga qo'ng'iroq qiling.")}</p>
+          <p className="ask">
+            {t("So'rovnoma vaqtincha yopiq — filialga qo'ng'iroq qiling.")}
+          </p>
         ) : (
           <>
             <p className="ask">{t("Nimani o'rganmoqchisiz?")}</p>
             <div className={dirsCls}>
               {cfg.yonalishlar.map((y) => (
-                <button key={y.id} type="button" className={`dir d-${y.id}`} aria-pressed={yonId === y.id} onClick={() => pickYon(y.id)}>
+                <button
+                  key={y.id}
+                  type="button"
+                  className={`dir d-${y.id}`}
+                  aria-pressed={yonId === y.id}
+                  onClick={() => pickYon(y.id)}
+                >
                   <span className="ok">✓</span>
                   <span className="art">
                     <DirArt id={y.id} salom={SALOM[salomIdx]} fade={fade} />
@@ -417,14 +583,29 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
             )}
 
             {step === 1 && (
-              <div key={`q1-${yon.id}`} className={`qstep ${back ? "back" : ""}`}>
+              <div
+                key={`q1-${yon.id}`}
+                className={`qstep ${back ? "back" : ""}`}
+              >
                 <div className="q">
-                  <QHead badge={`_${yon.id}`} badgeCls={`b-${yon.id}`} eyebrow={t("1-qadam · {nom}", { nom: t(yon.nom) })} title={t(yon.savol)} />
+                  <QHead
+                    badge={`_${yon.id}`}
+                    badgeCls={`b-${yon.id}`}
+                    eyebrow={t("1-qadam · {nom}", { nom: t(yon.nom) })}
+                    title={t(yon.savol)}
+                  />
                   {groupFans(yon.fanlar).map((g, gi) => {
                     const opts = (
                       <div className="opts">
                         {g.items.map((f) => (
-                          <Opt key={f.nom} on={fan === f.nom} icon={f.nom} fallback={`_${yon.id}`} title={t(f.nom)} onClick={() => pickFan(f.nom)} />
+                          <Opt
+                            key={f.nom}
+                            on={fan === f.nom}
+                            icon={f.nom}
+                            fallback={`_${yon.id}`}
+                            title={t(f.nom)}
+                            onClick={() => pickFan(f.nom)}
+                          />
                         ))}
                       </div>
                     );
@@ -444,12 +625,34 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                 <div ref={nextRef}>
                   {fan && daraja && (
                     <div className="q reveal">
-                      <QHead badge="_daraja" badgeCls="b-til" eyebrow={t(yon.nom)} title={t("Darajangiz")} />
-                      <p className="qsub">{t("Tugmani o'zingizga yaqin joyga suring")}</p>
+                      <QHead
+                        badge="_daraja"
+                        badgeCls="b-til"
+                        eyebrow={t(yon.nom)}
+                        title={t("Darajangiz")}
+                      />
+                      <p className="qsub">
+                        {t("Tugmani o'zingizga yaqin joyga suring")}
+                      </p>
                       <div className={`ms ${test ? "off" : ""}`}>
                         <p className="ms-read">
-                          <span>{info.test ? t("Daraja testi kerak") : info.aniq ? t(info.near) : t("{lo} — {hi} orasida", { lo: t(info.lo), hi: t(info.hi) })}</span>
-                          <span className="tag">{info.test ? t("test") : info.aniq ? t("aniq bosqich") : t("{near} ga yaqin", { near: t(info.near) })}</span>
+                          <span>
+                            {info.test
+                              ? t("Daraja testi kerak")
+                              : info.aniq
+                                ? t(info.near)
+                                : t("{lo} — {hi} orasida", {
+                                    lo: t(info.lo),
+                                    hi: t(info.hi),
+                                  })}
+                          </span>
+                          <span className="tag">
+                            {info.test
+                              ? t("test")
+                              : info.aniq
+                                ? t("aniq bosqich")
+                                : t("{near} ga yaqin", { near: t(info.near) })}
+                          </span>
                         </p>
                         <div
                           className={`ms-wrap ${dragging ? "is-drag" : ""}`}
@@ -474,12 +677,20 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                               bosqichni tanlaydi. */}
                           <div className="ms-ticks">
                             {steps.map((s, i) => (
-                              <i key={s} className={!test && i === nearIdx ? "near" : ""} style={{ left: tickLeft(i * stepPct) }} />
+                              <i
+                                key={s}
+                                className={!test && i === nearIdx ? "near" : ""}
+                                style={{ left: tickLeft(i * stepPct) }}
+                              />
                             ))}
                           </div>
                           <div className="ms-labels">
                             {steps.map((s, i) => (
-                              <b key={s} className={!test && i === nearIdx ? "near" : ""} style={{ left: tickLeft(i * stepPct) }}>
+                              <b
+                                key={s}
+                                className={!test && i === nearIdx ? "near" : ""}
+                                style={{ left: tickLeft(i * stepPct) }}
+                              >
                                 <span className="lg">{t(s)}</span>
                                 <span className="sh">{i}</span>
                               </b>
@@ -488,17 +699,30 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                         </div>
                       </div>
                       <label className="ck">
-                        <input type="checkbox" checked={test} onChange={(e) => setTest(e.target.checked)} />
+                        <input
+                          type="checkbox"
+                          checked={test}
+                          onChange={(e) => setTest(e.target.checked)}
+                        />
                         <span>
-                          {t("Bilmayman —")} <b>{t("daraja testi")}</b> {t("topshiraman")}
+                          {t("Bilmayman —")} <b>{t("daraja testi")}</b>{" "}
+                          {t("topshiraman")}
                         </span>
                       </label>
                     </div>
                   )}
                   {fan && !daraja && (
                     <div className="q reveal">
-                      <QHead badge="_sinf" eyebrow={t("O'quvchi")} title={t("Nechanchi sinf?")} />
-                      <div className="sinfs" role="group" aria-label={t("Nechanchi sinf?")}>
+                      <QHead
+                        badge="_sinf"
+                        eyebrow={t("O'quvchi")}
+                        title={t("Nechanchi sinf?")}
+                      />
+                      <div
+                        className="sinfs"
+                        role="group"
+                        aria-label={t("Nechanchi sinf?")}
+                      >
                         {cfg.sinflar.map((v) => {
                           const n = parseInt(v, 10);
                           return (
@@ -538,7 +762,11 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
             {step === 2 && (
               <div key="q2" className={`qstep ${back ? "back" : ""}`}>
                 <div className="q">
-                  <QHead badge="_filial" eyebrow={t("2-qadam")} title={t("Qaysi filial?")} />
+                  <QHead
+                    badge="_filial"
+                    eyebrow={t("2-qadam")}
+                    title={t("Qaysi filial?")}
+                  />
                   <div className="opts wide">
                     {cfg.filiallar.map((b) => (
                       <Opt
@@ -557,7 +785,11 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                   </div>
                 </div>
                 <div className="q">
-                  <QHead badge="_vaqt" eyebrow={t("2-qadam")} title={t("Qaysi vaqt qulay?")} />
+                  <QHead
+                    badge="_vaqt"
+                    eyebrow={t("2-qadam")}
+                    title={t("Qaysi vaqt qulay?")}
+                  />
                   <div className="opts">
                     {cfg.vaqtlar.map((v) => {
                       const [title, sub] = splitLabel(v);
@@ -580,7 +812,11 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                 </div>
                 {err && <p className="err">{err}</p>}
                 <div className="rowbtn">
-                  <button type="button" className="cta back" onClick={() => go(1)}>
+                  <button
+                    type="button"
+                    className="cta back"
+                    onClick={() => go(1)}
+                  >
                     {t("← Orqaga")}
                   </button>
                   <button type="button" className="cta" onClick={() => go(3)}>
@@ -592,49 +828,91 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
 
             {step === 3 && (
               <div key="q3" className={`qstep ${back ? "back" : ""}`}>
-                <QHead badge="_aloqa" eyebrow={t("3-qadam")} title={t("Siz bilan qanday bog'lanamiz?")} />
+                <QHead
+                  badge="_aloqa"
+                  eyebrow={t("3-qadam")}
+                  title={t("Siz bilan qanday bog'lanamiz?")}
+                />
                 <div className="grid2">
                   <label className="fld">
                     <span>{t("Ism familiya")}</span>
-                    <input value={ism} maxLength={80} placeholder={t("Ismingiz")} autoComplete="name" onChange={(e) => setIsm(e.target.value)} />
+                    <input
+                      value={ism}
+                      maxLength={80}
+                      placeholder={t("Ismingiz")}
+                      autoComplete="name"
+                      onChange={(e) => setIsm(e.target.value)}
+                    />
                   </label>
                   <label className="fld">
                     <span>{t("Telefon")}</span>
-                    <input value={tel} inputMode="tel" autoComplete="tel-national" placeholder="+998 __ ___ __ __" onChange={(e) => setTel(maskSurveyPhone(e.target.value))} />
+                    <input
+                      value={tel}
+                      inputMode="tel"
+                      autoComplete="tel-national"
+                      placeholder="+998 __ ___ __ __"
+                      onChange={(e) => setTel(maskSurveyPhone(e.target.value))}
+                    />
                   </label>
                 </div>
                 {/* Yashirin maydon — odam ko'rmaydi va to'ldirmaydi; bot to'ldiradi. */}
                 <label className="hp" aria-hidden="true">
                   Website
-                  <input tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                  <input
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                  />
                 </label>
-                <div className="q">
-                  <QHead badge="_manba" eyebrow={t("3-qadam")} title={t("Bizni qayerdan bildingiz?")} />
-                  <div className="opts">
-                    {cfg.manbalar.map((m) => (
-                      <Opt
-                        key={m}
-                        on={manba === m}
-                        icon={m}
-                        title={t(m)}
-                        onClick={() => {
-                          setManba(m);
-                          setErr("");
-                        }}
-                      />
-                    ))}
+                {!campaign?.source && (
+                  <div className="q">
+                    <QHead
+                      badge="_manba"
+                      eyebrow={t("3-qadam")}
+                      title={t("Bizni qayerdan bildingiz?")}
+                    />
+                    <div className="opts">
+                      {cfg.manbalar.map((m) => (
+                        <Opt
+                          key={m}
+                          on={manba === m}
+                          icon={m}
+                          title={t(m)}
+                          onClick={() => {
+                            setManba(m);
+                            setErr("");
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 <label className="fld" style={{ marginBottom: 16 }}>
                   <span>{t("Izoh (ixtiyoriy)")}</span>
-                  <textarea rows={2} maxLength={500} value={izoh} onChange={(e) => setIzoh(e.target.value)} />
+                  <textarea
+                    rows={2}
+                    maxLength={500}
+                    value={izoh}
+                    onChange={(e) => setIzoh(e.target.value)}
+                  />
                 </label>
                 {err && <p className="err">{err}</p>}
                 <div className="rowbtn">
-                  <button type="button" className="cta back" onClick={() => go(2)} disabled={sending}>
+                  <button
+                    type="button"
+                    className="cta back"
+                    onClick={() => go(2)}
+                    disabled={sending}
+                  >
                     {t("← Orqaga")}
                   </button>
-                  <button type="button" className="cta" onClick={() => void submit()} disabled={sending}>
+                  <button
+                    type="button"
+                    className="cta"
+                    onClick={() => void submit()}
+                    disabled={sending}
+                  >
                     {sending && <Loader2 className="h-5 w-5 animate-spin" />}
                     {t("Yuborish")}
                   </button>
@@ -646,7 +924,11 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
               <div key="q4" className="qstep done">
                 <div className="tick">✓</div>
                 <h2>{t("Qabul qilindi!")}</h2>
-                <p>{t("24 soat ichida {tel} raqamiga qo'ng'iroq qilamiz.", { tel: telDigits ? maskSurveyPhone(telDigits) : tel })}</p>
+                <p>
+                  {t("24 soat ichida {tel} raqamiga qo'ng'iroq qilamiz.", {
+                    tel: telDigits ? maskSurveyPhone(telDigits) : tel,
+                  })}
+                </p>
                 <div className="recap">
                   <dl>
                     <dt>{t("Kurs")}</dt>
@@ -654,7 +936,16 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                     {daraja ? (
                       <>
                         <dt>{t("Daraja")}</dt>
-                        <dd>{info.test ? t("Daraja testi kerak") : info.aniq ? t(info.near) : t("{lo} — {hi} orasida", { lo: t(info.lo), hi: t(info.hi) })}</dd>
+                        <dd>
+                          {info.test
+                            ? t("Daraja testi kerak")
+                            : info.aniq
+                              ? t(info.near)
+                              : t("{lo} — {hi} orasida", {
+                                  lo: t(info.lo),
+                                  hi: t(info.hi),
+                                })}
+                        </dd>
                       </>
                     ) : (
                       <>
@@ -694,7 +985,9 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
 /** `?ref=KOD` — referal havolasidan kelgan bo'lsa (29-qism). */
 function refCode(): string {
   try {
-    return (new URLSearchParams(window.location.search).get("ref") ?? "").trim().slice(0, 20);
+    return (new URLSearchParams(window.location.search).get("ref") ?? "")
+      .trim()
+      .slice(0, 20);
   } catch {
     return "";
   }

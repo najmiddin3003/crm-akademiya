@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { createSurveyLead } from "@/lib/ordersCreate";
+import { tagLeadWithCampaign } from "@/lib/campaignLinks";
 import { linkByCode } from "@/lib/referrals";
 import { phone9, validateSurvey, type SurveySubmission } from "@/lib/survey";
 import { loadSurveyConfig, surveyHash as hash } from "@/lib/surveyServer";
@@ -87,6 +88,8 @@ export async function POST(req: Request) {
     await hits.updateOne({ _id: hit.insertedId }, { $set: { orderId: order.id } });
     // Referal havolasi (`/sorovnoma?ref=KOD`, 29-qism) — lid taklif qiluvchiga yoziladi (lib/referrals.ts).
     await linkByCode(db, (body as { ref?: unknown }).ref, Number(order.id)).catch(() => {});
+    // Kampaniya havolasi (`/s/KOD` → `/sorovnoma?c=KOD`, 36-qism) — lidga kampaniya kodi va manbasi yoziladi.
+    await tagLeadWithCampaign(db, (body as { c?: unknown }).c, Number(order.id)).catch(() => {});
   } catch (e) {
     console.error("[sorovnoma]", e instanceof Error ? e.message : e);
     return fail("Saqlab bo'lmadi — birozdan keyin qayta urinib ko'ring.", 500);
