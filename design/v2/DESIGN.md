@@ -1203,6 +1203,55 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   leave-reasons,teachers,teacher-revenue,rooms,exceptions,summary}`. Yangi versiya menyusida eski hisobotlar yangi
   sahifalarga olib boradi (`V2_ITEM_HREFS`). Rasmdan farqlar — `SAVOLLAR.md` 474–484.
 
+## Sotuv va O'quv bo'limi — Savdo plani, Kampaniya havolalari, Yangiliklar, Avtomatik xabarlar, Kurs sahifasi, Mavsumiy baholash, Onlayn kurslar (36-qism, 17.11.2026)
+
+- **Savdo plani** (`/sales-plan`): oy (`V2MonthNav`), filial, o'ngda «12-noyabr · oyning 12 / 30 kuni o'tdi»; Excel,
+  «Rejani sozlash». 4 KPI (Yangi o'quvchilar reja/bajarilish %, Oy oxiriga prognoz, Liddan o'quvchiga, Rejadan orqada
+  — `danger`). «Adminlar bo'yicha»: bajarilish chizig'i (`success` / orqada `danger`) va «bugungi kutilgan joy»
+  qora belgisi; Holat tabletkasi (Rejada, Biroz orqada, Orqada, Reja yo'q). «Kunma-kun» — jamlanma ustunlar
+  (`info`, bugun `brand` + son), reja — uzuq chiziq; «bugun rejadan +N oldinda / N orqada». Orqada qolgan filial —
+  `warning-bg` banner + «Sotuv voronkasi →». «Rejani sozlash» oynasi: har admin — o'tgan oy natijasi va rejasi, son
+  maydoni; «Keyingi oyga ham qo'llash»; pastda «Jami: N o'quvchi».
+- **Kampaniya havolalari** (`/sales-campaigns`, yangi): sana, filial, Turi; 4 KPI (Manbasi ma'lum lidlar, Havola
+  orqali kelgan, Havolalar ochildi, Natijasiz havola `warning`). Jadval: tur nuqtasi (Instagram `violet`, Sayt `brand`,
+  Telegram `info`, Flyer `warning`, Banner), kod (mono, `surface-2`), Ochildi / Lid / O'quvchi, Konversiya tabletkasi
+  (0% `danger`, «yangi» neytral), QR tugmasi; «Havolasiz» qatori; o'ngda tanlangan havola: QR, qisqa havola + «Nusxa
+  olish», «QR · PNG», «Chop etish · A6», Ochildi/Ariza/O'quvchi, Xarajat va bir o'quvchi narxi, «Tahrirlash»,
+  «To'xtatish». Qisqa havola `/s/KOD` → `/sorovnoma?c=KOD` (so'rovnomada manba savoli chiqmaydi).
+- **Yangiliklar va hikoyalar** (`/sales-news`; `/sales-stories` ham shu, menyuda «Hikoya» yashirildi): «Hikoya
+  qo'shish» / «Yangilik qo'shish»; «Hikoyalar» qatori (doira `brand` halqa, «N ko'rdi · N soat qoldi», «+ Qo'shish»);
+  jadval tablari (Hammasi, E'lon qilingan, Rejalashtirilgan, Qoralama), Kimga / Filial; ustunlar Yangilik (belgi
+  kvadrati + sarlavha + matn), Kimga (asosiy + izoh), Ko'rdi (chiziq + N / jami), Vaqti, Holat, «⋯». Qo'shish oynasi
+  (960): rasm (16:9), belgi (8 ta rangli), sarlavha, matn, Kimga segmenti (Hammaga / Filial / Kurs / Guruh) + «kim
+  ko'radi», Qachon (hozir yoki sana + soat), «Telegram botga ham yuborish» almashtirgichi; o'ngda «Kabinetda shunday
+  ko'rinadi». O'quvchi kabinetida: tepada hikoya doiralari (bosilsa to'liq), Asosiy oxirida «Yangiliklar» kartalari
+  (rasm yoki rangli sarlavha-yorliq: SARHISOB, TA'TIL …).
+- **Avtomatik xabarlar** (`/sales-auto-messages`, yangi): sana; 4 KPI (Yuborildi, Yetkazildi, Yetmadi, Navbatda);
+  «Hodisalar» jadvali (holat nuqtasi `success`/kulrang, qachon, kimga, kanal tabletkasi, davrda yuborildi / yetmadi
+  `danger`; «ulanmagan», «o'chirilgan»); «Tizim xabarlari» qatori → Xabarlar ro'yhati, «Xabarlar yetkazilishi →».
+  O'ngda tanlangan hodisa: Yoqilgan almashtirgichi, «Telegram bot | SMS zaxira · o'chiq», Matn (mono), o'zgaruvchi
+  tugmalari (`{ism}` …), «Ota-ona shunday ko'radi» (bot pufagi), «Standart matn», «Saqlash».
+- **Kurs sahifasi** (`/offline-courses/[id]`): fan nuqtasi + nom, «Tahrirlash», «Guruh ochish»; 4 KPI (Guruhlar
+  filiallar bo'yicha, O'quvchilar, Ustozlar, Davomat · markaz o'rtachasi); «Darajalar va narx» (+ «Narxni o'zgartirish
+  →»), «Ustozlar · N» (avatar, darajalar, o'quvchi soni, guruh · filial), «Dars vaqtlari» issiqlik jadvali (Toq / Juft
+  / Boshqa kunlar; eng ko'pi `brand`), «Kitoblar · N» (rangli muqova, daraja, «N o'quvchida», «+ Kitob qo'shish»).
+- **Mavsumiy baholash** (`/seasonal-assessment`): chorak, Kurs, Ustoz, o'ngda muddat `warning`; «Mezonlar»,
+  «Ota-onalarga yuborish (N)». Chapda guruhlar (Jarayonda `warning`, Tayyor `info`, Yuborilgan `success`,
+  Boshlanmagan neytral), o'ngda guruh jadvali — mezon baholari rangli kvadrat (5 `success`, 4 `info`, 3 `warning`,
+  1–2 `danger`), O'rtacha, Ustoz izohi; «Guruh o'rtachasi» qatori + «eng bo'sh joy»; `info-bg` taklif bloki. Baholash
+  varaqasi (telefonda pastdan): har mezon 1–5 tugmalari (tanlangan `brand`), izoh, O'rtacha / o'tgan chorak, «Saqlash
+  va keyingisi». Kabinetda «Chorak bahosi keldi» kartasi (katta o'rtacha `success`, o'tgan chorak, mezonlar 2 ustunda,
+  izoh).
+- **Onlayn kurslar** (`/online-courses`): Hammasi / Faol / Qoralama, Ustoz; 4 KPI (O'quvchilar, Tugatganlar,
+  O'rtacha test, Pullik kurs tushumi); kurs kartalari (rangli muqova, Faol/Qoralama, ustoz · darslar · modullar ·
+  davomiylik, bepul/pullik, o'quvchi · tugatdi · test + chiziq); o'ngda «Tuzilma»: modullar (raqam kvadrati, «N video
+  · test», «N% o'tdi» chizig'i), ochilganida darslar (▶ + davomiylik, «rejada») va «Test · N savol · o'rtacha»;
+  «Dars qo'shish» oynasi (modul yoki yangi modul, nom, video yuklash — davomiylik o'zi o'qiladi, modul testi).
+- Kodda: `components/v2/sales/` — SalesPlanV2, CampaignsV2, NewsV2, newsIcons, AutoMessagesV2;
+  `components/v2/academic/` — CoursePageV2, SeasonGradesV2, OnlineCoursesV2; kabinet `components/student-web/v2/
+  CabinetFeed.tsx`. Server `lib/salesTargets.ts`, `lib/campaignLinks.ts`, `lib/cabinetNews.ts`, `lib/autoMessages.ts`,
+  `lib/coursePage.ts`, `lib/seasonGrades.ts`, `lib/onlineCourseAdmin.ts`. Rasmdan farqlar — `SAVOLLAR.md` 485–499.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

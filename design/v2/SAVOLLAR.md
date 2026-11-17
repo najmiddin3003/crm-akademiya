@@ -2660,6 +2660,73 @@ Gamifikatsiyadagi «to'lovga chegirma» shu hisobotda «Chegirma · Tanga evazig
 Telefonda sahifalar o'sha — filtrlar ustma-ust, jadvallar suriladi; voronka chiziqlari nom ostiga tushadi,
 O'qituvchilar samaradorligi — kartalar ro'yxati. Rasmdagi pastki «Jarayondagi 51 lid» tugmasi yo'q.
 
+**485. Savdo plani — «yangi o'quvchi»** — taxmin
+Bajarilish — admin lidi (`moderator`) o'quvchiga aylanib, BIRINCHI to'lovi shu oyga tushgani (lid qaysi oyda yozilgani
+muhim emas). Konversiya — shu oy yozilgan lidlardan to'lov qilganlar. «Orqada» — kutilgan joydan 15% dan ko'p kam.
+Reja joriy filial uchun saqlanadi. Eski «Savdo plani» (bitta son, oysiz) — eski versiyada qoldi.
+
+**486. Rasmdagi «Reja bonusi»** — QAROR KERAK
+Rejani bajargan adminga bonus (Taklif kartasi) qilinmadi — oylik hisobiga ulanishi kerak. Kerakmi, qancha?
+
+**487. Kampaniya havolasi va manba** — taxmin
+Havola ochilganda sanaladi (`campaign_opens`), so'rovnoma `?c=KOD` bilan ochiladi va «Bizni qayerdan bildingiz?»
+so'ralmaydi — lidga havolaning manbasi (O'quvchilar oqimidagi manbalardan biri) va kampaniya kodi yoziladi. Havola
+manbasi so'rovnoma ro'yxatida bo'lmasa — savol chiqadi. «Flyer» manbasi ro'yxatda yo'q: qo'shamizmi?
+
+**488. Kampaniya xarajati** — QAROR KERAK
+Rasmda «Xarajat · kassadan». Hozir xarajat havolaga qo'lda yoziladi; kassadagi «Reklama» chiqimi bilan bog'lanmagan.
+Chiqimga «kampaniya» maydoni qo'shamizmi?
+
+**489. Natijasiz havola** — taxmin
+Yaratilganiga 7 kundan oshgan, faol, tanlangan davrda bitta ham o'quvchi bermagan havola.
+
+**490. Yangiliklar — eski ma'lumot** — taxmin
+Eski «Yangiliklar» (`news`) birinchi ochilishda yangi ro'yxatga «Hammaga, e'lon qilingan» bo'lib ko'chadi. Eski
+«Hikoya» (`stories`) 24 soatlik emas — ko'chirilmadi, eski versiyada turibdi. Botdagi «Yangiliklar» bo'limi hali eski
+`news` ni o'qiydi.
+
+**491. Rejalashtirilgan yangilik va Telegram** — taxmin
+Alohida taymer (cron) yo'q: vaqti kelgan e'lon kabinetda o'zi chiqadi, Telegramga esa sahifa yoki kabinet keyingi
+ochilganda yuboriladi (har biri bir marta). Aniq vaqtda ketishi uchun server taymeri kerak — qo'shamizmi?
+
+**492. «Ko'rdi» qanday sanaladi** — taxmin
+Kabinetda yangilik ko'ringanda (Asosiy sahifa ochilganda) o'quvchi uchun bir marta; o'zi va ota-onasi — bitta
+o'quvchi. Jami — auditoriyadagi faol o'quvchilar. Botdagi xabarni o'qigani sanalmaydi (Telegram buni bermaydi).
+
+**493. Avtomatik xabarlar — qaysilari ishlaydi** — taxmin
+Botda haqiqatda 4 ta: To'lov qabul qilindi, Davomat belgilandi (rasmdagi «Dars qoldirildi» — hozir HAR belgida
+ketadi), To'lov eslatmasi (25-kun va oy oxiri), Guruhga qo'shildi. Birinchi dars eslatmasi, Tug'ilgan kun tabrigi,
+Sarhisob natijasi — «ulanmagan» (yuboruvchi yozilmagan). Qaysi biri birinchi kerak? «Dars eslatmalari» tabi
+(darsdan oldin eslatma) ham yo'q.
+
+**494. SMS zaxira** — QAROR KERAK
+«Bot ulanmagan bo'lsa SMS» — qilinmadi: to'lov SMS i 10.09.2026 dagi qaror bilan to'xtatilgan, har shablon Eskiz'da
+oldindan tasdiqlanishi kerak, pul turadi. Yoqamizmi, qaysi hodisalarga?
+
+**495. Davomat xabari faqat «kelmadi»da?** — QAROR KERAK
+Hozir keldi/kechikdi ham yuboriladi. Rasm faqat «kelmadi»ni ko'rsatadi. Faqat kelmaganda yuboramizmi?
+
+**496. Kurs sahifasi — kitoblar va dastur** — taxmin
+Kitob kursga va darajaga biriktiriladi (`course_books`); «N o'quvchida» — shu darajadagi guruhlar o'quvchilari (kitob
+sotuvi kassada hisoblanmaydi). Rasmdagi «Dastur — N mavzu» ustuni yo'q (Kurs dasturi bilan bog'lanmagan); «Narxni
+o'zgartirish» eski daraja-narx sahifasini ochadi.
+
+**497. Mavsumiy baholash — chorak va muddat** — taxmin
+Choraklar: 1 — sentabr–oktabr, 2 — noyabr–dekabr, 3 — yanvar–mart, 4 — aprel–may (yozda 4-chorak ochiq). Muddat —
+oxirgi oyning 25-kuni. Mezonlar kurs bo'yicha (til kurslarida 5 ta, boshqalarida 4 ta sukut bo'yicha), «Mezonlar»
+tugmasidan o'zgaradi. Eski «Mavsumiy baholash» (oyiga bitta ball) eski versiyada qoldi.
+
+**498. Yuborilgan baho va ustoz telefoni** — taxmin
+Faqat hamma o'quvchisi baholangan guruh yuboriladi; yuborilgandan keyin baho o'zgarmaydi. Ustoz baholashni CRM'ning
+o'zidan (telefonda varaq ko'rinishida) qiladi — alohida ustoz ilovasi yo'q. Rasmdagi «3 dan past bo'lsa uchrashuv
+taklifi» qilinmadi.
+
+**499. Onlayn kurslar — o'quvchi tomoni** — QAROR KERAK
+Kurs tuzilmasi (modul → video darslar, modul testi) va statistika tayyor, lekin o'quvchi kabinetida video pleer va
+test hali yo'q — o'quvchi va test ko'rsatkichlari shungacha 0. Test savollarining o'zi (hozir faqat soni) va «60% dan
+past — keyingi dars ochilmaydi» qoidasi pleer bilan birga qilinadi. Pullik kurs tushumi — kassadagi «Onlayn kurs»
+toifali kirimlar. Navbat qanday?
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
