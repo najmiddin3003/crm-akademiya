@@ -286,6 +286,7 @@ export const SIDEBAR_ITEMS = [
         { label: "Hikoya", href: "/sales-stories", icon: "i-book" },
         { label: "SMS shablonlari", href: "/sales-sms", icon: "i-monitor" },
         { label: "Xabarlar ro'yhati", href: "/sales-messages", icon: "i-list-todo" },
+        { label: "Referallar", href: "/sales-referrals", icon: "i-user" },
       ],
     },
   },

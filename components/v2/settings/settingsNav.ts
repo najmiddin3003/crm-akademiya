@@ -57,7 +57,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
     items: [
       { label: "Manbalar", href: "/sales-sources" },
       { label: "So'rovnoma sahifasi", href: "/settings-sales?tab=leads" },
-      { label: "Referal dasturi", note: "Referal dasturi sozlamalari hali yo'q" },
+      { label: "Referal dasturi", href: "/settings-referral" },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { createSurveyLead } from "@/lib/ordersCreate";
+import { linkByCode } from "@/lib/referrals";
 import { phone9, validateSurvey, type SurveySubmission } from "@/lib/survey";
 import { loadSurveyConfig, surveyHash as hash } from "@/lib/surveyServer";
 import { loadSurveyOpen } from "@/lib/surveyOpen";
@@ -84,6 +85,8 @@ export async function POST(req: Request) {
   try {
     const order = await createSurveyLead(db, v.value, { defer: after });
     await hits.updateOne({ _id: hit.insertedId }, { $set: { orderId: order.id } });
+    // Referal havolasi (`/sorovnoma?ref=KOD`, 29-qism) — lid taklif qiluvchiga yoziladi (lib/referrals.ts).
+    await linkByCode(db, (body as { ref?: unknown }).ref, Number(order.id)).catch(() => {});
   } catch (e) {
     console.error("[sorovnoma]", e instanceof Error ? e.message : e);
     return fail("Saqlab bo'lmadi — birozdan keyin qayta urinib ko'ring.", 500);

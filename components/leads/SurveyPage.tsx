@@ -316,6 +316,8 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
       izoh: izoh.trim(),
       ms: Math.round(clockMs() - startedAt.current),
       website,
+      // Referal havolasi (29-qism): `/sorovnoma?ref=KOD` — lid taklif qiluvchiga yoziladi.
+      ...(refCode() ? { ref: refCode() } : {}),
     };
     try {
       const res = await fetch("/api/sorovnoma", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -687,4 +689,13 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
       </div>
     </div>
   );
+}
+
+/** `?ref=KOD` — referal havolasidan kelgan bo'lsa (29-qism). */
+function refCode(): string {
+  try {
+    return (new URLSearchParams(window.location.search).get("ref") ?? "").trim().slice(0, 20);
+  } catch {
+    return "";
+  }
 }

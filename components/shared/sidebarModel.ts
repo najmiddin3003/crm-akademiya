@@ -202,7 +202,7 @@ export const IMPLEMENTED_ROUTES = new Set([
   // Boshqaruv
   "/management-xodimlar", "/management-cv", "/management-rollar", "/management-filiallar", "/management-ish-jadvali",
   // Sotuv va marketing
-  "/sales-marketing", "/sales-sources", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages",
+  "/sales-marketing", "/sales-sources", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages", "/sales-referrals",
   // Hisobotlar (finance-*/nazorat-* takrorlari yuqorida bor)
   "/reports-funnel", "/reports-balance", "/reports-unpaid", "/reports-diff-payments", "/reports-cancelled", "/reports-discounts",
   "/reports-teachers-perf", "/reports-admins-perf", "/reports-leave-reasons", "/reports-rooms", "/reports-served", "/reports-cancelled-attend",
@@ -212,7 +212,7 @@ export const IMPLEMENTED_ROUTES = new Set([
   // Sozlamalar
   "/settings-general", "/settings-finance", "/settings-academic", "/settings-sales",
   "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",
-  "/settings-profile", "/settings-security", "/settings-nazorat", "/settings-notifications",
+  "/settings-profile", "/settings-security", "/settings-nazorat", "/settings-notifications", "/settings-referral",
   // Gamifikatsiya (TZ v1.4, 26.09.2026 dan bosqichma-bosqich)
   "/gamification-lesson", "/gamification-students", "/gamification-ranking", "/gamification-competition", "/gamification-shop",
   // Vaqtinchalik tugma (faqat admin)

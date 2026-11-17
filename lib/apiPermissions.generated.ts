@@ -219,6 +219,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/pupils/[id]/profile": ["/students-list"],
   "/api/pupils/[id]/status": ["/active-students", "/archive-students", "/students-list"],
   "/api/pupils/last-comments": ["/groups"],
+  "/api/referrals": ["/sales-referrals", "/settings-referral"],
   "/api/reports/balance": ["/reports-balance"],
   "/api/reports/active-students": ["/active-students", "/groups"],
   "/api/reports/attendance-groups": ["/nazorat-davomat-analytics"],
