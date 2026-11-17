@@ -24,7 +24,26 @@ export interface FeedbackRecord {
   izoh: string;
   /** Yaratilgan payt — "YYYY-MM-DDTHH:mm" (mahalliy vaqt, saralash uchun). */
   createdAt: string;
+  // ── Yangi versiya (34-qism, «Fikr-mulohaza»): holat va mas'ul. Eski yozuvlarda yo'q — «Yangi». ──
+  status?: FeedbackStatus;
+  /** Mas'ul xodim ismi (bo'sh — tayinlanmagan). */
+  assignee?: string;
+  /** Natija izohi («usta chaqirildi», «ustozga yetkazildi»). */
+  resolution?: string;
+  /** Hal qilingan payt — "YYYY-MM-DDTHH:mm". */
+  resolvedAt?: string | null;
+  /** Qaysi o'quvchi haqida (ota-ona / o'quvchi fikrida). */
+  pupilId?: number | null;
+  pupilName?: string;
+  /** Qayerdan: «Telegram bot», «Kabinet», «Telefon», «Admin yozdi». */
+  source?: string;
+  createdBy?: string;
 }
+
+export const FEEDBACK_STATUSES = ["yangi", "korib", "hal"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = { yangi: "Yangi", korib: "Ko'rib chiqilmoqda", hal: "Hal qilindi" };
+export const statusOf = (f: Pick<FeedbackRecord, "status">): FeedbackStatus => f.status ?? "yangi";
 
 export function isFeedbackType(v: unknown): v is FeedbackType {
   return FEEDBACK_TYPES.includes(v as FeedbackType);

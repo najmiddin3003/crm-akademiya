@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { uzNow } from "@/lib/uzTime";
+import { currentAuthorName } from "@/lib/currentEmployee";
 import {
+  FEEDBACK_STATUSES,
   isFeedbackType,
   type FeedbackRecord,
+  type FeedbackStatus,
 } from "@/components/nazorat/feedbackTypes";
 
 // Nazorat → Fikr-mulohaza backend'i (MongoDB `feedback`).
@@ -63,9 +66,42 @@ export async function POST(req: Request) {
     type: body.type,
     izoh,
     createdAt: nowStamp(),
+    // 34-qism: holat, mas'ul, o'quvchi, manba (yangi versiyadagi «Fikr qo'shish» oynasi).
+    status: "yangi",
+    assignee: String(body.assignee ?? "").trim(),
+    resolution: "",
+    resolvedAt: null,
+    pupilId: Number.isFinite(Number(body.pupilId)) && body.pupilId !== null ? Number(body.pupilId) : null,
+    pupilName: String(body.pupilName ?? "").trim(),
+    source: String(body.source ?? "").trim() || "Admin yozdi",
+    createdBy: await currentAuthorName(),
   };
   // insertOne argumentga _id qo'shib yuboradi — nusxa yozamiz.
   await col.insertOne({ ...feedback });
 
   return NextResponse.json({ ok: true, feedback });
+}
+
+// PATCH {id, status?, assignee?, resolution?} — holat va mas'ul (yangi versiya, 34-qism).
+export async function PATCH(req: Request) {
+  let body: { id?: unknown; status?: unknown; assignee?: unknown; resolution?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
+  }
+  const id = Number(body.id);
+  if (!Number.isFinite(id)) return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
+  const set: Record<string, unknown> = {};
+  if (body.status !== undefined) {
+    if (!FEEDBACK_STATUSES.includes(body.status as FeedbackStatus)) return NextResponse.json({ ok: false, error: "Noto'g'ri holat" }, { status: 400 });
+    set.status = body.status;
+    set.resolvedAt = body.status === "hal" ? nowStamp() : null;
+  }
+  if (typeof body.assignee === "string") set.assignee = body.assignee.trim();
+  if (typeof body.resolution === "string") set.resolution = body.resolution.trim().slice(0, 500);
+  const db = await ensureIndexes();
+  const res = await db.collection("feedback").findOneAndUpdate({ id }, { $set: set }, { returnDocument: "after", projection: { _id: 0 } });
+  if (!res) return NextResponse.json({ ok: false, error: "Fikr topilmadi" }, { status: 404 });
+  return NextResponse.json({ ok: true, feedback: res });
 }
