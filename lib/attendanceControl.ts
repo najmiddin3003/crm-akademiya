@@ -4,6 +4,7 @@ import { nameEq } from "@/lib/currentEmployee";
 import { groupLabel } from "@/lib/groups";
 import { groupBoundsIso, lessonExpectedOn } from "@/lib/groupRules";
 import { groupWeekdays } from "@/lib/attendance";
+import { holidayChecker } from "@/lib/holidays";
 import { createPenalty } from "@/lib/penaltyCreate";
 import { sendToStaff } from "@/lib/staffBot/api";
 import { isStaffBotReady, loadStaffBotConfig } from "@/lib/staffBot/config";
@@ -120,6 +121,8 @@ export async function attendanceOverview(db: Db, opts: { branchIds: number[]; fr
   const live = groups.filter((g) => groupBoundsIso(g).start);
   const ids = live.map((g) => g.id);
 
+  // 37-qism: dam olish kunlari (Sozlamalar → Ish kunlari va bayramlar) — dars kutilmaydi.
+  const isHoliday = await holidayChecker(db, opts.from, to);
   const [markedRows, first, actions, todayMarks] = await Promise.all([
     db
       .collection("attendance")
@@ -147,7 +150,7 @@ export async function attendanceOverview(db: Db, opts: { branchIds: number[]; fr
   for (let iso = opts.from; iso <= to; iso = addDays(iso, 1)) {
     const wd = weekdayOf(iso);
     for (const g of live) {
-      if (!lessonExpectedOn(g, iso, wd)) continue;
+      if (!lessonExpectedOn(g, iso, wd) || isHoliday(branchOfGroup(g), iso)) continue;
       const tr = timeRange(g.time);
       const end = tr ? tr[1] : 24 * 60;
       const label = groupLabel({ id: g.id, name: g.name ?? "", course: g.course ?? "" });

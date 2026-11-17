@@ -31,6 +31,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "Markaz ma'lumotlari", href: "/settings-general" },
       { label: "Filiallar", href: "/management-filiallar" },
       { label: "Xonalar", href: "/groups-rooms" },
+      { label: "Ish kunlari va bayramlar", href: "/settings-holidays", adminOnly: true },
       { label: "Bildirishnomalar", href: "/settings-notifications", adminOnly: true },
     ],
   },
@@ -76,6 +77,14 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
   {
     title: "Nazorat",
     items: [{ label: "Nazorat qoidalari", href: "/settings-nazorat", adminOnly: true }],
+  },
+  {
+    title: "Tizimli",
+    // 37-qism: markaz bo'yicha funksiyalar va Tizimli obunasi — faqat direktor.
+    items: [
+      { label: "Funksiyalar", href: "/settings-features", adminOnly: true },
+      { label: "Obuna va to'lov", href: "/settings-subscription", adminOnly: true },
+    ],
   },
 ];
 
