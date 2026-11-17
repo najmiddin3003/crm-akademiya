@@ -1,3 +1,4 @@
+import type { SeasonCard } from "@/lib/seasonGradeTypes";
 import type { CabinetFeedItem } from "@/lib/cabinetNewsTypes";
 import type { AttendanceMark } from "@/lib/attendance";
 import type { MonthlyExam, UzbmbExam } from "@/lib/imtihon";
@@ -66,4 +67,6 @@ export interface StudentMe {
   cabinet: StudentCabinet | null;
   /** Yangiliklar va hikoyalar (36-qism, lib/cabinetNews.ts) — shu o'quvchi/ota-onaga mo'ljallanganlari. */
   feed?: { news: CabinetFeedItem[]; stories: CabinetFeedItem[] };
+  /** Oxirgi yuborilgan chorak baholari (36-qism, lib/seasonGrades.ts). */
+  season?: SeasonCard[];
 }

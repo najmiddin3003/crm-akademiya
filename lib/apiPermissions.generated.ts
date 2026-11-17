@@ -257,6 +257,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/salary-runs/month-cashflow": ["/finance-payroll"],
   "/api/sales-plans": ["/sales-plan"],
   "/api/sales-targets": ["/sales-plan"],
+  "/api/season-grades": ["/seasonal-assessment"],
   "/api/seasonal-assessments": ["/seasonal-assessment"],
   "/api/seasonal-assessments/[id]": ["/seasonal-assessment"],
   "/api/settings": ["/active-students", "/archive-students", "/first-lessons", "/groups-students", "/management-xodimlar", "/nazorat-davomat", "/new-students", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales", "/students-list"],

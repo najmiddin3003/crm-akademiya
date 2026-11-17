@@ -19,6 +19,7 @@ import { authStudentWeb } from "@/lib/studentBot/webapp";
 import { studentCoinSummary } from "@/lib/gamification/studentPage";
 import { buildStudentCabinet } from "@/lib/studentCabinet";
 import { cabinetFeed } from "@/lib/cabinetNews";
+import { seasonCardsFor } from "@/lib/seasonGrades";
 
 // O'QUVCHI WEB SAHIFASINING YAGONA MA'LUMOT MANBAI.
 //
@@ -86,6 +87,7 @@ export async function POST(req: Request) {
     console.error("[student-web] feed", e);
     return { news: [], stories: [] };
   });
+  const season = await seasonCardsFor(db, pupil.id).catch(() => []);
 
   return NextResponse.json({
     ok: true,
@@ -140,5 +142,6 @@ export async function POST(req: Request) {
     addresses: pupil.addresses ?? [],
     cabinet,
     feed,
+    season,
   });
 }

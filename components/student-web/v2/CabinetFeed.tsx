@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import { NEWS_ICON_VIEW } from "@/components/v2/sales/newsIcons";
 import type { CabinetFeedItem } from "@/lib/cabinetNewsTypes";
+import type { SeasonCard } from "@/lib/seasonGradeTypes";
 import { Card, useCabinetFmt } from "./bits";
 
 // O'QUVCHI KABINETI — YANGILIKLAR VA HIKOYALAR (36-qism, rasm «Kabinet — yangilik»).
@@ -124,6 +125,41 @@ export function NewsFeed({ items, initData, today }: { items: CabinetFeedItem[];
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** «Chorak bahosi keldi» (36-qism, rasm «Kabinet — yangilik»): mezonlar, o'rtacha va o'tgan chorak, ustoz izohi. */
+export function SeasonCards({ items }: { items: SeasonCard[] }) {
+  const { t } = useT();
+  const fmt = useCabinetFmt();
+  if (!items.length) return null;
+  return (
+    <div className="mb-4 flex flex-col gap-3">
+      {items.map((s) => (
+        <Card key={`${s.season}:${s.group}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-v2-small font-semibold text-v2-brand">{t("Chorak bahosi keldi · {s}", { s: s.label })}</div>
+              <div className="truncate text-[17px] font-semibold text-v2-text">{s.group}</div>
+              <div className="text-v2-small text-v2-text-2">{[s.teacher, s.sentAt ? fmt.dayMonth(new Date(Date.parse(s.sentAt) + 5 * 3600_000).toISOString().slice(0, 10)) : ""].filter(Boolean).join(" · ")}</div>
+            </div>
+            <div className="text-right">
+              <div className={`text-[28px] font-semibold leading-8 tabular-nums ${s.avg !== null && s.prevAvg !== null && s.avg < s.prevAvg ? "text-v2-warning" : "text-v2-success"}`}>{s.avg === null ? "—" : s.avg.toLocaleString("ru-RU", { minimumFractionDigits: 1 })}</div>
+              {s.prevAvg !== null && <div className="text-v2-caption text-v2-text-2">{t("o'tgan: {n}", { n: s.prevAvg.toLocaleString("ru-RU", { minimumFractionDigits: 1 }) })}</div>}
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {s.criteria.map((c) => (
+              <div key={c.name} className="flex items-center justify-between rounded-v2-md bg-v2-surface-2 px-3 py-2 text-v2-small">
+                <span className="text-v2-text">{t(c.name)}</span>
+                <b className={c.score >= 5 ? "text-v2-success" : c.score <= 2 ? "text-v2-danger" : "text-v2-text"}>{c.score || "—"}</b>
+              </div>
+            ))}
+          </div>
+          {s.note && <p className="mt-2 text-v2-small text-v2-text-2">«{s.note}»</p>}
+        </Card>
+      ))}
     </div>
   );
 }

@@ -19,7 +19,7 @@ import {
   type CabinetTabProps,
   type Tone,
 } from "./bits";
-import { NewsFeed, StoriesStrip } from "./CabinetFeed";
+import { NewsFeed, SeasonCards, StoriesStrip } from "./CabinetFeed";
 
 // ASOSIY TAB (28-qism, rasmlar 55–56) — kunning qisqa manzarasi: keyingi dars,
 // shu hafta, guruhlar; o'ngda pul, davomat, tanga va so'nggi natija.
@@ -564,6 +564,7 @@ export default function AsosiyTab({ me, cab, go, initData }: CabinetTabProps) {
       </div>
 
       <StoriesStrip items={me.feed?.stories ?? []} initData={initData} />
+      <SeasonCards items={me.season ?? []} />
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)] lg:items-start">
         <div className="flex flex-col gap-4 max-lg:contents">
