@@ -205,6 +205,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/offline-courses/[id]/levels/[levelId]": ["/blok-test-turlari", "/groups", "/groups-schedule", "/imtihon", "/management-xodimlar", "/offline-courses", "/orders-list"],
   "/api/offline-courses/[id]/lists": ["/blok-test-turlari", "/groups", "/groups-schedule", "/imtihon", "/management-xodimlar", "/offline-courses", "/orders-list"],
   "/api/offline-courses/import": ["/offline-courses"],
+  "/api/online-course-admin": ["/online-courses"],
   "/api/online-courses": ["/online-courses"],
   "/api/online-courses/[id]": ["/online-courses"],
   "/api/online-courses/[id]/bind": ["/online-courses"],
