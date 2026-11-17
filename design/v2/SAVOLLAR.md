@@ -2393,13 +2393,13 @@ Biriktirilgan xodimi bor jadval o'chirilmaydi (arxivga olinadi). Sidebar'dagi no
 
 ### 32-qism — Moliya: Kunlik topshiruv, Moliyaviy reja, Shartnomalar, Integratsiyalar, Oylik chiqarish (16.11.2026)
 
-Qism bo'laklarga bo'lib qilinmoqda; birinchisi — Kunlik topshiruv (yangi sahifa `/finance-handover`).
+Qism bo'laklarga bo'lib qilindi: Kunlik topshiruv (16.11), qolganlari — 17.11.2026 (savollar 457–466 shu bo'lim oxirida).
 
-**429. Kassir telefonidagi ko'rinish qurilmadi** — taxmin
-Rasmdagi «Kassir · mobil» ekrani (kassir o'zi sanab «Topshirish» bosadi) alohida qurilmadi: kassir hozirgidek Kassalar
-sahifasidan (yoki xodimlar botidan) rahbar kassasiga ko'chirma jo'natadi — u shu sahifada «Tasdiq kutilmoqda» bo'lib
-chiqadi va rahbar «Tasdiqlash» / «Qaytarish» bosadi. Kassir jo'natmasa, rahbar «Qabul qilish» bilan o'zi sanab oladi
-(ko'chirma shu zahoti yoziladi va tasdiqlanadi). Kassirga alohida mobil ekran kerakmi?
+**429. Kassir telefonidagi ko'rinish** — qurildi (17.11.2026)
+Rahbar bo'lmagan xodim «Kunlik topshiruv»ni ochsa — o'z kassasi (kassa egasi `cashboxes.moderator` ismi bo'yicha): naqdni
+kupyuralar bo'yicha sanaydi, plastikni belgilaydi va «Topshirish» bosadi — rahbar kassasiga oddiy tasdiqli ko'chirma
+ketadi (rahbar sahifasida «Tasdiq kutilmoqda»). Sanalgan naqd kassadagidan kam bo'lsa — sanalgani ketadi, farq izohda;
+ko'p bo'lsa — yuborilmaydi. Oldingisi tasdiqlanmaguncha yangi topshiruv yo'q.
 
 **430. «Eslatish» — qo'lda** — QAROR KERAK
 «Eslatish» kassa egasiga xodimlar botida xabar yuboradi (bot ulanmagan bo'lsa — xato chiqadi). Avtomatik eslatma
@@ -2418,6 +2418,55 @@ Topshiruvga faqat naqd va plastik kiradi (rasmdagidek). Click/Payme/bank o'tkazm
 Sahifani admin va rahbar (asosiy) kassa egasi ochadi; ruxsat — «Kassalar» bilan bir qatorda. Kartalar — asosiy bo'lmagan,
 arxivlanmagan kassalar. «N kun topshirilmagan» — oxirgi qabuldan beri o'tgan kun (kassada pul bo'lsa); umuman
 topshirmagan kassa — «Hali topshirmagan».
+
+**457. Oylik chiqarish — avvaldan bor** — taxmin
+Rasmdagi «Oylik chiqarish» va «Oylikni chiqarish» oynasi yangi versiyada avval qurilgan (PayrollV2 + PayoutModalV2) va
+rasmga mos — qayta qurilmadi. Rasmdagi yon menyu guruhi «Rahbar paneli» (Umumiy ko'rinish, Rahbar kassasi, Ko'chirmalar,
+Tasdiqlar, Oylik chiqarish, Moliyaviy reja) tizimda yo'q — sahifalar Moliya menyusida.
+
+**458. Moliyaviy reja — tushum rejasi qoidasi** — taxmin
+Reja = o'quvchilarning shu oy guruh jadvalidagi darslari × bitta dars narxi (Qarzdorlar hisoboti bilan bir xil qoida),
+rasmdagi «aktiv o'quvchilar × guruh narxi − chegirmalar» emas. «Muddati o'tgan» — o'quvchilarning bugungi qarzi (shu oy
+rejasining to'lanmagan qismigacha); «Kutilmoqda» — qolgani. Eski «Tushum rejasi» — `?classic=1`.
+
+**459. «Kelgusi 7 kun» o'rniga «Eng katta qarzdorlar»** — QAROR KERAK
+Rasmda kunlar bo'yicha kutilayotgan to'lovlar va «eslatma SMS to'lov kunidan 3 kun oldin». Tizimda o'quvchining
+TO'LOV KUNI yo'q (to'lov — darslar bo'yicha), shuning uchun o'rniga qarzdorlar ro'yxati. To'lov kunini kiritamizmi
+(masalan, guruhga qo'shilgan kun yoki oyning N-sanasi)? «12 qarzdorga eslatma yuborish» tugmasi ham shunga bog'liq.
+
+**460. Xarajat rejasi — moddalar** — taxmin
+Reja — «Rejalashtirilgan xarajatlar» (Kunlik/Haftalik/Oylik/Yillik oylikka keltiriladi). Sarflandi — shu oy kassadagi
+chiqimlar, TRANZAKSIYA TURI NOMI bo'yicha bog'lanadi (nomlar bir xil bo'lsin: «Ijara» ↔ «Ijara»). Rejada yo'q chiqim —
+«rejada yo'q». Rasmdagi «Keyingi to'lov» sanasi va «To'lash» tugmasi qilinmadi — xarajatda to'lov kuni maydoni yo'q.
+
+**461. Pul oqimi — prognoz** — taxmin
+Haftalar 1–7, 8–14 … (kalendar haftasi emas). Prognoz: Tushum rejasidagi «Kutilmoqda» va Xarajat rejasidagi qolgani
+qolgan kunlarga TENG bo'linadi; qarzlar qo'shilmaydi; kassalararo ko'chirmalar kirim-chiqimga kirmaydi.
+
+**462. Foyda va zarar — kassa usuli** — QAROR KERAK
+Rasmda «hisoblangan usul» (to'lov qaysi oy uchun bo'lsa — o'sha oyga) va «kassa bilan solishtirish». Tizimda to'lovning
+qaysi oy uchunligi saqlanmaydi — hozir kassa usuli (tushgan oyiga). Hisoblangan usul kerak bo'lsa, to'lov oynasida
+«qaysi oy uchun» maydoni qo'shilishi kerak. Oylik fondi alohida qator emas — «Oylik»/«Avans» chiqimlari nomi bilan.
+
+**463. Shartnomalar — reyestr, elektron imzo yo'q** — QAROR KERAK
+Yangi `student_contracts`: raqam A{filial}-{yil}/{tartib}, imzolovchi, oylik narx, muddat (sukut — 31-may), holat.
+Hozir admin tuzadi va «Imzolandi» (qog'ozda) bosadi; uzaytirish, bekor qilish (sabab bilan). Rasmdagi: guruhga
+qo'shilganda AVTOMATIK tuzish, ota-onaga SMS imzo havolasi, kabinetda SMS kod bilan imzo, skan biriktirish, PDF — qilinmadi
+(SMS pulli va yuridik jihati bor). Qaysilarini qilamiz? Eski «Shartnoma» (to'lov bo'laklari) — `?classic=1`.
+
+**464. Shartnoma — narx o'zgarsa / o'quvchi ketsa** — QAROR KERAK
+Rasmda: narx o'zgarsa qo'shimcha kelishuv avtomatik tuziladi; o'quvchi arxivga o'tsa shartnoma o'zi «Bekor qilingan».
+Hozir ikkalasi qo'lda (bekor qilish + yangisini tuzish). Avtomatik qilaylikmi?
+
+**465. Integratsiyalar — haqiqiy holat** — taxmin
+Kartalar sozlamalardan haqiqiy holatni ko'rsatadi: Payme/Click — API ulanmagan, to'lovlar kassaga qo'lda yoziladi
+(shu oydagi soni); eski tizim — Google Sheets sinxronizatsiyasi; Telegram botlar; SMS · Eskiz. Uzum Bank, bank
+ko'chirmasi (Excel yuklash) va fiskal chek tizimda YO'Q — «Ulanmagan». «Biriktirilmagan to'lovlar» — mavjud oyna (ismi
+bir xil o'quvchilar); rasmdagi «tizim taklifi» (telefon/summa bo'yicha) — o'sha oynada nomzodlar sifatida.
+
+**466. Payme / Click / Uzum ulash** — QAROR KERAK
+Onlayn to'lov avtomatik tushishi uchun merchant hisoblari va kalitlar kerak (Payme Business, Click Merchant, Uzum).
+Qaysi biri bilan boshlaymiz? Fiskal chek (OFD) — alohida shartnoma talab qiladi.
 
 ### 33-qism — Gamifikatsiya: Tanga berish, Reyting, Hamyonlar, Guruhlar musobaqasi, Do'kon, Sozlamalar, Tangalarim (17.11.2026)
 

@@ -1030,6 +1030,37 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   Ko'chirma — mavjud `applyCashboxTransferTo` / `decideTransferAs`; yozuv — `cash_handovers` (kupyuralar, farq, izoh,
   kim qabul qildi). Rasmdan farqlar — `SAVOLLAR.md` 429–433.
 
+## Moliya — Moliyaviy reja, Shartnomalar, Integratsiyalar, kassir topshiruvi (32-qism davomi, yorug'/qorong'i, 17.11.2026)
+
+- **Moliyaviy reja** (`/finance-revenue-plan`, yon menyuda «Moliyaviy reja»): oy (`V2MonthNav`), filial, Excel; tablar
+  Tushum rejasi · Xarajat rejasi · Pul oqimi · Foyda va zarar (`?tab=`). Har tab tepasida 4 ko'rsatkichli bitta karta
+  (birinchisi/asosiysi `brand-bg`; telefonda 2×2).
+  - Tushum: bajarilish chizig'i (Tushdi `success`, Muddati o'tgan `danger`, Kutilmoqda — chiziqli), filiallar jadvali
+    (Reja qalin, Qarz `danger` + «N qarzdor», bajarilish mini-chiziq + %), «Jami» `surface-2`; o'ngda «Eng katta qarzdorlar»
+    (+ «Qarzdorlar · N →»); pastda «Reja qanday tuziladi».
+  - Xarajat: moddalar jadvali (Reja, Sarflandi — summa + % + chiziq, oshsa `danger`; Qoldi; Oxirgi chiqim), rejada yo'q
+    modda — «rejada yo'q» `warning`; «Rejani tahrirlash» → Rejalashtirilgan xarajatlar.
+  - Pul oqimi: haftalar ustunlari (Kirim `info`, Chiqim `warning`, prognoz — chiziqli + chegarali; tepada qoldiq tabletkasi
+    «N mln»), jadval Hafta (+ «prognoz» belgisi) · Boshida · Kirim `success` · Chiqim `danger` · Oxirida · Asosiy to'lovlar.
+  - Foyda va zarar: `info-bg` izoh (kassa usuli), jadval Modda · 3 oy · joriy oy «hozircha» · «reja» ustuni (`brand-bg`
+    xira); bo'limlar DAROMAD / XARAJATLAR (kichik bosh harf), Jami qatorlari qalin, «Sof foyda» `brand-bg`, «Foyda ulushi».
+- **Shartnomalar** (`/finance-fin-contract`): «Shablon» + «Shartnoma tuzish»; `info-bg` izoh; tabletkalar Hammasi ·
+  Imzolangan · Imzo kutilmoqda · Muddati tugaydi · Bekor qilingan; qidiruv, Filial. Jadval Raqam (tabular) · O'quvchi (fan
+  nuqtasi + guruh · filial) · Imzolovchi (+ «onasi / otasi / o'zi, 18 yoshdan katta») · Oylik narx · Amal qilish muddati ·
+  Holat (Imzolangan `success`, Imzo kutilmoqda `warning`, «N kunda tugaydi» `info`, Muddati tugagan `danger`, Bekor
+  qilingan neytral; ostida «qog'ozda · sana | vaqt») · amal («Imzolandi», «Uzaytirish», ×). Pastda 3 izoh kartasi
+  `surface-2`. Oynalar: tuzish (o'quvchi qidiruvi → guruh, imzolovchi segmenti, ism, telefon, narx, muddat), uzaytirish,
+  bekor qilish (sabab chiplari, `danger` tugma).
+- **Integratsiyalar** (Sozlamalar → Moliya): 6 karta (harf belgisi, nom, tur, holat tabletkasi — Ulangan `success`,
+  Qo'lda `info`, Muammo/Qisman `warning`, Ulanmagan neytral; 2 qator izoh; pastda tugma), «Biriktirilmagan to'lovlar»
+  kartasi (son belgisi) → mavjud biriktirish oynasi.
+- **Kunlik topshiruv · kassir** (telefon): «Bugun kassada» kartasi (holat belgisi, katta summa, Naqd/Plastik), «Naqd pulni
+  sanang» + «✓ N · mos» / farq, 8 kupyura qatori (− son +, qator jami), «☑ Plastik … rahbar kartasiga o'tkazdim», farq
+  qatori (`success-bg` / `warning-bg`), pastda yopishqoq «✓ Topshirish · summa».
+- Kodda: `components/v2/finance/` — FinancialPlanV2, ContractsV2, CashierHandoverV2; `components/v2/settings/IntegrationsV2`.
+  Server: `lib/financialPlan.ts`, `lib/studentContracts.ts`, `lib/integrationsStatus.ts`, `/api/cashboxes/daily/send`.
+  Rasmdan farqlar — `SAVOLLAR.md` 457–466.
+
 ## Gamifikatsiya — Tanga berish, Reyting, Hamyonlar, Guruhlar musobaqasi, Do'kon, Sozlamalar, Tangalarim (33-qism, yorug'/qorong'i, 17.11.2026)
 
 - **Tanga berish** (`/gamification-lesson`, `?groupId=`): sarlavha + «Bugungi dars · sana, hafta kuni · vaqt · xona · ustoz»,
