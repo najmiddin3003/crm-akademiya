@@ -77,9 +77,13 @@ export function matchQuery(q: string, ...fields: (string | number | null | undef
 
 /* ---------------- Sahifa qismlari ---------------- */
 
-export function PageShell({ children }: { children: ReactNode }) {
+/**
+ * Sahifa ramkasi. Sukut — ≥1024 px da ekran balandligiga qotadi (jadval kartada ichidan aylanadi).
+ * `flow` — bir nechta bo'limli uzun sahifa (Tanga berish, Kunlik topshiruv): sahifa o'zi aylanadi.
+ */
+export function PageShell({ children, flow = false }: { children: ReactNode; flow?: boolean }) {
   return (
-    <div data-ui="v2" className="relative flex min-h-full flex-col gap-4 bg-v2-surface p-4 font-v2 text-v2-text sm:p-5 lg:h-full lg:min-h-0">
+    <div data-ui="v2" className={`relative flex min-h-full flex-col gap-4 bg-v2-surface p-4 font-v2 text-v2-text sm:p-5 ${flow ? "" : "lg:h-full lg:min-h-0"}`}>
       {children}
     </div>
   );

@@ -176,7 +176,7 @@ export default function DailyHandoverV2() {
   }, [curMonth, today]);
 
   return (
-    <PageShell>
+    <PageShell flow>
       <PageHead
         title={t("Kunlik topshiruv")}
         subtitle={[t("Filial kassalari kun oxirida pulni bosh kassaga topshiradi"), today ? `${t("bugun")}, ${dayMonth(today)} | ${data?.now ?? ""}` : ""].filter(Boolean).join(" · ")}

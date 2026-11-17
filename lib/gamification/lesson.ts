@@ -537,7 +537,7 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
 
   const curM = monthOf(today);
   const prevM = prevMonth(curM);
-  const [marks, txs, wallets, exams] = await Promise.all([
+  const [marks, txs, wallets, exams, meta] = await Promise.all([
     db
       .collection("attendance")
       .find(
@@ -553,6 +553,8 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
       .find({ groupId: g.id, month: { $in: [prevM, curM] } }, { projection: { _id: 0, id: 1, month: 1, students: 1 } })
       .sort({ id: 1 })
       .toArray(),
+    // Yangi versiyadagi «Tanga berish» sarlavhasi: dars vaqti, xona, kunlar.
+    db.collection("groups").findOne({ id: g.id }, { projection: { _id: 0, time: 1, room: 1, day: 1 } }),
   ]);
 
   const balanceOf = new Map(wallets.map((w) => [Number(w.pupilId), Number(w.balance) || 0]));
@@ -649,7 +651,15 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
 
   return {
     ...base,
-    group: { id: g.id, label: g.label, branchName: names.get(g.branchId) ?? "", teacher: g.teacher },
+    group: {
+      id: g.id,
+      label: g.label,
+      branchName: names.get(g.branchId) ?? "",
+      teacher: g.teacher,
+      time: String(meta?.time ?? ""),
+      room: String(meta?.room ?? ""),
+      day: String(meta?.day ?? ""),
+    },
     canTeach,
     canExcuse,
     activityUsed,
