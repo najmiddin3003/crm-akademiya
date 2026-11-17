@@ -4,13 +4,14 @@
 import "@fontsource-variable/onest/wght.css";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, LogIn, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, LogIn, ShieldCheck } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import V2Checkbox from "@/components/v2/ui/V2Checkbox";
-import { Field, PhoneField, TextInput, formatLocalPhone, type FieldState } from "@/components/v2/form/fields";
+import { Field, PhoneField, TextInput, formatLocalPhone } from "@/components/v2/form/fields";
 import { primaryBtn } from "@/components/v2/ui/buttons";
 import AuthBrandPanel, { AuthLogo } from "./AuthBrandPanel";
 import BranchPickV2, { type BranchChoice } from "./BranchPickV2";
+import PasswordInput from "@/components/v2/form/PasswordInput";
 
 // YANGI VERSIYA — KIRISH SAHIFASI «/» (rasm «Kirish sahifasi», yorug'/qorong'i, 25.10.2026, 14-qism):
 //   • chapda teal panel (AuthBrandPanel), o'ngda «Tizimga kirish», «Telefon raqamingiz va
@@ -23,37 +24,6 @@ import BranchPickV2, { type BranchChoice } from "./BranchPickV2";
 // Eski ko'rinish — `/?classic=1` (app/page.tsx).
 
 type Step = "login" | "forgot" | "reset";
-
-function PasswordInput({
-  id,
-  value,
-  onChange,
-  autoComplete,
-  state = "default",
-}: {
-  id: string;
-  value: string;
-  onChange: (v: string) => void;
-  autoComplete: string;
-  state?: FieldState;
-}) {
-  const { t } = useT();
-  const [show, setShow] = useState(false);
-  return (
-    <div className="relative">
-      <TextInput id={id} type={show ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete} state={state} className="pr-11" />
-      <button
-        type="button"
-        onClick={() => setShow((s) => !s)}
-        aria-label={show ? t("Parolni yashirish") : t("Parolni ko'rsatish")}
-        title={show ? t("Parolni yashirish") : t("Parolni ko'rsatish")}
-        className="absolute right-1.5 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-v2-md text-v2-text-2 hover:bg-v2-surface-2 hover:text-v2-text focus-visible:outline-none focus-visible:shadow-v2-focus"
-      >
-        {show ? <EyeOff className="size-4" strokeWidth={1.75} /> : <Eye className="size-4" strokeWidth={1.75} />}
-      </button>
-    </div>
-  );
-}
 
 function Alert({ tone, children }: { tone: "error" | "success"; children: ReactNode }) {
   const Icon = tone === "error" ? AlertCircle : CheckCircle2;

@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Avtorizatsiya kerak" }, { status: 401 });
   }
 
-  let body: { current_password?: string; new_password?: string };
+  let body: { current_password?: string; new_password?: string; logout_others?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -53,6 +53,11 @@ export async function POST(req: Request) {
     { _id: user._id },
     { $set: { passwordHash, passwordEnc, passwordUpdatedAt: new Date() } },
   );
+
+  // «Boshqa qurilmalardan chiqarish» (37-qism, Mening hisobim → Xavfsizlik) — joriy sessiyadan boshqalari yopiladi.
+  if (body.logout_others) {
+    await db.collection("user_sessions").deleteMany({ userId: me.id, ...(me.sid ? { sid: { $ne: me.sid } } : {}) });
+  }
 
   return NextResponse.json({ ok: true });
 }
