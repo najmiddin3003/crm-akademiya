@@ -413,7 +413,7 @@ export async function groupsInBuilding<G extends object>(
   });
 }
 
-async function expectationFor(db: Db, emp: HrEmployee, branch: AttendanceBranch, iso: string, weekday: number): Promise<Expectation | null> {
+export async function expectationFor(db: Db, emp: HrEmployee, branch: AttendanceBranch, iso: string, weekday: number): Promise<Expectation | null> {
   if (emp.turi !== "teacher") return employeeExpectation(emp, branch) ?? branchExpectation(branch);
   const who = { $regex: `^\\s*${escapeRegex(emp.name.trim())}\\s*$`, $options: "i" };
   // Hovuz bo'yicha olinadi, keyin XONASI shu binoda bo'lganlari qoladi

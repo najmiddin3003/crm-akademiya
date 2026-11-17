@@ -242,6 +242,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/settings-lists": ["/finance-analytics", "/finance-cash", "/finance-cashflow", "/finance-payroll", "/finance-reports", "/groups", "/management-xodimlar", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
   "/api/settings-lists/[id]": ["/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
   "/api/sms-analytics": ["/nazorat-sms-analytics"],
+  "/api/staff-attendance": ["/nazorat-qr"],
   "/api/sms-messages": ["/active-students", "/archive-students", "/expiring-subs", "/first-lessons", "/groups-students", "/new-students", "/orders-list", "/parents", "/sales-messages", "/students-list"],
   "/api/sms-templates": ["/active-students", "/archive-students", "/expiring-subs", "/first-lessons", "/groups-students", "/new-students", "/orders-list", "/parents", "/sales-sms", "/students-list"],
   "/api/sms-templates/[id]": ["/sales-sms"],
