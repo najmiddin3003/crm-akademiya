@@ -62,6 +62,25 @@ export interface ShopData {
   branchOptions: { id: number; name: string }[];
   items: ShopItemView[];
   budget: { branchId: number; name: string; spent: number; limit: number | null; left: number | null }[];
+  /** O'quvchilar istaklari (sovg'a bo'yicha; tanga yetadiganlar) — admin/direktor. */
+  wishRows: { itemId: number; title: string; price: number; wanted: number; ready: { pupilId: number; name: string; balance: number }[]; stock: number | null }[];
+  /** Joriy oyda berilganlar (filial doirasida). */
+  orders: {
+    id: number;
+    pupilId: number;
+    pupilName: string;
+    itemName: string;
+    kind: "item" | "service" | "discount";
+    priceCoins: number;
+    branchName: string;
+    branchId: number;
+    costPriceSom: number | null;
+    givenDate: string;
+    givenByName: string;
+    givenAt: string;
+    status: "given" | "returned";
+    canReturn: boolean;
+  }[];
 }
 
 export interface HistoryRow {

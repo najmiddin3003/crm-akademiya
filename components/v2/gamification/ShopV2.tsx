@@ -10,7 +10,8 @@ import { DeleteItemModal, DiscountModal, GiveModal, ProductModal, ReturnModal, t
 import ActionMenu from "@/components/v2/ui/ActionMenu";
 import { primaryBtn, secondaryBtn, secondaryIcon } from "@/components/v2/ui/buttons";
 import { DiscountApproveDialog, HistoryDrawer, RejectDialog } from "./ShopDialogs";
-import ShopGiftsTab from "./ShopGiftsTab";
+import GiveDialogV2 from "./GiveDialogV2";
+import ShopBoardV2, { type AudTab } from "./ShopBoardV2";
 import ShopRequestsTab from "./ShopRequestsTab";
 import type { AwaitRow, HistoryRow, ReqRow, ReqView, ShopData } from "./shopTypes";
 
@@ -23,6 +24,10 @@ import type { AwaitRow, HistoryRow, ReqRow, ReqView, ShopData } from "./shopType
 // GET /api/gamification/shop/requests (lib/gamification/shopRequests.ts). Sovg'a qo'shish /
 // tahrirlash / o'chirish / berish / qaytarish oynalari — eski (ShopModals.tsx). Byudjet va
 // chegirmalar ro'yxati — «⋯ → Eski ko'rinishda ochish».
+//
+// 33-qism (17.11.2026, rasm «Do'kon»): «Sovg'alar» — birinchi va sukut tab, yangi ko'rinish
+// (./ShopBoardV2.tsx: byudjet, toifa va ombor, kartalar, istaklar, oyda berilganlar); buyum va
+// xizmatni berish — ./GiveDialogV2.tsx (chegirma — eski oyna, kurs tanlanadi). «So'rovlar» saqlandi.
 
 export type ShopTab = "sorovlar" | "sovgalar";
 
@@ -40,6 +45,9 @@ export default function ShopV2({ initialTab }: { initialTab?: string }) {
   const [discount, setDiscount] = useState<ReqRow | null>(null);
   const [history, setHistory] = useState(false);
   const [give, setGive] = useState<ShopItemView | null>(null);
+  const [giveV2, setGiveV2] = useState<{ item: ShopItemView; pupilId: number | null; meta: string } | null>(null);
+  const [aud, setAud] = useState<AudTab>("all");
+  const [branchSel, setBranchSel] = useState<number | null>(null);
   const [edit, setEdit] = useState<{ item: ShopItemView | null } | null>(null);
   const [del, setDel] = useState<ShopItemView | null>(null);
   const [ret, setRet] = useState<ReturnTarget | null>(null);
@@ -89,9 +97,21 @@ export default function ShopV2({ initialTab }: { initialTab?: string }) {
   }
 
   const director = shop.role === "director";
-  const current: ShopTab = tab ?? (req.canManage ? "sorovlar" : "sovgalar");
-  const branchIds = req.branches.map((b) => b.id);
+  const current: ShopTab = tab ?? "sovgalar";
   const giveBranch = req.branches.length === 1 ? req.branches[0].id : null;
+  const stockBranch = branchSel ?? req.branches[0]?.id ?? null;
+  const stockBranchName = req.branches.find((b) => b.id === stockBranch)?.name ?? "";
+
+  function openGive(item: ShopItemView, pupilId?: number) {
+    if (item.kind === "discount") {
+      setGive(item);
+      return;
+    }
+    const d = new Date();
+    const hm = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tashkent" });
+    const day = d.toLocaleDateString("en-CA", { timeZone: "Asia/Tashkent" });
+    setGiveV2({ item, pupilId: pupilId ?? null, meta: [stockBranchName, `${fmtDay(day)} | ${hm}`].filter(Boolean).join(" · ") });
+  }
 
   /* ── So'rov amallari ── */
   async function approve(r: ReqRow) {
@@ -178,8 +198,8 @@ export default function ShopV2({ initialTab }: { initialTab?: string }) {
       <div role="tablist" aria-label={t("Do'kon")} className="flex gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--v2-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {(
           [
-            { key: "sorovlar" as const, label: t("So'rovlar"), badge: newCount > 0 ? t("{n} yangi", { n: newCount }) : null, count: null },
             { key: "sovgalar" as const, label: t("Sovg'alar"), badge: null, count: shop.items.length },
+            { key: "sorovlar" as const, label: t("So'rovlar"), badge: newCount > 0 ? t("{n} yangi", { n: newCount }) : null, count: null },
           ]
         ).map((x) => {
           const on = current === x.key;
@@ -225,14 +245,16 @@ export default function ShopV2({ initialTab }: { initialTab?: string }) {
             onHistory={() => setHistory(true)}
           />
         ) : (
-          <ShopGiftsTab
-            items={shop.items}
-            branchIds={branchIds}
-            role={shop.role}
-            onAdd={() => setEdit({ item: null })}
+          <ShopBoardV2
+            shop={shop}
+            branches={req.branches}
+            branchId={stockBranch}
+            onBranch={setBranchSel}
+            aud={aud}
+            onAud={setAud}
+            onGive={openGive}
             onEdit={(i) => setEdit({ item: i })}
-            onGive={setGive}
-            onDelete={setDel}
+            onAdd={() => setEdit({ item: null })}
           />
         )}
       </div>
@@ -271,6 +293,23 @@ export default function ShopV2({ initialTab }: { initialTab?: string }) {
           branchId={giveBranch}
           preselect={null}
           onClose={() => setGive(null)}
+          onDone={(r) => {
+            const msg = t("{name}: «{title}» berildi, −{n} tanga", { name: r.pupilName, title: t(r.title), n: r.price });
+            showSuccess(withReward(t, r.wished ? `${msg} · ${t("istaklardan olindi")}` : msg, r.pupilName, r));
+            reload();
+          }}
+        />
+      )}
+      {giveV2 && (
+        <GiveDialogV2
+          item={giveV2.item}
+          branchId={stockBranch}
+          branchName={stockBranchName}
+          stock={giveV2.item.kind === "item" ? Number((giveV2.item.stockAll ?? giveV2.item.stock ?? {})[String(stockBranch)]) || 0 : null}
+          budgetLeft={shop.budget.find((b) => b.branchId === stockBranch)?.left ?? null}
+          preselect={giveV2.pupilId}
+          meta={giveV2.meta}
+          onClose={() => setGiveV2(null)}
           onDone={(r) => {
             const msg = t("{name}: «{title}» berildi, −{n} tanga", { name: r.pupilName, title: t(r.title), n: r.price });
             showSuccess(withReward(t, r.wished ? `${msg} · ${t("istaklardan olindi")}` : msg, r.pupilName, r));
@@ -327,6 +366,12 @@ export default function ShopV2({ initialTab }: { initialTab?: string }) {
   );
 }
 
+/** "2026-10-12" → «12-oktabr» (uz) — oyna sarlavhasi uchun. */
+function fmtDay(iso: string): string {
+  const m = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"][Number(iso.slice(5, 7)) - 1] ?? "";
+  return `${Number(iso.slice(8, 10))}-${m}`;
+}
+
 function Frame({ children }: { children: ReactNode }) {
   return <div data-ui="v2" className="flex min-h-full flex-col gap-4 bg-v2-surface p-4 font-v2 text-v2-text sm:p-5">{children}</div>;
 }
@@ -337,7 +382,7 @@ function Header({ actions }: { actions?: ReactNode }) {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
         <h1 className="text-[20px] font-semibold leading-7 text-v2-text">{t("Do'kon")}</h1>
-        <p className="mt-0.5 text-v2-small text-v2-text-2">{t("Sovg'alar tanga evaziga · o'quvchi kabinetdan so'rov yuboradi, siz tasdiqlaysiz")}</p>
+        <p className="mt-0.5 text-v2-small text-v2-text-2">{t("O'quvchi tangani sovg'aga almashtiradi, sovg'ani filial admini beradi · kichiklar va kattalar uchun alohida")}</p>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

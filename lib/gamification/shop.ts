@@ -1,5 +1,6 @@
 import type { Db, Document } from "mongodb";
 import { uzDateIso } from "@/lib/uzTime";
+import { groupLabel, type Group } from "@/lib/groups";
 import { writeAudit, type GamActor } from "./actor";
 import { toTxActor } from "./attendance";
 import { GAM, isDupKey, nextSeq, raiseSeq, withLock } from "./db";
@@ -713,6 +714,10 @@ export async function shopView(db: Db, actor: GamActor, branchFilter: number | n
       branchName: names.get(o.branchId) ?? "",
       costPriceSom: dir ? o.costPriceSom : null,
       givenDate: o.givenDate,
+      // Yangi versiya (33-qism, «Oktabrda berilganlar»): kim va soat nechada bergan.
+      givenByName: o.givenByName,
+      givenAt: o.givenAt,
+      branchId: o.branchId,
       status: o.status,
       canReturn: canReturnOrder(actor, o, today, o.discountId !== null ? discStatus.get(o.discountId) ?? null : null),
     })),
@@ -726,7 +731,13 @@ export async function eligiblePupils(db: Db, actor: GamActor, itemId: number, br
   const branches = await shopBranches(db, actor, branchFilter);
   const month = uzDateIso().slice(0, 7);
   // Hovuz: filial(lar)dagi faol guruh a'zolari va hamyoni borlar.
-  const groups = await db.collection("groups").find({ status: "active" }, { projection: { _id: 0, studentIds: 1 } }).toArray();
+  const groups = await db.collection("groups").find({ status: "active" }, { projection: { _id: 0, id: 1, name: 1, course: 1, studentIds: 1 } }).toArray();
+  // Yangi versiya (33-qism, «Sovg'a berish»): o'quvchi qatorida guruhlari.
+  const groupsOf = new Map<number, string[]>();
+  for (const g of groups) {
+    const label = groupLabel(g as unknown as Group);
+    for (const id of Array.isArray(g.studentIds) ? g.studentIds.map(Number) : []) groupsOf.set(id, [...(groupsOf.get(id) ?? []), label]);
+  }
   const walletIds = (await db.collection(GAM.wallets).distinct("pupilId")).map(Number);
   const ids = [...new Set([...groups.flatMap((g) => (Array.isArray(g.studentIds) ? g.studentIds.map(Number) : [])), ...walletIds])];
   const pupils = (
@@ -761,7 +772,7 @@ export async function eligiblePupils(db: Db, actor: GamActor, itemId: number, br
       const bud = budgets.get(branchId) ?? { limit: null, spent: 0 };
       const ctx: GiveCtx = { item, pupil: { id: pid, name: "", branchId, frozen: false, toifa }, balance, budget: bud.limit, spent: bud.spent };
       const error = (isDisc ? discountPupilError(ctx, dMonth, taken.has(pid), inGroup.has(pid)) : giveError(ctx))?.message ?? null;
-      return { pupilId: pid, name: pupilName(p), grade, branchName: names.get(branchId) ?? "", balance, wished: wished.has(pid), error };
+      return { pupilId: pid, name: pupilName(p), grade, branchName: names.get(branchId) ?? "", groups: groupsOf.get(pid) ?? [], balance, wished: wished.has(pid), error };
     })
     .sort((a, b) => Number(!!a.error) - Number(!!b.error) || Number(b.wished) - Number(a.wished) || b.balance - a.balance || a.name.localeCompare(b.name, "uz"));
 }
