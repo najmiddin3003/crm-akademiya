@@ -1252,6 +1252,47 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   CabinetFeed.tsx`. Server `lib/salesTargets.ts`, `lib/campaignLinks.ts`, `lib/cabinetNews.ts`, `lib/autoMessages.ts`,
   `lib/coursePage.ts`, `lib/seasonGrades.ts`, `lib/onlineCourseAdmin.ts`. Rasmdan farqlar — `SAVOLLAR.md` 485–499.
 
+## Mening hisobim va Sozlamalar — profil, xavfsizlik, qurilmalar, ekran qulfi, bayramlar, funksiyalar, obuna (37-qism, 17.11.2026)
+
+- **Mening hisobim** (`/settings-profile`, `/settings-security`, `/settings-devices` — bitta sahifa, tab manzildan):
+  sarlavhada katta avatar (rasm yoki harflar `brand`), «… · bu sahifani faqat siz ko'rasiz»; tablar Profil /
+  Xavfsizlik / Qurilmalar (soni bilan), faoli `brand` tag chiziq.
+- **Profil**: «Shaxsiy ma'lumotlar» (rasm yuklash, Ism, Familiya, Otasining ismi, Tug'ilgan kun — kun + oy, yilsiz;
+  Lavozim — qulf belgisi, chiziq chegarali, «Rollar va huquqlar»), «Kirish va aloqa» (telefon «Tasdiqlangan»
+  tabletkasi, Telegram — xodim boti holati va «Uzish» `danger`, pochta); pastda «Hisob yaratilgan …» va Saqlash.
+  O'ngda «Boshqalar sizni shunday ko'radi» (xodimlar ro'yxati, chek, amallar jurnali namunasi — yozish bilan
+  yangilanadi) va «Ko'rinish» (Til, Mavzu Yorug'/Qorong'i, kirgandan keyin ochiladigan filial, Jadval filtrlari,
+  «Filtrlar ochiq tursin»).
+- **Xavfsizlik**: 4 kichik karta (Parol yoshi — 90 kundan oshsa `warning`, Ikki bosqichli kirish «Tez orada», Ekran
+  qulfi, Faol qurilmalar); «Parolni o'zgartirish» — ko'rsatish tugmali maydonlar, 4 bo'lakli kuch chizig'i
+  (`danger` → `warning` → `info` → `success`), talablar ro'yxati (✓ `success`), «Mos keladi», «Boshqa N ta qurilmadan
+  chiqarish»; o'ngda «Ekran qulfi» («Hozir qulflash», avtomatik qulflash tanlovi), «Faol qurilmalar» (3 ta, «Shu
+  qurilma» `success`), «So'nggi kirishlar» (yashil/qizil nuqta, xato urinish sababi `danger`).
+- **Qurilmalar**: «Hisobingiz N ta qurilmada ochiq» + «Boshqa qurilmalardan chiqish» (`danger` chegarali); jadval
+  (qurilma belgisi, IP, kirgan, oxirgi faollik / «hozir» `success`, «Chiqarish» `danger`); «Notanish qurilma
+  ko'rsangiz» (3 qadam, `danger-bg` raqamlar) va «Qurilma qanday aniqlanadi».
+- **Ekran qulfi** (`/lock`): qobiqsiz, yuqorida logo va til; katta soat (56–64px) va sana; karta — avatar + qulf
+  belgisi, ism, lavozim · filial, «Qulflangan · HH:MM dan beri» kulrang tabletka, parol, «Ochish» (to'liq enli),
+  «Parolni unutdim?» va «Boshqa hisob bilan kirish»; ostida ✓ va ⚠ izohlar. Telefonda o'sha, to'liq enli.
+- **Ish kunlari va bayramlar** (`/settings-holidays`, Sozlamalar → Umumiy): ish haftasi kun tugmalari (yoqilgani
+  `brand-bg`), toq/juft guruhlar soni; o'quv yili jadvali (Kelayotgan / O'tgan / Hammasi), tur tabletkasi (Davlat
+  `brand`, Diniy `warning`, Markaz qarori `violet`, «sana taxminiy» `warning`), qamrov, darsi o'tmaydigan guruhlar;
+  tanlangan qator — chap `brand` chiziq. O'ngda: filiallar bo'yicha, o'quvchilar, «Shu kuni tizim» (✓), «Ota-onalarga
+  xabar» («Hozir yuborish»). Oyna: nomi, boshlanish–tugash, turi, Barcha / Tanlangan filiallar (tabletka-tanlov),
+  taxminiy, xabar.
+- **Funksiyalar** (`/settings-features`, Sozlamalar → Tizimli): Hammasi / Yoqilgan / O'chiq / Tez orada + qidiruv;
+  guruh kartalari (ikonka kvadrati, sarlavha, izoh, qatorlar — nom, izoh, almashtirgich; «Tez orada» `info`
+  tabletkasi, almashtirgich o'chiq); o'ngda «Menyu bo'limlari» va «So'nggi o'zgarishlar».
+- **Obuna va to'lov** (`/settings-subscription`): holat («Faol» `success`), «… gacha» katta sana, qolgan kun va
+  keyingi to'lov, `brand` chiziq (bugun · N / M kun), 4 ko'rsatkich; tariflar (joriysi `brand` chegara, «+N oy»
+  `success`), to'lovlar tarixi, modullar. «Muddatni uzaytirish» oynasi: davr kartalari, yangi muddat qatori, usul
+  (Hisob raqam; Click/Payme «Tez orada»), «Jami to'lov».
+- Kodda: `components/v2/account/MyAccountV2.tsx`, `components/v2/auth/LockScreenV2.tsx`,
+  `components/v2/shell/AutoLock.tsx`, `components/v2/form/PasswordInput.tsx`, `components/v2/settings/` —
+  HolidaysV2, FeaturesV2, SubscriptionV2. Server `lib/myAccount.ts`, `lib/holidays.ts`, `lib/features.ts`,
+  `lib/subscription.ts`; `/api/my-account`, `/api/holidays`, `/api/features`, `/api/subscription`. Rasmdan
+  farqlar — `SAVOLLAR.md` 500–511.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

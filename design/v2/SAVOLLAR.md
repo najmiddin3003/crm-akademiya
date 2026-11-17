@@ -2727,6 +2727,57 @@ test hali yo'q — o'quvchi va test ko'rsatkichlari shungacha 0. Test savollarin
 past — keyingi dars ochilmaydi» qoidasi pleer bilan birga qilinadi. Pullik kurs tushumi — kassadagi «Onlayn kurs»
 toifali kirimlar. Navbat qanday?
 
+**500. «Bildirishnomalar» tabi** — taxmin
+Mening hisobimdagi to'rtinchi tab (shaxsiy bildirishnomalar) qilinmadi — tizimda xodim o'zi sozlaydigan
+bildirishnomalar yo'q (Sozlamalar → Bildirishnomalar — markaz qoidalari, faqat direktor). Kerakmi, nimalar bo'lsin?
+
+**501. Telefon raqamini almashtirish** — QAROR KERAK
+Rasmdagi «Almashtirish» (yangi raqamga SMS kod + joriy parol) qilinmadi: raqam — login, hozir faqat direktor
+Boshqaruv → Xodimlar orqali o'zgartiradi. Xodim o'zi o'zgartira olsinmi?
+
+**502. Ism-familiya** — taxmin
+Profilda Ism + Familiya saqlanganda `fullName` = «Ism Familiya» bo'ladi (xodimlar ro'yxati, chek, jurnal shuni
+o'qiydi). Xodim kartasidagi ism (hr_employees) o'zgarmaydi — u Boshqaruvda. Bittaga birlashtiramizmi?
+
+**503. «Avto» mavzu va kirilcha / ruscha** — taxmin
+Mavzu: faqat Yorug' / Qorong'i («Avto» — qurilma bo'yicha — hali yo'q). Tillar: O'zbekcha, Ўзбекча, English (ruscha
+yo'q — rasmda «Русский»).
+
+**504. «Kirgandan keyin ochiladi» va jadval filtrlari** — taxmin
+Sozlama saqlanadi (`users.prefs`), lekin kirish oqimi va jadvallar hali uni o'qimaydi — keyingi qadamda ulanadi.
+
+**505. Ikki bosqichli kirish** — QAROR KERAK
+«Tez orada» bo'lib turibdi. Telegram (bepul) orqali kodmi yoki SMS? Kassaga huquqi borlar uchun majburiymi?
+
+**506. Ekran qulfi** — taxmin
+Avtomatik qulf har xodimning o'zida (5/15/30/60 daqiqa yoki o'chiq), harakatsizlik barcha ochiq oynalar bo'yicha
+sanaladi. 5 marta xato parol — hisobdan chiqariladi. Direktor hamma uchun majburiy qilsinmi?
+
+**507. Qurilmalar va joylashuv** — taxmin
+Shahar bo'yicha joylashuv aniqlanmaydi (IP ko'rsatiladi); «30 kun ishlatilmasa o'zi chiqadi» qilinmadi (sessiya o'z
+muddati bilan tugaydi).
+
+**508. Bayramlar** — taxmin
+Sanasi o'zgarmaydigan davlat bayramlari (1-sentabr, 1-oktabr, 8-dekabr, 1-yanvar, 8-mart, 21-mart, 9-may) har o'quv
+yili o'zi qo'shiladi; diniy bayramlar qo'lda, «taxminiy». Dam olish kunida Davomat nazorati darsni kutmaydi. Ota-
+onalarga xabar — «Hozir yuborish» tugmasi (bot orqali), avtomatik «bir kun oldin 18:00» yuborish yo'q (taymer).
+«Boshqa kunga ko'chiriladi» (dars ko'chirish) qilinmadi.
+
+**509. Ish haftasi** — taxmin
+Ish kunlari saqlanadi, lekin guruh jadvallari va xona bandligi hali undan foydalanmaydi; dars vaqti 08:00–22:00
+o'zgartirib bo'lmaydi.
+
+**510. Funksiyalar** — QAROR KERAK
+Ulangan: Gamifikatsiya, So'rovnoma sahifasi, menyu bo'limlarini yashirish (yangi versiya menyusi va qidiruvida, hamma
+uchun; manzil bilan ochilsa sahifa ishlaydi). Rasmdagi boshqa qoidalar (dars narxi oylikdan, kassalar o'tkazmasi
+tasdiqi, abonement izohi, o'tgan darslarga davomat, ketma-ket kelmaslik, jurnal bahosi, majburiy maydonlar) — har
+biri o'z joyida yoki hali yo'q; qaysi birini shu sahifaga chiqaramiz?
+
+**511. Obuna va tariflar** — QAROR KERAK
+Obuna muddati va to'lovlarni Tizimli jamoasi kiritadi (`app_settings` «subscription») — kiritish sahifasi yo'q.
+Tarif narxlari (1 oy 1 500 000 … 12 oy 18 000 000, bonus oylar) rasmdan olingan — to'g'rimi? «Muddatni uzaytirish»
+faqat so'rov yozadi; hisob-faktura PDF va Click/Payme yo'q. Muddat tugaganda «faqat ko'rish» rejimi qilinmadi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
