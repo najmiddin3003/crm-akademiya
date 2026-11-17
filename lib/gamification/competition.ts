@@ -12,7 +12,7 @@ import { groupRanking, monthRange } from "./ranking";
 import { branchBuildingNames as branchNames, isOwnGroup, toGamGroup } from "./scope";
 import { loadSettings } from "./settings";
 import { levelIndexOf } from "./rules";
-import { GamError, isFrozenStatus, withWallet } from "./wallet";
+import { GamError, isFrozenStatus, systemActor, withWallet } from "./wallet";
 
 // GURUHLAR MUSOBAQASI va OY YAKUNI (TZ 4.20, 5.6, 6.13, 8).
 //
@@ -38,12 +38,15 @@ export interface CompGroup {
   total: number;
   avg: number;
   rank: number;
+  /** Kamida `competitionMinMembers` faol o'quvchi bor — o'rin oladi; yo'q bo'lsa rank 0. */
+  participates: boolean;
 }
 
 const GROUP_FIELDS = { _id: 0, id: 1, name: 1, course: 1, teacher: 1, branchId: 1, studentIds: 1, status: 1 } as const;
 
 /** Filial(lar) bo'yicha oy musobaqasi — hisob paytidagi tarkib bilan. */
 export async function computeCompetition(db: Db, month: string, branchIds: number[] | null): Promise<Map<number, CompGroup[]>> {
+  const minMembers = Math.max(1, (await loadSettings(db)).competitionMinMembers || 1);
   const where: Document = { status: "active" };
   const rows = await db.collection("groups").find(where, { projection: GROUP_FIELDS }).toArray();
   const groups = rows.map((r) => toGamGroup(r as unknown as Group)).filter((g) => !branchIds || branchIds.includes(g.branchId));
@@ -65,12 +68,23 @@ export async function computeCompetition(db: Db, month: string, branchIds: numbe
     if (!members.length) continue;
     const total = members.reduce((a, id) => a + (by.get(`${g.id}|${id}`) ?? 0), 0);
     const list = out.get(g.branchId) ?? [];
-    list.push({ id: g.id, label: g.label, teacher: g.teacher, members: members.length, total, avg: roundHalfUp(total / members.length), rank: 0 });
+    list.push({
+      id: g.id,
+      label: g.label,
+      teacher: g.teacher,
+      members: members.length,
+      total,
+      avg: roundHalfUp(total / members.length),
+      rank: 0,
+      participates: members.length >= minMembers,
+    });
     out.set(g.branchId, list);
   }
   for (const list of out.values()) {
-    list.sort((a, b) => b.avg - a.avg || a.label.localeCompare(b.label, "uz"));
-    for (const r of list) r.rank = 1 + list.filter((x) => x.avg > r.avg).length;
+    // Qatnashmaydiganlar (kam o'quvchili) — oxirida, o'rinsiz.
+    list.sort((a, b) => Number(b.participates) - Number(a.participates) || b.avg - a.avg || a.label.localeCompare(b.label, "uz"));
+    const ranked = list.filter((x) => x.participates);
+    for (const r of ranked) r.rank = 1 + ranked.filter((x) => x.avg > r.avg).length;
   }
   return out;
 }
@@ -99,7 +113,10 @@ export async function competitionView(db: Db, actor: GamActor, month: string | n
   const prev = shiftMonth(m, -1);
   const winners = await db
     .collection(GAM.monthly)
-    .find({ month: prev, winner: true, branchId: { $in: ids } }, { projection: { _id: 0, branchId: 1, groupLabel: 1 } })
+    .find(
+      { month: prev, winner: true, branchId: { $in: ids } },
+      { projection: { _id: 0, branchId: 1, groupLabel: 1, teacher: 1, avg: 1, members: 1, paidCoins: 1, paidMembers: 1, closedAt: 1 } },
+    )
     .toArray();
   const prevClosed = await isMonthClosed(db, shiftMonth(cur, -1));
   const closedThis = m < cur ? await isMonthClosed(db, m) : false;
@@ -113,6 +130,10 @@ export async function competitionView(db: Db, actor: GamActor, month: string | n
     // «Oyni yakunlash» — faqat direktor, o'tgan oy hali yakunlanmagan bo'lsa (TZ 4.20.4).
     canClose: actor.role === "director" && settings.enabled && !!settings.startDate && !prevClosed && lastDayOf(shiftMonth(cur, -1)) >= settings.startDate,
     closeMonth: shiftMonth(cur, -1),
+    prevMonth: prev,
+    // Yangi versiya (33-qism): sozlamalar — g'olibga tanga va qatnashish chegarasi.
+    winnerCoins: settings.competitionWinnerCoins,
+    minMembers: Math.max(1, settings.competitionMinMembers || 1),
     branchOptions: (allowed ?? [...names.keys()]).map((b) => ({ id: b, name: names.get(b) ?? `#${b}` })),
     branches: ids
       .map((b) => ({
@@ -120,6 +141,17 @@ export async function competitionView(db: Db, actor: GamActor, month: string | n
         name: names.get(b) ?? `#${b}`,
         groups: comp.get(b) ?? [],
         lastWinners: winners.filter((w) => Number(w.branchId) === b).map((w) => String(w.groupLabel ?? "")),
+        lastWinnerInfo: winners
+          .filter((w) => Number(w.branchId) === b)
+          .map((w) => ({
+            label: String(w.groupLabel ?? ""),
+            teacher: String(w.teacher ?? ""),
+            avg: Number(w.avg) || 0,
+            members: Number(w.members) || 0,
+            paidCoins: Number(w.paidCoins) || 0,
+            paidMembers: Number(w.paidMembers) || 0,
+            closedAt: String(w.closedAt ?? ""),
+          })),
       }))
       .filter((b) => b.groups.length > 0 || b.lastWinners.length > 0),
   };
@@ -184,6 +216,41 @@ export async function closeMonth(db: Db, month: string, actor: GamActor | null) 
     } catch (e) {
       if (isDupKey(e)) throw new GamError(409, `${name} oyi allaqachon yakunlangan`);
       throw e;
+    }
+
+    // G'olib guruh o'quvchilariga tanga (33-qism, sozlama > 0) — GURUHSIZ yozuv: keyingi oy
+    // reytingi va musobaqasiga kirmaydi; `uniqKey` — qayta yozilmaydi.
+    const coins = settings.competitionWinnerCoins;
+    if (coins > 0) {
+      const winGroups = [...comp.values()].flat().filter((g) => g.rank === 1 && g.avg > 0);
+      const wdocs = await db.collection("groups").find({ id: { $in: winGroups.map((g) => g.id) } }, { projection: GROUP_FIELDS }).toArray();
+      const day = uzDateIso();
+      for (const gd of wdocs) {
+        const g = toGamGroup(gd as unknown as Group);
+        let paid = 0;
+        for (const pupilId of g.studentIds) {
+          // Bitta o'quvchidagi xato (ketgan, qulf, takror) qolganlarni to'xtatmasin — oy allaqachon
+          // yakunlangan, qayta urinish bo'lmaydi.
+          try {
+            const { result } = await withWallet(db, pupilId, async (w) => {
+              if (w.pupil.frozen || isFrozenStatus(w.pupil.status)) return null;
+              return w.add({
+                groupId: null,
+                date: day,
+                type: "competition",
+                amount: coins,
+                note: `${name}: ${g.label} — guruhlar musobaqasi g'olibi`,
+                actor: systemActor(by),
+                uniqKey: `comp:${month}:${g.id}:${pupilId}`,
+              });
+            });
+            if (result) paid++;
+          } catch (e) {
+            if (!isDupKey(e) && !(e instanceof GamError)) console.error("[gamification] musobaqa tangasi yozilmadi", month, g.id, pupilId, e);
+          }
+        }
+        await col.updateOne({ month, groupId: g.id }, { $set: { paidCoins: coins, paidMembers: paid } });
+      }
     }
 
     // «Oy o'quvchisi» — har guruhda 1-o'rin (reyting tangasi > 0; tenglar hammasi).

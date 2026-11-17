@@ -26,6 +26,8 @@ export const SETTING_LABELS: Record<NumericSettingKey, string> = {
   kidsMaxGrade: "Kichiklar toifasi sinfi",
   wishlistMax: "Istaklar ro'yxati maksimumi",
   monthCloseDay: "Oy yakuni kuni",
+  competitionWinnerCoins: "G'olib guruh o'quvchisiga tanga",
+  competitionMinMembers: "Musobaqada qatnashish — kamida o'quvchi",
 };
 
 /**

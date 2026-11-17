@@ -52,7 +52,7 @@ export async function rankingView(db: Db, actor: GamActor, groupIdParam: number 
   const walletBy = new Map(wallets.map((w) => [Number(w.pupilId), w]));
   const todayBy = new Map(todaySums.map((x) => [Number(x._id), x.s]));
   const somIds = new Set(som.map((b) => Number(b.pupilId)));
-  const list = comp.get(g.branchId) ?? [];
+  const list = (comp.get(g.branchId) ?? []).filter((x) => x.participates);
   const mine = list.find((x) => x.id === g.id) ?? null;
   const leader = list.find((x) => x.id !== g.id && x.rank === 1) ?? list.find((x) => x.id !== g.id) ?? null;
   return {

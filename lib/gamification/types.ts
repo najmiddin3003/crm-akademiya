@@ -63,6 +63,13 @@ export interface GamSettings {
   kidsMaxGrade: number;
   wishlistMax: number;
   monthCloseDay: number;
+  /**
+   * Guruhlar musobaqasi (33-qism, «Sozlamalar → Tanga tizimi»): oy yakunida g'olib guruhning
+   * har bir faol o'quvchisiga yoziladigan tanga (0 — yozilmaydi) va qatnashish uchun kamida
+   * necha faol o'quvchi kerak (1 — cheklovsiz, avvalgi qoida).
+   */
+  competitionWinnerCoins: number;
+  competitionMinMembers: number;
   levels: GamLevel[];
   updatedByName?: string;
   updatedAt?: string;
@@ -90,6 +97,8 @@ export const NUMERIC_SETTINGS = {
   kidsMaxGrade: [1, 11],
   wishlistMax: [1, 20],
   monthCloseDay: [1, 10],
+  competitionWinnerCoins: [0, 500],
+  competitionMinMembers: [1, 50],
 } as const satisfies Record<string, readonly [number, number]>;
 
 export type NumericSettingKey = keyof typeof NUMERIC_SETTINGS;
@@ -118,6 +127,8 @@ export const DEFAULT_SETTINGS: GamSettings = {
   kidsMaxGrade: 6,
   wishlistMax: 5,
   monthCloseDay: 1,
+  competitionWinnerCoins: 0,
+  competitionMinMembers: 1,
   levels: DEFAULT_LEVELS,
 };
 
@@ -251,10 +262,11 @@ export const SEED_REASONS: Omit<CoinReason, "id" | "code" | "isSystem" | "delete
 
 // ── Tanga yozuvlari (TZ 6.4) ───────────────────────────────────────────
 
-export type TxType = SystemReasonCode | "reason" | "shop";
+/** `competition` — oy yakunida g'olib guruh o'quvchilariga (guruhsiz yozuv, reytingga kirmaydi). */
+export type TxType = SystemReasonCode | "reason" | "shop" | "competition";
 
 /** Manbadan (Davomat, Sarhisob) hisoblanadi — qo'lda bekor qilinmaydi (TZ 2, 4.11.3). */
-export const AUTO_TX_TYPES: readonly TxType[] = ["attendance", "absence", "streak", "exam_result", "growth"];
+export const AUTO_TX_TYPES: readonly TxType[] = ["attendance", "absence", "streak", "exam_result", "growth", "competition"];
 
 /**
  * Tarixdagi «Turi» (prototipdagi label()): qo'shimcha sabab — yozuvdagi
@@ -276,6 +288,7 @@ export const TX_TYPE_LABELS: Record<TxType, string> = {
   referral: "Do'st olib keldi",
   reason: "Sabab",
   shop: "Do'kon",
+  competition: "Guruhlar musobaqasi g'olibi",
 };
 
 export type TxCreatorRole = "system" | GamRole;
