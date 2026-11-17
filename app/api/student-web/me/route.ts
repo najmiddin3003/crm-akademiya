@@ -20,6 +20,7 @@ import { studentCoinSummary } from "@/lib/gamification/studentPage";
 import { buildStudentCabinet } from "@/lib/studentCabinet";
 import { cabinetFeed } from "@/lib/cabinetNews";
 import { seasonCardsFor } from "@/lib/seasonGrades";
+import { loadStudentApp } from "@/lib/studentAppSettings";
 
 // O'QUVCHI WEB SAHIFASINING YAGONA MA'LUMOT MANBAI.
 //
@@ -88,6 +89,10 @@ export async function POST(req: Request) {
     return { news: [], stories: [] };
   });
   const season = await seasonCardsFor(db, pupil.id).catch(() => []);
+  // 38-qism: Sozlamalar → O'quvchi ilovasi — o'chirilgan qismlar kabinetga yuborilmaydi.
+  const appPrefs = await loadStudentApp(db).catch(() => ({ showDebt: true, stories: true, news: true }));
+  if (!appPrefs.stories) feed.stories = [];
+  if (!appPrefs.news) feed.news = [];
 
   return NextResponse.json({
     ok: true,
@@ -143,5 +148,6 @@ export async function POST(req: Request) {
     cabinet,
     feed,
     season,
+    appPrefs,
   });
 }

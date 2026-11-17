@@ -1,3 +1,4 @@
+import type { StudentAppPrefs } from "@/lib/studentAppTypes";
 import type { SeasonCard } from "@/lib/seasonGradeTypes";
 import type { CabinetFeedItem } from "@/lib/cabinetNewsTypes";
 import type { AttendanceMark } from "@/lib/attendance";
@@ -69,4 +70,6 @@ export interface StudentMe {
   feed?: { news: CabinetFeedItem[]; stories: CabinetFeedItem[] };
   /** Oxirgi yuborilgan chorak baholari (36-qism, lib/seasonGrades.ts). */
   season?: SeasonCard[];
+  /** Sozlamalar → O'quvchi ilovasi (38-qism). */
+  appPrefs?: StudentAppPrefs;
 }

@@ -140,7 +140,7 @@ function Stat({ label, icon, value, valueCls = "text-v2-text", sub }: { label: R
   );
 }
 
-function Stats({ cab }: { cab: StudentCabinet }) {
+function Stats({ cab, showDebt = true }: { cab: StudentCabinet; showDebt?: boolean }) {
   const { t } = useT();
   const f = useCabinetFmt();
   const som = useSom();
@@ -183,8 +183,8 @@ function Stats({ cab }: { cab: StudentCabinet }) {
   }
 
   return (
-    <Panel className="grid grid-cols-1 divide-y divide-v2-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-      {debtStat}
+    <Panel className={`grid grid-cols-1 divide-y divide-v2-border ${showDebt ? "sm:grid-cols-3" : "sm:grid-cols-2"} sm:divide-x sm:divide-y-0`}>
+      {showDebt && debtStat}
       <Stat
         label={`${t("Keyingi oy")} · ${f.monthLower(nextMonth.month)}`}
         value={nextMonth.groups > 0 ? som(nextMonth.expected) : "—"}
@@ -555,7 +555,7 @@ export default function TolovlarTab({ me, cab }: CabinetTabProps) {
         <p className="mt-0.5 text-v2-small text-v2-text-2">{subParts.filter(Boolean).join(" · ")}</p>
       </header>
 
-      <Stats cab={cab} />
+      <Stats cab={cab} showDebt={me.appPrefs?.showDebt !== false} />
 
       {cab.debt.incomplete ? (
         <p className="flex items-start gap-2 rounded-v2-lg border border-v2-border bg-v2-warning-bg px-4 py-2.5 text-v2-small text-v2-warning">

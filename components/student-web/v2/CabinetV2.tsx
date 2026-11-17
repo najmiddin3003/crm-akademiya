@@ -212,7 +212,7 @@ export default function CabinetV2({
   const [tab, setTab] = useState<CabinetTab>(initialTab);
   const [profileOpen, setProfileOpen] = useState(false);
   const cab = me.cabinet!;
-  const hasDebt = cab.debt.total > 0;
+  const hasDebt = cab.debt.total > 0 && me.appPrefs?.showDebt !== false;
 
   const go = useCallback((next: CabinetTab) => {
     setTab(next);

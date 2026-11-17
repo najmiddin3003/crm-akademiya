@@ -584,9 +584,11 @@ export default function AsosiyTab({ me, cab, go, initData }: CabinetTabProps) {
           ) : null}
         </div>
         <div className="flex flex-col gap-4 max-lg:contents">
+          {me.appPrefs?.showDebt !== false && (
           <div className="max-lg:order-2">
             <DebtCard cab={cab} go={go} />
           </div>
+          )}
           <div className="max-lg:order-4">
             <AttendanceCard cab={cab} go={go} />
           </div>
