@@ -6,6 +6,7 @@ import SpeedFab from "@/components/tezlik/SpeedFab";
 import AppShellV2 from "@/components/v2/shell/AppShellV2";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureIndexes } from "@/lib/mongodb";
+import { hiddenMenu } from "@/lib/features";
 import { gamificationEnabled } from "@/lib/gamification/settings";
 import { firstAllowedPath, isPathAllowed, PATHNAME_HEADER } from "@/lib/permissions";
 import { currentUiVersion, devNoticeHidden, shellRoleLabel, uiSwitchEnabled } from "@/lib/uiVersionServer";
@@ -48,6 +49,8 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
   // Gamifikatsiya: modul o'chiq bo'lsa bo'lim faqat adminga ko'rinadi.
   const db = await ensureIndexes();
   const gamOn = await gamificationEnabled(db);
+  // 37-qism: Sozlamalar → Funksiyalar → «Menyu bo'limlari» — yashirilgan bo'limlar (faqat yangi versiya menyusi).
+  const hidden = await hiddenMenu(db).catch(() => [] as string[]);
 
   // YANGI / ESKI VERSIYA (lib/uiVersion.ts). Almashtirgich sinov saytida,
   // lokal dev'da va 17.10.2026 dan prod'da ham (`UI_V2_SWITCH=on`) yoqiq;
@@ -59,7 +62,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
         permissions={user.permissions}
         user={{ fullName: user.fullName, phone: user.phone, roleLabel: await shellRoleLabel(db, user) }}
         isAdmin={user.role === "admin"}
-        features={{ gamification: gamOn }}
+        features={{ gamification: gamOn, ...Object.fromEntries(hidden.map((k) => [`hide:${k}`, true])) }}
         devNotice={!(await devNoticeHidden())}
       >
         <AiScreenRefresh>{children}</AiScreenRefresh>

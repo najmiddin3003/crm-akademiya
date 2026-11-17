@@ -79,9 +79,11 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
   const pathname = usePathname();
   const counts = useSidebarCounts();
   const gamOn = !!features.gamification;
+  // 37-qism: Sozlamalar → Funksiyalar → «Menyu bo'limlari» — direktor yashirgan bo'limlar (`hide:<key>`).
+  const hiddenKey = Object.keys(features).filter((k) => k.startsWith("hide:") && features[k]).join(",");
   const items = useMemo(
-    () => visibleSidebarItems(permissions, isAdmin, { gamification: gamOn }),
-    [permissions, isAdmin, gamOn],
+    () => visibleSidebarItems(permissions, isAdmin, { gamification: gamOn }).filter((i) => !hiddenKey.split(",").includes(`hide:${i.key}`)),
+    [permissions, isAdmin, gamOn, hiddenKey],
   );
 
   // Bandlarni dizayndagi bo'limlarga taqsimlash. Hech qaysi bo'limda yo'q

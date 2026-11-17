@@ -427,7 +427,8 @@ function Palette({ onClose, permissions, isAdmin, features, recentsKey }: Comman
   const activeChip: ChipKey = chips.some((c) => c.key === chip) ? chip : "all";
 
   // ── Sahifalar ──
-  const pages = useMemo(() => buildPages(visibleSidebarItems(permissions, isAdmin, features), t), [permissions, isAdmin, features, t]);
+  // 37-qism: Funksiyalar → yashirilgan menyu bo'limlari qidiruvda ham chiqmaydi.
+  const pages = useMemo(() => buildPages(visibleSidebarItems(permissions, isAdmin, features).filter((i) => !features?.[`hide:${i.key}`]), t), [permissions, isAdmin, features, t]);
   const pageHits = searching
     ? rankTop(
         pages
