@@ -199,7 +199,7 @@ export const SIDEBAR_ITEMS = [
           title: "Hisobotlar",
           items: [
             { label: "Kirim chiqim", href: "/finance-cashflow" },
-            { label: "Tushum rejasi", href: "/finance-revenue-plan" },
+            { label: "Moliyaviy reja", href: "/finance-revenue-plan" },
             { label: "Moliya analitikasi", href: "/finance-analytics" },
             { label: "Moliya hisobotlari", href: "/finance-reports" },
             { label: "Moliya hisobotlari (P&L)", href: "/finance-pnl" },

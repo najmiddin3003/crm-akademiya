@@ -140,6 +140,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/feedback": ["/nazorat-feedback"],
   "/api/finance-contracts": ["/finance-fin-contract", "/finance-revenue-plan"],
   "/api/finance-contracts/[id]": ["/finance-fin-contract"],
+  "/api/financial-plan": ["/finance-revenue-plan"],
   "/api/first-lessons/groups-info": ["/first-lessons"],
   "/api/gamification/discounts/pending": ["/finance-cash"],
   "/api/gamification/levels": ["/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
