@@ -16,6 +16,7 @@ import { TaskInboxProvider } from "@/components/shared/TaskInboxProvider";
 import TransferReturnNotice from "@/components/shared/TransferReturnNotice";
 import { isPathAllowed } from "@/lib/permissions";
 import ReceiptHost from "@/components/v2/finance/ReceiptHost";
+import AutoLock from "./AutoLock";
 import { DevNoticeBanner } from "./DevNotice";
 import { CreateProvider } from "./CreateContext";
 import { ShellProvider } from "./ShellContext";
@@ -84,6 +85,7 @@ export default function AppShellV2({
           <TaskInboxProvider>
             {/* Eski sahifalar ikonkalarni shu sprite'lardan oladi (components/shared/ShellSprites.tsx). */}
             <SidebarSprite />
+            <AutoLock />
             <NavbarSprite />
 
             {/* Ruxsatlar (./ShellContext) va «+ Yangi» formalari (./CreateContext) — yuqori

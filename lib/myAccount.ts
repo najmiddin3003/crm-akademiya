@@ -94,6 +94,11 @@ export async function saveProfile(db: Db, me: CurrentUser, b: Record<string, unk
   return { ok: true as const };
 }
 
+export async function myPrefs(db: Db, me: CurrentUser): Promise<AccountPrefs> {
+  const u = await db.collection("users").findOne({ _id: new ObjectId(me.id) }, { projection: { prefs: 1 } });
+  return prefsOf(u?.prefs);
+}
+
 export async function savePrefs(db: Db, me: CurrentUser, p: Partial<AccountPrefs>) {
   const cur = await db.collection("users").findOne({ _id: new ObjectId(me.id) }, { projection: { prefs: 1 } });
   const next = prefsOf({ ...prefsOf(cur?.prefs), ...p });
