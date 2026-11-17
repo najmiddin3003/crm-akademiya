@@ -93,6 +93,7 @@ export default function StudentGame({
   pupilId: initialPupil = null,
   fallback,
   embedded = false,
+  initialTab = "me",
 }: {
   source: StudentGameSource;
   /** Mini App/kabinet: qaysi farzand (bo'lmasa server birinchisini oladi). */
@@ -101,6 +102,8 @@ export default function StudentGame({
   fallback?: ReactNode;
   /** Boshqa sahifa ichida (kabinet tabi) — tashqi chekinishsiz. */
   embedded?: boolean;
+  /** Boshlang'ich bo'lim (yangi kabinetda «Do'kon — sovg'alar» tugmasidan — `shop`). */
+  initialTab?: "me" | "shop";
 }) {
   const { t } = useT();
   const [lang] = useLang();
@@ -108,7 +111,7 @@ export default function StudentGame({
   const [pupilId, setPupilId] = useState<number | null>(initialPupil);
   const [data, setData] = useState<PageData | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"me" | "shop">("me");
+  const [tab, setTab] = useState<"me" | "shop">(initialTab);
   const [filter, setFilter] = useState<Filter>("all");
   const [hist, setHist] = useState<{ rows: HistRow[]; total: number } | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
