@@ -124,6 +124,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/cashboxes/[id]/transfer": ["/finance-cash"],
   "/api/cashboxes/[id]/transfer-to": ["/finance-cash"],
   "/api/cashboxes/daily": ["/finance-handover"],
+  "/api/cashboxes/daily/send": ["/finance-handover"],
   "/api/cashboxes/handover": ["/finance-cash"],
   "/api/contracts": ["/contract", "/students-list"],
   "/api/contracts/[id]": ["/contract"],

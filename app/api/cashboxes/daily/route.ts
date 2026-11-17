@@ -10,7 +10,8 @@ import { uzDateIso } from "@/lib/uzTime";
 //   POST {action: "accept", cashboxId, naqd, plastik, denominations?, note?} — qabul / tasdiq;
 //   POST {action: "return", cashboxId, comment} — kutilayotganini qaytarish;
 //   POST {action: "remind", cashboxId} — xodimlar botida eslatma.
-// KIM: admin yoki bosh kassaning egasi (rahbar). Filial kassiri bu sahifani ko'rmaydi.
+// KIM: admin yoki bosh kassaning egasi (rahbar). Filial kassiri — `cashier: true` javobi; sahifa unga o'z
+// kassasini topshirish ekranini ko'rsatadi (app/api/cashboxes/daily/send).
 
 async function guard() {
   const me = await getCurrentEmployee();
@@ -18,7 +19,7 @@ async function guard() {
   const db = await ensureIndexes();
   const primary = await loadPrimary(db);
   if (!primary) return { error: NextResponse.json({ ok: false, error: "Bosh kassa belgilanmagan" }, { status: 404 }) } as const;
-  if (!canHandle(me, primary)) return { error: NextResponse.json({ ok: false, error: "Bu sahifa faqat rahbar kassa egasi uchun" }, { status: 403 }) } as const;
+  if (!canHandle(me, primary)) return { error: NextResponse.json({ ok: false, error: "Bu sahifa faqat rahbar kassa egasi uchun", cashier: true }, { status: 403 }) } as const;
   return { me, db } as const;
 }
 

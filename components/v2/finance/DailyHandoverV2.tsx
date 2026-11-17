@@ -13,6 +13,7 @@ import { emitMoneyChanged } from "@/components/v2/shell/v2Events";
 import { Avatar, Badge, NoticeBar, PageHead, PageShell, TH, dayMonth, downloadCsv, fmtNum, monthName } from "@/components/v2/students/lists/listKit";
 import { DENOMINATIONS, type DailyHandoverPayload, type HandoverCard } from "@/lib/dailyHandoverTypes";
 import { daysBetween } from "@/lib/studentListsTypes";
+import CashierHandoverV2 from "./CashierHandoverV2";
 
 // YANGI VERSIYA — MOLIYA → KUNLIK TOPSHIRUV (32-qism, rasmlar «Kunlik topshiruv», «Topshiruvni qabul qilish»,
 // yorug'/qorong'i). Rahbar (bosh kassa egasi yoki admin) uchun: filial kassalari kartalari — kassadagi pul,
@@ -41,16 +42,18 @@ export default function DailyHandoverV2() {
   const [month, setMonth] = useState("");
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState("");
+  const [cashier, setCashier] = useState(false);
   const [loading, setLoading] = useState(true);
   const [boxFilter, setBoxFilter] = useState("");
   const [acceptFor, setAcceptFor] = useState<HandoverCard | null>(null);
   const [returnFor, setReturnFor] = useState<HandoverCard | null>(null);
 
-  const apply = useCallback((j: (Payload & { ok: true }) | { ok: false; error?: string } | null) => {
+  const apply = useCallback((j: (Payload & { ok: true }) | { ok: false; error?: string; cashier?: boolean } | null) => {
     if (j?.ok) {
       setData(j);
       setError("");
-    } else setError(j?.error || "Ma'lumotni yuklab bo'lmadi");
+    } else if (j && "cashier" in j && j.cashier) setCashier(true);
+    else setError(j?.error || "Ma'lumotni yuklab bo'lmadi");
     setLoading(false);
   }, []);
   const load = useCallback(
@@ -175,6 +178,7 @@ export default function DailyHandoverV2() {
     return base ? Array.from({ length: 12 }, (_, i) => shiftMonth(base.slice(0, 7) === today.slice(0, 7) ? base : today.slice(0, 7), -i)) : [];
   }, [curMonth, today]);
 
+  if (cashier) return <CashierHandoverV2 />;
   return (
     <PageShell flow>
       <PageHead
