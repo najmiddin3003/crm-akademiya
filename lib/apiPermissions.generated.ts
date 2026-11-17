@@ -186,6 +186,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/management-cv/[id]": ["/management-cv"],
   "/api/management-cv/[id]/file": ["/management-cv"],
   "/api/management-cv/[id]/hire": ["/management-cv"],
+  "/api/message-delivery": ["/nazorat-sms-analytics"],
   "/api/moderators": ["/finance-cash", "/finance-fin-contract", "/first-lessons", "/nazorat-feedback", "/orders-list", "/parents", "/students-list"],
   "/api/news": ["/sales-news"],
   "/api/news/[id]": ["/sales-news"],
