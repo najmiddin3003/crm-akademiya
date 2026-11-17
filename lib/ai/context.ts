@@ -58,6 +58,8 @@ export interface AiContext {
    * modelga umuman ko'rsatilmaydi.
    */
   actions: boolean;
+  /** 38-qism: Sozlamalarda o'chirilgan amal turlari — qoralama tuzilmaydi (lib/ai/tools/actions.ts → propose). */
+  disabledActions: string[];
   /**
    * So'rov boshlangan vaqt. Shu so'rovda tuzilgan qoralamalar bundan keyin,
    * oldingi javoblardagilar oldin — eskisini almashtirishda ajratiladi
@@ -67,7 +69,7 @@ export interface AiContext {
 }
 
 /** `null` — tizimga kirilmagan yoki sessiya amal qilmaydi. */
-export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): Promise<AiContext | null> {
+export async function loadAiContext(db: Db, opts: { actions?: boolean; disabledActions?: string[] } = {}): Promise<AiContext | null> {
   const startedAt = new Date();
   const me = await getCurrentUser();
   if (!me) return null;
@@ -101,6 +103,7 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
     today: uzDateIso(),
     can: (href) => isPathAllowed(href, permissions),
     actions: opts.actions === true,
+    disabledActions: opts.disabledActions ?? [],
     startedAt,
   };
 }

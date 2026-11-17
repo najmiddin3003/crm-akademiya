@@ -38,6 +38,13 @@ export interface AiSettings {
   defaultModel: string | null;
   /** Xodim tanlamaguncha shu «Tezlik». */
   defaultEffort: AiEffort;
+  /**
+   * 38-qism (Sozlamalar → MohirAI → «Kimlar foydalanadi»): rol bo'yicha ruxsat va kunlik limit. Kalit — «admin»
+   * (Rahbar) yoki `roles.key` (teacher, moderator, …). Yozuv yo'q rol — ruxsat bor, limit `dailyLimit`.
+   */
+  roles: Record<string, { enabled: boolean; limit: number | null }>;
+  /** 38-qism: o'chirilgan amal turlari — MohirAI ularning qoralamasini tuzmaydi. */
+  disabledActions: string[];
   /** Kim va qachon oxirgi marta o'zgartirgan — Sozlamalarda ko'rinadi. */
   updatedBy: string | null;
   updatedAt: string | null;
@@ -68,9 +75,37 @@ export function normalizeAiSettings(raw: unknown): AiSettings {
     models: modelList(r.models),
     defaultModel: isModelId(r.defaultModel) ? r.defaultModel : null,
     defaultEffort: isEffort(r.defaultEffort) ? r.defaultEffort : DEFAULT_EFFORT,
+    roles: roleMap(r.roles),
+    disabledActions: Array.isArray(r.disabledActions) ? r.disabledActions.filter((x): x is string => typeof x === "string").slice(0, 30) : [],
     updatedBy: typeof r.updatedBy === "string" ? r.updatedBy : null,
     updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : null,
   };
+}
+
+function roleMap(raw: unknown): AiSettings["roles"] {
+  const out: AiSettings["roles"] = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-zA-Z0-9_-]{1,40}$/.test(k) || !v || typeof v !== "object") continue;
+    const x = v as { enabled?: unknown; limit?: unknown };
+    const n = Number(x.limit);
+    out[k] = { enabled: x.enabled !== false, limit: Number.isInteger(n) && n >= 1 && n <= MAX_DAILY_LIMIT ? n : null };
+  }
+  return out;
+}
+
+/** Xodimning roli: Rahbar (users.role = admin) yoki xodim kartasidagi `turi`. */
+export async function aiRoleKey(db: Db, me: { role: string; hrEmployeeId: number | null }): Promise<string> {
+  if (me.role === "admin") return "admin";
+  if (me.hrEmployeeId === null) return "staff";
+  const e = await db.collection("hr_employees").findOne({ id: me.hrEmployeeId }, { projection: { _id: 0, turi: 1 } });
+  return String(e?.turi ?? "staff");
+}
+
+/** Rol uchun: ruxsat bormi va kunlik limit. */
+export function aiAccessFor(s: AiSettings, roleKey: string): { allowed: boolean; limit: number } {
+  const r = s.roles[roleKey];
+  return { allowed: s.enabled && (r ? r.enabled : true), limit: r?.limit ?? s.dailyLimit };
 }
 
 export async function loadAiSettings(db: Db): Promise<AiSettings> {
@@ -94,6 +129,8 @@ export async function saveAiSettings(
     models?: unknown;
     defaultModel?: unknown;
     defaultEffort?: unknown;
+    roles?: unknown;
+    disabledActions?: unknown;
   },
   by: string,
 ): Promise<SaveAiSettingsResult> {
@@ -127,6 +164,14 @@ export async function saveAiSettings(
       return { ok: false, error: `Kunlik limit 1 dan ${MAX_DAILY_LIMIT} gacha butun son bo'lishi kerak` };
     }
     set.dailyLimit = n;
+  }
+  if (patch.roles !== undefined) {
+    if (!patch.roles || typeof patch.roles !== "object") return { ok: false, error: "Noto'g'ri qiymat" };
+    set.roles = roleMap(patch.roles);
+  }
+  if (patch.disabledActions !== undefined) {
+    if (!Array.isArray(patch.disabledActions)) return { ok: false, error: "Noto'g'ri qiymat" };
+    set.disabledActions = patch.disabledActions.filter((x): x is string => typeof x === "string").slice(0, 30);
   }
   if (Object.keys(set).length === 0) return { ok: false, error: "O'zgartiriladigan qiymat yo'q" };
 

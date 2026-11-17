@@ -77,6 +77,7 @@ const RECENT_SAVED_MS = 60 * 60_000;
 /** Qoralamani saqlaydi va karta + modelga xulosa qaytaradi (5-bosqich vositalari ham shuni ishlatadi). */
 export async function propose(ctx: AiContext, kind: AiActionKind, prepared: PrepareResult, args: ToolArgs = {}): Promise<unknown> {
   if (!prepared.ok) return prepared.reply;
+  if (ctx.disabledActions.includes(kind)) return "This action type is turned off by the administrator (Settings → MohirAI). Explain how to do it in the CRM instead.";
   const { draft } = prepared;
   const subject = draftSubject(kind, draft.payload);
   const replaces = typeof args.replacesDraftId === "string" ? args.replacesDraftId.trim().slice(0, 64) : "";

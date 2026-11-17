@@ -79,6 +79,15 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
     items: [{ label: "Nazorat qoidalari", href: "/settings-nazorat", adminOnly: true }],
   },
   {
+    title: "Ilovalar",
+    // 38-qism: xodim va o'quvchi ilovalari, MohirAI — faqat direktor.
+    items: [
+      { label: "Xodim ilovasi", href: "/settings-staff-app", adminOnly: true },
+      { label: "O'quvchi ilovasi", href: "/settings-student-app", adminOnly: true },
+      { label: "MohirAI", href: "/settings-mohirai", adminOnly: true },
+    ],
+  },
+  {
     title: "Tizimli",
     // 37-qism: markaz bo'yicha funksiyalar va Tizimli obunasi — faqat direktor.
     items: [

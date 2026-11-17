@@ -6,6 +6,7 @@ import { adminModelIds, modelChoices } from "@/lib/ai/modelChoice";
 import { AI_MODEL_CATALOG, modelInfo } from "@/lib/ai/models";
 import { accountModels } from "@/lib/ai/openai";
 import type { AiModelRow } from "@/lib/ai/protocol";
+import { aiAdminOverview } from "@/lib/ai/adminOverview";
 import { loadAiSettings, saveAiSettings } from "@/lib/ai/settings";
 
 // GET /api/ai/settings  — Sozlamalar → Ilova sozlamalari → AI yordamchi
@@ -51,6 +52,8 @@ export async function GET() {
     /** Xodimlarga ochiq ro'yxat (admin tanlamagan bo'lsa — sukut ro'yxati). */
     enabledModels: enabled,
     defaultModel: choices?.defaultModel ?? null,
+    /** 38-qism: rollar, oylik foydalanish va amal turlari (lib/ai/adminOverview.ts). */
+    overview: await aiAdminOverview(db),
   });
 }
 
@@ -65,6 +68,8 @@ export async function PUT(req: Request) {
     models?: unknown;
     defaultModel?: unknown;
     defaultEffort?: unknown;
+    roles?: unknown;
+    disabledActions?: unknown;
   };
   try {
     body = await req.json();
@@ -81,6 +86,8 @@ export async function PUT(req: Request) {
       models: body.models,
       defaultModel: body.defaultModel,
       defaultEffort: body.defaultEffort,
+      roles: body.roles,
+      disabledActions: body.disabledActions,
     },
     admin.fullName || admin.phone,
   );

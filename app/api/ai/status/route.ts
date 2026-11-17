@@ -6,7 +6,7 @@ import { aiDb } from "@/lib/ai/db";
 import { modelChoices } from "@/lib/ai/modelChoice";
 import { accountModels } from "@/lib/ai/openai";
 import type { AiStatus } from "@/lib/ai/protocol";
-import { loadAiSettings } from "@/lib/ai/settings";
+import { aiAccessFor, aiRoleKey, loadAiSettings } from "@/lib/ai/settings";
 import { readQuota } from "@/lib/ai/usage";
 import { isPathAllowed } from "@/lib/permissions";
 
@@ -24,14 +24,15 @@ export async function GET() {
   const db = await aiDb();
   const settings = await loadAiSettings(db);
   const cfg = aiProviderConfig();
+  const access = aiAccessFor(settings, await aiRoleKey(db, me));
   const [quota, available] = await Promise.all([
-    readQuota(db, me.id, settings.dailyLimit),
+    readQuota(db, me.id, access.limit),
     // Hisobdagi modellar — faqat yordamchi ishlay oladigan bo'lsa (10 daqiqa eslab qolinadi).
     cfg && settings.enabled ? accountModels(cfg) : Promise.resolve(null),
   ]);
   const choices = cfg ? modelChoices(cfg, settings, available) : { models: [], defaultModel: "", defaultEffort: null };
   const status: AiStatus = {
-    enabled: settings.enabled,
+    enabled: access.allowed,
     configured: cfg !== null,
     isAdmin: me.role === "admin",
     limit: quota.limit,

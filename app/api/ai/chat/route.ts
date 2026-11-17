@@ -9,7 +9,8 @@ import { aiDb } from "@/lib/ai/db";
 import { modelChoices, resolveChoice } from "@/lib/ai/modelChoice";
 import { adminDetail, AiProviderError } from "@/lib/ai/openai";
 import type { AiChatMessage, AiStreamEvent } from "@/lib/ai/protocol";
-import { loadAiSettings } from "@/lib/ai/settings";
+import { aiAccessFor, aiRoleKey, loadAiSettings } from "@/lib/ai/settings";
+import { getCurrentUser } from "@/lib/auth";
 import { findConversation, saveTurn } from "@/lib/ai/store";
 import { refundQuota, takeQuota } from "@/lib/ai/usage";
 import { normalizeLang } from "@/lib/i18n";
@@ -50,11 +51,17 @@ const DRAFT_ONLY_ANSWER = "Qoralama tayyor — kartani tekshirib, «Tasdiqlash»
 export async function POST(req: Request) {
   const db = await aiDb();
   const settings = await loadAiSettings(db);
-  const ctx = await loadAiContext(db, { actions: settings.actionsEnabled });
+  const ctx = await loadAiContext(db, { actions: settings.actionsEnabled, disabledActions: settings.disabledActions });
   if (!ctx) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
   if (!settings.enabled) {
     return NextResponse.json({ ok: false, error: "AI yordamchi o'chirilgan" }, { status: 403 });
+  }
+  // 38-qism: rol bo'yicha ruxsat va kunlik limit (Sozlamalar → MohirAI → «Kimlar foydalanadi»).
+  const me = await getCurrentUser();
+  const access = aiAccessFor(settings, me ? await aiRoleKey(db, me) : "staff");
+  if (!access.allowed) {
+    return NextResponse.json({ ok: false, error: "MohirAI sizning rolingiz uchun yoqilmagan" }, { status: 403 });
   }
   const cfg = aiProviderConfig();
   if (!cfg) {
@@ -92,7 +99,7 @@ export async function POST(req: Request) {
     replaceFrom = { index, kept: conversation!.messages.slice(0, index) };
   }
 
-  const limit = settings.dailyLimit;
+  const limit = access.limit;
   const quota = await takeQuota(db, ctx.userId, limit);
   if (!quota.ok) {
     return NextResponse.json({ ok: false, error: `Bugungi limit tugadi: kuniga ${limit} ta savol.` }, { status: 429 });
