@@ -533,9 +533,19 @@ export default function AssistantPanel({
               />
             )}
             <div className="flex min-w-0 flex-1 flex-col">
-              {alerts && tab !== "speed" && <AlertsCard api={alerts} onNavigate={onNavigate} />}
+              {alerts && tab !== "speed" && (
+                <div className={full ? "xl:hidden" : ""}>
+                  <AlertsCard api={alerts} onNavigate={onNavigate} />
+                </div>
+              )}
               {body}
             </div>
+            {/* 38-qism: to'liq oynada keng ekranda — o'ng ustun «E'tibor talab qiladi». */}
+            {alerts && tab !== "speed" && full && (
+              <div className="hidden xl:flex">
+                <AlertsCard api={alerts} onNavigate={onNavigate} variant="column" />
+              </div>
+            )}
           </div>
         </div>
       </div>

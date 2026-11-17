@@ -86,11 +86,15 @@ export function alertText(a: Pick<AiAlert, "kind" | "params">, t: TFn): string {
   }
 }
 
-export default function AlertsCard({ api, onNavigate }: { api: AiAlertsApi; onNavigate: () => void }) {
+/**
+ * `column` (38-qism, «MohirAI · to'liq oyna»): to'liq oynada keng ekranda o'ng ustun — «E'tibor talab qiladi»,
+ * ro'yxat doim ochiq. `top` — avvalgidek, suhbat tepasidagi yig'iladigan karta.
+ */
+export default function AlertsCard({ api, onNavigate, variant = "top" }: { api: AiAlertsApi; onNavigate: () => void; variant?: "top" | "column" }) {
   const { t } = useT();
   const { alerts, unseen, markSeen } = api;
   // Yangi xabar bilan ochilgan bo'lsa — karta ochiq.
-  const [open, setOpen] = useState(() => unseen > 0);
+  const [open, setOpen] = useState(() => unseen > 0 || variant === "column");
 
   // Ko'rinib turgan yangi xabarlar bir lahzadan keyin «ko'rildi».
   useEffect(() => {
@@ -102,6 +106,41 @@ export default function AlertsCard({ api, onNavigate }: { api: AiAlertsApi; onNa
   }, [open, alerts, markSeen]);
 
   if (alerts.length === 0) return null;
+
+  if (variant === "column")
+    return (
+      <aside className="flex w-[320px] shrink-0 flex-col border-l border-border">
+        <div className="px-4 pb-2 pt-4">
+          <div className="flex items-center gap-2 text-[15px] font-semibold">
+            {t("E'tibor talab qiladi")}
+            <span className="rounded-full bg-secondary px-1.5 text-[11px] tabular-nums text-muted-foreground">{alerts.length}</span>
+          </div>
+          <p className="text-[12px] text-muted-foreground">{t("Sizning huquqingiz doirasida")}</p>
+        </div>
+        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
+          {alerts.map((a) => {
+            const { Icon, cls } = ICONS[a.kind];
+            return (
+              <li key={a.key} className={`rounded-xl border border-border p-3 ${a.seen ? "opacity-75" : "bg-card"}`}>
+                <div className="flex gap-2.5">
+                  <Icon aria-hidden className={`mt-0.5 h-4 w-4 shrink-0 ${cls}`} />
+                  <div className="min-w-0 flex-1 text-[12.5px] leading-snug">
+                    <p className={a.seen ? "" : "font-semibold"}>{alertText(a, t)}</p>
+                    <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>{ago(a.at, t)}</span>
+                      <Link href={a.href} onClick={onNavigate} className="ml-auto rounded-md border border-border px-2 py-0.5 font-medium text-foreground hover:bg-secondary">
+                        {t("Ko'rish")}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="border-t border-border px-4 py-3 text-[11px] text-muted-foreground">{t("Bular ham xabar, ham tayyor savol: bosilsa sahifaga o'tadi. Hech narsa o'zi bajarilmaydi.")}</p>
+      </aside>
+    );
 
   return (
     <div className="mx-auto w-full max-w-2xl shrink-0 px-3 pt-2">
