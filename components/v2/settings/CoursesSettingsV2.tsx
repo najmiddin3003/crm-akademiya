@@ -518,7 +518,7 @@ export default function CoursesSettingsV2() {
                       <td className="pl-4 pr-3">
                         <Link
                           href={`/offline-courses/${c.id}`}
-                          title={t("Darajalar va narxlar")}
+                          title={t("Kurs sahifasi")}
                           className={`block truncate font-semibold underline-offset-2 hover:text-v2-brand-text hover:underline ${courseIsActive(c) ? "text-v2-text" : "text-v2-text-2"}`}
                         >
                           {c.name}

@@ -120,6 +120,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/auto-messages": ["/sales-auto-messages"],
   "/api/branches/[id]": ["/management-filiallar"],
   "/api/cabinet-news": ["/sales-news", "/sales-stories"],
+  "/api/course-page": ["/offline-courses"],
   "/api/campaign-links": ["/sales-campaigns"],
   "/api/cashboxes": ["/finance-analytics", "/finance-bonus", "/finance-cash", "/finance-cashflow", "/finance-payroll", "/finance-penalty", "/finance-reports", "/finance-transactions", "/management-xodimlar"],
   "/api/cashboxes/[id]": ["/finance-cash"],
