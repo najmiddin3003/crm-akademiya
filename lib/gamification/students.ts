@@ -46,7 +46,7 @@ export function toifaOf(grade: number | null, category: unknown, kidsMaxGrade: n
   return /kichik/.test(c) ? "kids" : "older";
 }
 
-const PUPIL_FIELDS = { _id: 0, id: 1, firstName: 1, lastName: 1, status: 1, branchId: 1, grade: 1, category: 1 } as const;
+const PUPIL_FIELDS = { _id: 0, id: 1, firstName: 1, lastName: 1, status: 1, statusChangedAt: 1, branchId: 1, grade: 1, category: 1 } as const;
 
 interface PupilDoc {
   id: number;
@@ -56,6 +56,7 @@ interface PupilDoc {
   branchId?: number | null;
   grade?: number | null;
   category?: string;
+  statusChangedAt?: string;
 }
 
 const branchOf = (p: { branchId?: unknown } | Document) =>
@@ -99,6 +100,10 @@ export interface StudentRow {
   levelName: string;
   balance: number;
   frozen: boolean;
+  /** Yangi versiya (Hamyonlar, 33-qism): jami topilgan, shu oy (do'kondan tashqari), muzlatilgan sanasi. */
+  earnedTotal: number;
+  month: number;
+  frozenSince: string | null;
 }
 
 export async function listStudents(db: Db, actor: GamActor): Promise<StudentRow[]> {
@@ -129,6 +134,15 @@ export async function listStudents(db: Db, actor: GamActor): Promise<StudentRow[
     db.collection(GAM.wallets).find({ pupilId: { $in: list } }, { projection: { _id: 0, pupilId: 1, balance: 1, earnedTotal: 1 } }).toArray(),
   ]);
   const w = new Map(wallets.map((x) => [Number(x.pupilId), x]));
+  const month = uzDateIso().slice(0, 7);
+  const monthSums = await db
+    .collection(GAM.tx)
+    .aggregate<{ _id: number; s: number }>([
+      { $match: { pupilId: { $in: list }, date: monthRange(month), status: "active", type: { $ne: "shop" } } },
+      { $group: { _id: "$pupilId", s: { $sum: "$amount" } } },
+    ])
+    .toArray();
+  const monthBy = new Map(monthSums.map((x) => [Number(x._id), x.s]));
   const rows = pupils.map((p): StudentRow => {
     const wallet = w.get(p.id);
     const earned = Number(wallet?.earnedTotal) || 0;
@@ -145,6 +159,9 @@ export async function listStudents(db: Db, actor: GamActor): Promise<StudentRow[
       levelName: settings.levels[li]?.name ?? "",
       balance: Number(wallet?.balance) || 0,
       frozen: isFrozenStatus(p.status),
+      earnedTotal: earned,
+      month: monthBy.get(p.id) ?? 0,
+      frozenSince: isFrozenStatus(p.status) && p.statusChangedAt ? String(p.statusChangedAt).slice(0, 10) : null,
     };
   });
   // Muzlatilganlar oxirida (TZ 5.3), qolganlari balans bo'yicha.
@@ -305,6 +322,8 @@ export interface HistoryRow {
   cancelledByName: string | null;
   cancelledAt: string | null;
   createdByName: string;
+  /** Yozilgan vaqt (ISO) — yangi versiyadagi tarixda «12-oktabr | 18:05». */
+  createdAt: string;
   /** Qator amali (huquqqa qarab, TZ 5.4). */
   action: "cancel" | "excuse" | "unexcuse" | "expired" | "return" | null;
   /** Xarid qatori — «Qaytarish» oynasi uchun. */
@@ -437,6 +456,7 @@ export async function studentHistory(
       cancelNote: t.cancelNote ?? null,
       cancelledByName: t.cancelledByName ?? null,
       cancelledAt: t.cancelledAt ? uzDateIso(new Date(t.cancelledAt)) : null,
+      createdAt: String(t.createdAt ?? ""),
       createdByName: t.createdByName,
       action,
       order: o ? { id: Number(o.id), itemName: String(o.itemName), priceCoins: Number(o.priceCoins), givenDate: String(o.givenDate), kind: o.kind } : null,
@@ -499,4 +519,65 @@ export async function coinLedger(db: Db, actor: GamActor, pupilId: number): Prom
       status: t.status,
       cancelNote: t.cancelNote ?? null,
     }));
+}
+
+
+// ── Hamyonlar ko'rsatkichlari (yangi versiya, 33-qism) ─────────────────
+
+export interface WalletSummary {
+  month: string;
+  /** Muomaladagi tanga — faol (muzlatilmagan) hamyonlar balansi. */
+  circulating: number;
+  activeWallets: number;
+  given: number;
+  taken: number;
+  /** Ayirilganning davomat qismi (sababsiz dars). */
+  takenAttendance: number;
+  shopCoins: number;
+  shopCount: number;
+  /** Faol o'quvchilar darajalar bo'yicha: position → soni. */
+  levels: { position: number; name: string; count: number }[];
+}
+
+/** Ro'yxatdagi o'quvchilar bo'yicha shu oy ko'rsatkichlari (xodim doirasida). */
+export async function walletSummary(db: Db, rows: StudentRow[]): Promise<WalletSummary> {
+  const settings = await loadSettings(db);
+  const month = uzDateIso().slice(0, 7);
+  const ids = rows.map((r) => r.pupilId);
+  const agg = await db
+    .collection(GAM.tx)
+    .aggregate<{ _id: { t: string; pos: boolean }; s: number; n: number }>([
+      { $match: { pupilId: { $in: ids }, date: monthRange(month), status: "active" } },
+      { $group: { _id: { t: "$type", pos: { $gt: ["$amount", 0] } }, s: { $sum: "$amount" }, n: { $sum: 1 } } },
+    ])
+    .toArray();
+  let given = 0;
+  let taken = 0;
+  let takenAttendance = 0;
+  let shopCoins = 0;
+  let shopCount = 0;
+  for (const a of agg) {
+    if (a._id.t === "shop") {
+      shopCoins += -a.s;
+      if (!a._id.pos) shopCount += a.n;
+      continue;
+    }
+    if (a._id.pos) given += a.s;
+    else {
+      taken += a.s;
+      if (a._id.t === "absence") takenAttendance += a.s;
+    }
+  }
+  const active = rows.filter((r) => !r.frozen);
+  return {
+    month,
+    circulating: active.reduce((a, r) => a + r.balance, 0),
+    activeWallets: active.length,
+    given,
+    taken,
+    takenAttendance,
+    shopCoins,
+    shopCount,
+    levels: settings.levels.map((l) => ({ position: l.position, name: l.name, count: active.filter((r) => r.levelPosition === l.position).length })),
+  };
 }

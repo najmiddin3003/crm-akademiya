@@ -54,7 +54,8 @@ export default function V2Dialog({
   /** Eng katta eni, px (sukut: center 560, right 520). */
   width?: number;
   footerStart?: ReactNode;
-  footer: (api: V2DialogApi) => ReactNode;
+  /** Yo'q bo'lsa — pastki qator chizilmaydi (faqat ko'rish paneli: O'quvchi hamyoni, 33-qism). */
+  footer?: (api: V2DialogApi) => ReactNode;
   children: ReactNode | ((api: V2DialogApi) => ReactNode);
   zIndex?: number;
   /** Tashqi boshqaruvchi (`useModalClose(onClose, variant)`) — forma saqlangach o'zi yopishi uchun. */
@@ -160,23 +161,25 @@ export default function V2Dialog({
           </div>
 
           {/* Pastki qator */}
-          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-v2-border bg-v2-surface-2 px-5 py-3 sm:flex-row sm:items-center">
-            <div className="min-w-0 sm:mr-auto">
-              {footerStart ?? (
-                <span className="hidden items-center gap-3 text-v2-caption font-normal text-v2-text-3 sm:inline-flex">
-                  <span className="inline-flex items-center gap-1.5">
-                    <kbd className="rounded-v2-sm border border-v2-border bg-v2-surface px-1.5 py-px font-sans text-[11px] text-v2-text-2">Enter</kbd>
-                    {t("saqlash")}
+          {footer && (
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-v2-border bg-v2-surface-2 px-5 py-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 sm:mr-auto">
+                {footerStart ?? (
+                  <span className="hidden items-center gap-3 text-v2-caption font-normal text-v2-text-3 sm:inline-flex">
+                    <span className="inline-flex items-center gap-1.5">
+                      <kbd className="rounded-v2-sm border border-v2-border bg-v2-surface px-1.5 py-px font-sans text-[11px] text-v2-text-2">Enter</kbd>
+                      {t("saqlash")}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <kbd className="rounded-v2-sm border border-v2-border bg-v2-surface px-1.5 py-px font-sans text-[11px] text-v2-text-2">Esc</kbd>
+                      {t("yopish")}
+                    </span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <kbd className="rounded-v2-sm border border-v2-border bg-v2-surface px-1.5 py-px font-sans text-[11px] text-v2-text-2">Esc</kbd>
-                    {t("yopish")}
-                  </span>
-                </span>
-              )}
+                )}
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">{footer(api)}</div>
             </div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">{footer(api)}</div>
-          </div>
+          )}
         </div>
       </Modal>
       {askClose && (
