@@ -53,7 +53,7 @@ import {
   type StudentHit,
 } from "@/lib/globalSearch";
 import { useCreate } from "./CreateContext";
-import { HOME_KEY, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_LABELS, V2_LABELS } from "./sidebarSections";
+import { HOME_KEY, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_HREFS, V2_ITEM_LABELS, V2_LABELS } from "./sidebarSections";
 
 // «CTRL K QIDIRUV» OYNASI (21-qism · Yuqori panel, rasmlar «Ctrl K qidiruv · Yorug'/Qorong'i»
 // va «Qidiruv natijasi «madina»», 02.11.2026).
@@ -236,8 +236,9 @@ const noEmoji = (s: string) => s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{2
 function buildPages(items: SidebarItem[], t: TFn): PageEntry[] {
   const out: PageEntry[] = [];
   const seen = new Set<string>();
-  const push = (href: string | undefined, title: string, parent: string, iconKey: string) => {
-    if (!href || seen.has(href) || isLockedRoute(href)) return;
+  // `lockHref` — qulf tekshiriladigan manzil (yangi versiyada boshqa sahifaga yo'naltirilgan band — eski manzil).
+  const push = (href: string | undefined, title: string, parent: string, iconKey: string, lockHref = href) => {
+    if (!href || seen.has(href) || isLockedRoute(lockHref ?? href)) return;
     seen.add(href);
     out.push({ href, title, parent, iconKey });
   };
@@ -247,7 +248,7 @@ function buildPages(items: SidebarItem[], t: TFn): PageEntry[] {
     const subs = item.menu?.items ?? item.menu?.columns?.flatMap((c) => c.items) ?? [];
     const all = subs.length > 0 ? [...(V2_EXTRA_ITEMS[item.key] ?? []), ...subs] : [];
     if (all.length === 0) push(item.href, parent, "", item.key);
-    for (const it of all) push(it.href, noEmoji(t(V2_ITEM_LABELS[it.href] ?? it.label)), parent, item.key);
+    for (const it of all) push(V2_ITEM_HREFS[it.href] ?? it.href, noEmoji(t(V2_ITEM_LABELS[it.href] ?? it.label)), parent, item.key, it.href);
   }
   return out;
 }

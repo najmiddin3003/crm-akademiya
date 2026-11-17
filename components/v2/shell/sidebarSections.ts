@@ -90,3 +90,17 @@ export const V2_ITEM_LABELS: Record<string, string> = {
   "/offline-courses": "Kurslar",
   "/management-rollar": "Rollar va huquqlar",
 };
+
+/**
+ * Yangi versiyada eski sahifa o'rniga ochiladigan manzil (35-qism, 17.11.2026): Hisobotlar menyusidagi
+ * eski hisobotlar — yangi katalogdagi hisobotga. Ruxsat va qulf eski manzil bo'yicha tekshiriladi
+ * (yangi hisobot ham o'sha ruxsat bilan ochiladi — lib/reportsCatalog.ts). Eski versiya menyusi o'zgarmaydi.
+ */
+export const V2_ITEM_HREFS: Record<string, string> = {
+  "/reports-funnel": "/reports/sotuv-voronkasi",
+  "/reports-leave-reasons": "/reports/ketish-sabablari",
+  "/reports-teachers-perf": "/reports/oqituvchilar-samaradorligi",
+  "/reports-admins-perf": "/reports/adminlar-samaradorligi",
+  "/reports-rooms": "/reports/xonalar",
+  "/reports-discounts": "/reports/chegirmalar",
+};

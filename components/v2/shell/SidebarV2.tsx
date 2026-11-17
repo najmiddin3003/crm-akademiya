@@ -29,7 +29,7 @@ import {
 import { branchPool, collapseBranchPools } from "@/lib/branchPools";
 import { isPathAllowed } from "@/lib/permissions";
 import { BetaBadge } from "./DevNotice";
-import { HOME_KEY, V2_BOTTOM_KEYS, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_LABELS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
+import { HOME_KEY, V2_BOTTOM_KEYS, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_HREFS, V2_ITEM_LABELS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
 import { usePopover } from "./usePopover";
 
 // YANGI VERSIYA YON MENYUSI (design/v2/DESIGN.md → «Navigatsiya — yon menyu»).
@@ -124,7 +124,8 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
 
   const renderSubItem = (it: SidebarMenuItem, key: string) => {
     const locked = isLockedRoute(it.href);
-    const active = isActive(it.href);
+    const href = V2_ITEM_HREFS[it.href] ?? it.href;
+    const active = isActive(href);
     const countKey = it.countKey != null ? (V2_COUNT_KEYS[it.countKey] ?? it.countKey) : null;
     const count = countKey != null ? counts[countKey] : undefined;
     const cls = `flex h-8 items-center gap-2 rounded-v2-md border px-2.5 text-v2-body transition-colors ${active ? ROW_ACTIVE : ROW_IDLE}`;
@@ -142,7 +143,7 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
         {locked ? (
           <span title={t("Hali tayyor emas")} className={`${cls} cursor-not-allowed opacity-50`}>{inner}</span>
         ) : (
-          <Link href={it.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cls}>{inner}</Link>
+          <Link href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cls}>{inner}</Link>
         )}
       </li>
     );

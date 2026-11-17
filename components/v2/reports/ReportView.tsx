@@ -3,6 +3,12 @@
 import "@fontsource-variable/onest/wght.css";
 import { REPORT_BY_SLUG, type ReportSlug } from "@/lib/reportsCatalog";
 import BonusJarimaReport from "./BonusJarimaReport";
+import ChegirmalarReport from "./ChegirmalarReport";
+import KetishSabablariReport from "./KetishSabablariReport";
+import SamaradorlikReport from "./SamaradorlikReport";
+import SotuvVoronkasiReport from "./SotuvVoronkasiReport";
+import UstozlarTushumiReport from "./UstozlarTushumiReport";
+import XonalarReport from "./XonalarReport";
 import DavomatGuruhlarReport from "./DavomatGuruhlarReport";
 import DavomatOqituvchilarReport from "./DavomatOqituvchilarReport";
 import FaolOquvchilarReport from "./FaolOquvchilarReport";
@@ -37,6 +43,20 @@ export default function ReportView({ slug, author, perms }: { slug: ReportSlug; 
       return <OylikAvansReport report={report} author={author} />;
     case "bonus-jarima":
       return <BonusJarimaReport report={report} author={author} />;
+    case "chegirmalar":
+      return <ChegirmalarReport report={report} author={author} />;
+    case "ketish-sabablari":
+      return <KetishSabablariReport report={report} author={author} />;
+    case "ustozlar-tushumi":
+      return <UstozlarTushumiReport report={report} author={author} />;
+    case "sotuv-voronkasi":
+      return <SotuvVoronkasiReport report={report} author={author} />;
+    case "oqituvchilar-samaradorligi":
+      return <SamaradorlikReport report={report} author={author} mode="teachers" />;
+    case "adminlar-samaradorligi":
+      return <SamaradorlikReport report={report} author={author} mode="admins" />;
+    case "xonalar":
+      return <XonalarReport report={report} author={author} />;
     default:
       return null;
   }

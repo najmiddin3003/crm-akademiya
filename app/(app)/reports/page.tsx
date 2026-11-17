@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import "@fontsource-variable/onest/wght.css";
 import { getCurrentUser } from "@/lib/auth";
-import { REPORTS, canOpenReport } from "@/lib/reportsCatalog";
+import { isPathAllowed } from "@/lib/permissions";
+import { REPORTS, REPORT_LINKS, canOpenReport } from "@/lib/reportsCatalog";
 import ReportsCatalogV2 from "@/components/v2/reports/ReportsCatalogV2";
 
 // HISOBOTLAR KATALOGI (yangi versiya, 15-qism — rasm «Hisobotlar katalogi», 25.10.2026).
@@ -14,5 +15,6 @@ export default async function Page() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
   const allowed = REPORTS.filter((r) => canOpenReport(r, user.permissions)).map((r) => r.slug);
-  return <ReportsCatalogV2 allowed={allowed} />;
+  const links = REPORT_LINKS.filter((l) => l.perms.some((p) => isPathAllowed(p, user.permissions))).map((l) => l.key);
+  return <ReportsCatalogV2 allowed={allowed} links={links} />;
 }

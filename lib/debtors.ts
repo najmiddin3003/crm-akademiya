@@ -1,5 +1,6 @@
 import type { Db, Document } from "mongodb";
 import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
+import { exceptionCredits } from "@/lib/priceExceptions";
 import { withBranch, type BranchScope } from "@/lib/branchScope";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { groupLabel, type Group } from "@/lib/groups";
@@ -304,6 +305,14 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
   };
   const paidByPupil = sumByPupil(payments);
   const monthPaidByPupil = sumByPupil(monthPayments);
+
+  // Tasdiqlangan imtiyozlar (35-qism, lib/priceExceptions.ts — chegirma, alohida narx, kechirilgan qarz,
+  // dars haqi) — tanga chegirmasi kabi TO'LANGAN hisoblanadi: markaz kechgan qism qarz bo'lib qolmasin.
+  {
+    const [credit, monthCredit] = await Promise.all([exceptionCredits(db, pupilIds, null, asOf), mb ? exceptionCredits(db, pupilIds, mb.from, mb.to) : Promise.resolve(new Map<number, number>())]);
+    for (const [id, v] of credit) paidByPupil.set(id, (paidByPupil.get(id) ?? 0) + v);
+    for (const [id, v] of monthCredit) monthPaidByPupil.set(id, (monthPaidByPupil.get(id) ?? 0) + v);
+  }
 
   // Oxirgi to'lov (o'quvchi → "YYYY-MM-DD HH:mm") — xuddi shu bog'lash qoidasi bilan.
   const lastByPupil = new Map<number, string>();

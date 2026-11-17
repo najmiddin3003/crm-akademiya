@@ -1,6 +1,6 @@
 // «HISOBOTLAR» KATALOGI (yangi versiya, 15-qism — rasm «Hisobotlar katalogi», 25.10.2026).
 //
-// To'qqizta hisobot, to'rt guruhda. Har biri `/reports/<slug>` da ochiladi va
+// To'qqizta hisobot, to'rt guruhda (35-qismdan — 16 ta, olti guruhda + boshqa bo'limlarga havolalar). Har biri `/reports/<slug>` da ochiladi va
 // Excel hamda PDF'ga yuklanadi. Mijoz ham, server ham shu ro'yxatdan o'qiydi.
 //
 // RUXSAT: `/reports` sidebar daraxtida YO'Q (lib/permissions.ts → ALWAYS_ALLOWED_PATHS,
@@ -12,18 +12,22 @@
 
 import { isPathAllowed } from "@/lib/permissions";
 
-export type ReportGroupKey = "finance" | "flow" | "attendance" | "staff";
+export type ReportGroupKey = "finance" | "flow" | "staff" | "sales" | "attendance" | "resources";
 
 export interface ReportGroup {
   key: ReportGroupKey;
   label: string;
 }
 
+// 35-qism (17.11.2026): «Davomat» guruhi «O'quv sifati» bo'ldi (samaradorlik hisobotlari qo'shildi), yangi
+// guruhlar — «Sotuv» va «Resurslar». Tartib — katalog ustunlari tartibi.
 export const REPORT_GROUPS: readonly ReportGroup[] = [
   { key: "finance", label: "Moliya" },
   { key: "flow", label: "O'quvchilar oqimi" },
-  { key: "attendance", label: "Davomat" },
   { key: "staff", label: "Xodimlar va oylik" },
+  { key: "sales", label: "Sotuv" },
+  { key: "attendance", label: "O'quv sifati" },
+  { key: "resources", label: "Resurslar" },
 ];
 
 export type ReportSlug =
@@ -35,7 +39,14 @@ export type ReportSlug =
   | "davomat-guruhlar"
   | "davomat-oqituvchilar"
   | "oylik-avans"
-  | "bonus-jarima";
+  | "bonus-jarima"
+  | "chegirmalar"
+  | "ketish-sabablari"
+  | "ustozlar-tushumi"
+  | "sotuv-voronkasi"
+  | "oqituvchilar-samaradorligi"
+  | "adminlar-samaradorligi"
+  | "xonalar";
 
 export interface ReportDef {
   slug: ReportSlug;
@@ -127,6 +138,79 @@ export const REPORTS: readonly ReportDef[] = [
     subtitle: "xodimlarga yozilgan bonus va jarimalar",
     perms: ["/finance-bonus", "/finance-penalty"],
   },
+  {
+    slug: "chegirmalar",
+    group: "finance",
+    title: "Chegirma va istisnolar",
+    about: "Chegirma, alohida narx, kechirilgan qarz",
+    subtitle: "kurs narxidan kam olingan har bir so'm — chegirma, alohida narx, kechirilgan qarz va bekor qilingan dars haqi",
+    perms: ["/reports-discounts"],
+  },
+  {
+    slug: "ketish-sabablari",
+    group: "flow",
+    title: "Ketish sabablari",
+    about: "Kim, qachon va nega ketdi",
+    subtitle: "guruhdan chiqarilgan o'quvchilar — kim, qachon va nega ketdi",
+    perms: ["/reports-leave-reasons"],
+  },
+  {
+    slug: "ustozlar-tushumi",
+    group: "staff",
+    title: "Ustozlar tushumi",
+    about: "Tushum, oylik ulushi va markazga qolgani",
+    subtitle: "har bir ustoz guruhlaridan tushgan to'lov, unga hisoblangan oylik va markazga qolgan qism",
+    perms: ["/finance-payroll", "/reports-served"],
+  },
+  {
+    slug: "sotuv-voronkasi",
+    group: "sales",
+    title: "Sotuv voronkasi",
+    about: "Liddan birinchi to'lovgacha, yopilish sabablari",
+    subtitle: "lid yozilganidan birinchi to'lovgacha — har bosqichda qancha qoldi va nega ketdi",
+    perms: ["/reports-funnel"],
+  },
+  {
+    slug: "oqituvchilar-samaradorligi",
+    group: "attendance",
+    title: "O'qituvchilar samaradorligi",
+    about: "O'quvchilarni saqlab qolish",
+    subtitle: "har bir ustozda o'quvchilar qanchalik qolmoqda — davr boshi, o'zgarishlar va davr oxiri",
+    perms: ["/reports-teachers-perf"],
+  },
+  {
+    slug: "adminlar-samaradorligi",
+    group: "attendance",
+    title: "Administratorlar samaradorligi",
+    about: "Liddan o'quvchiga va birinchi javob tezligi",
+    subtitle: "lidni o'quvchiga aylantirish va birinchi javob tezligi",
+    perms: ["/reports-admins-perf"],
+  },
+  {
+    slug: "xonalar",
+    group: "resources",
+    title: "Xonalar bandligi",
+    about: "Qaysi xona qachon bo'sh",
+    subtitle: "qaysi xona qachon band — yangi guruh uchun bo'sh vaqtni toping",
+    perms: ["/reports-rooms"],
+  },
+];
+
+/** Katalogdagi boshqa bo'limlarga havolalar (hisobot emas — o'z sahifasi bor). */
+export interface ReportLink {
+  key: string;
+  group: ReportGroupKey | "nazorat";
+  title: string;
+  about: string;
+  href: string;
+  perms: readonly string[];
+}
+export const REPORT_LINKS: readonly ReportLink[] = [
+  { key: "tushum-rejasi", group: "finance", title: "Tushum rejasi", about: "Yig'ilishi kerak, tushdi va qoldi", href: "/finance-revenue-plan", perms: ["/finance-revenue-plan"] },
+  { key: "ustozlar-reytingi", group: "attendance", title: "Ustozlar reytingi", about: "O'quvchilar bahosi — Nazorat bo'limida", href: "/nazorat-staff-rating", perms: ["/nazorat-staff-rating"] },
+  { key: "davomat-nazorati", group: "nazorat", title: "Davomat nazorati", about: "", href: "/nazorat-davomat", perms: ["/nazorat-davomat"] },
+  { key: "xodimlar-davomati", group: "nazorat", title: "Xodimlar davomati", about: "", href: "/nazorat-qr", perms: ["/nazorat-qr"] },
+  { key: "xabarlar", group: "nazorat", title: "Xabarlar yetkazilishi", about: "", href: "/nazorat-sms-analytics", perms: ["/nazorat-sms-analytics"] },
 ];
 
 export const REPORT_BY_SLUG: Readonly<Record<string, ReportDef>> = Object.fromEntries(REPORTS.map((r) => [r.slug, r]));
