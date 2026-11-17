@@ -1009,6 +1009,34 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   (lib/groupRoster.ts); yangi maydonlar: `groups.capacity`, jihoz (lib/equipment.ts → equipmentExtras), ish jadvali
   (lib/workSchedules.ts → scheduleExtras), `login` (lib/hrEmployeeCreate.ts). Rasmdan farqlar — `SAVOLLAR.md` 420–428.
 
+## Sotuv va marketing — Referallar, Sozlamalar → Referal dasturi (29-qism, yorug'/qorong'i, 17.11.2026)
+
+- **Referallar** (`/sales-referrals`, yon menyuda Sotuv va marketing): «Qoidalar» (→ Sozlamalar) + «Taklif qiluvchi
+  qo'shish»; 4 ko'rsatkich (Taklif qiluvchilar · turlari, Taklif qilinganlar · to'lov qildi %, Hisoblangan referallar ·
+  shu / o'tgan oy, 🎁 Sovg'alar · so'rov); tablar Taklif qiluvchilar · Taklif qilinganlar · Sovg'alar va so'rovlar
+  («N yangi» `brand` belgi).
+  - Taklif qiluvchilar: tur tabletkalari, filial, qidiruv; jadval avatar + ism + tur belgisi (Maktab ustozi `info`,
+    O'quvchi `success`, Ota-ona `violet`, Boshqa neytral) + izoh · Filial · Kod (mono, chegarali) · Taklif qildi · To'lov
+    qildi · Balans (qalin) · Keyingi sovg'a (so'rov bo'lsa `warning-bg` «So'rov: …» + «tasdiq kutilmoqda · 6 → 1»; aks
+    holda chiziq «nom · 2 / 3», «olishi mumkin: …» `success`).
+  - Taklif qilinganlar: Hammasi / Hisoblangan / Kutilmoqda / Rad etdi, «Qo'lda biriktirish»; jadval O'quvchi (guruh) ·
+    Filial · Kim taklif qildi (tur belgisi) · Qanday (ikonka: Kod, Havola, Tavsiya, sertifikat raqami) · Holat (Lid
+    neytral, Birinchi dars / Guruhda `info`, To'lov qisman `warning`, «+1 · sana» `success`, Rad `danger`; ostida izoh) ·
+    Taklif sanasi.
+  - Sovg'alar va so'rovlar: `info-bg` izoh; «Yangi so'rovlar» jadvali (Balans a → b, «Rad etish» + «✓ Tasdiqlash»);
+    «Referal do'koni» kartalari (tepasi `brand-bg`, «N referal» belgi, qoldiq · berilgan, «N kishi hozir ola oladi»,
+    «Tahrirlash») + uzuq chegarali «+ Sovg'a qo'shish»; «Berilgan sovg'alar» jadvali.
+- **Taklif qiluvchi paneli** (o'ngdan, 560 px): 3 ko'rsatkich (Balans, Taklif qildi, To'lov qildi); so'rov kartasi
+  `warning-bg` + `warning` chegara («Rad etish» / «✓ Tasdiqlash»); Sovg'alar ro'yxati («So'radi», «Berish», «yana N ta»);
+  «Kod va havola» — QR, kod va havola nusxalash; «Takliflari».
+- **Referal biriktirish** oynasi: o'quvchi yoki lid qidiruvi, «Kim taklif qildi», «Qanday» — 3 radio karta (Tavsiya
+  qildi, Kodni aytdi, Sertifikat), sertifikat raqami, izoh, `info-bg` oqibat qatori.
+- **Sozlamalar → Lidlar → Referal dasturi**: «Kim taklif qila oladi» (4 almashtirgich), «Referal qachon hisoblanadi»
+  (birinchi oy to'liq to'langanda · avtomatik), «Rag'bat sertifikati», «Kod va havola».
+- Kodda: `components/v2/sales/ReferralsV2.tsx`, `components/v2/settings/ReferralSettingsV2.tsx`; server
+  `lib/referrals.ts` (+ `lib/referralTypes.ts`), `/api/referrals`; so'rovnoma `?ref=KOD` → `linkByCode`.
+  Rasmdan farqlar — `SAVOLLAR.md` 467–473.
+
 ## Moliya — Kunlik topshiruv (32-qism, rasmlar «Kunlik topshiruv», «Qabul qilish oynasi», yorug'/qorong'i, 16.11.2026)
 
 - **Sahifa** (`/finance-handover`, yon menyuda Moliya → Kassalar ostida): sarlavha + «bugun, 16-noyabr | 18:00», o'ngda

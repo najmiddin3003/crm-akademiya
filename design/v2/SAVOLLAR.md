@@ -2391,6 +2391,42 @@ beriladi (Excel importidagi kabi).
 Jadvallar hamma filial uchun umumiy; xodimlar — ko'rinadigan filial(lar) xodimlari (xodim — `branchAssignments[].scheduleId`).
 Biriktirilgan xodimi bor jadval o'chirilmaydi (arxivga olinadi). Sidebar'dagi nom «Ish jadvali» — rasmda «Ish jadvallari».
 
+### 29-qism — Sotuv va marketing: Referallar, Sozlamalar → Referal dasturi (17.11.2026)
+
+Tizimda faqat lid kartasidagi «Referal bergan o'quvchi» (va gamifikatsiyadagi «Do'st olib keldi» tangasi) bor edi —
+referal dasturi yangidan qurildi (`ref_referrers`, `ref_links`, `ref_gifts`, `ref_requests`).
+
+**467. Referal qachon hisoblanadi** — taxmin
+Taklif qilingan o'quvchining TAKLIF SANASIDAN keyingi to'lovlari birinchi guruhining OYLIK narxiga yetgan kun — +1.
+Bekor qilingan to'lov hisoblanmaydi. Narx noma'lum guruhda — «narx noma'lum», hisoblanmaydi. Keyin to'lov qaytarilsa
+referal o'zi yo'qoladi (har safar qayta hisoblanadi). Boshqa qoida kerakmi (masalan, 2 oy)?
+
+**468. Havola — ochiq so'rovnoma** — taxmin
+Shaxsiy havola — `/sorovnoma?ref=KOD`: to'ldirilgan ariza Lidlarga tushadi va taklif qiluvchiga «havola» bo'lib
+yoziladi. Rasmdagi `tizimli24.uz/akademiya/r/KOD` qisqa havolasi va Telegram bot `?start=KOD` qilinmadi. Bot orqali
+ham kerakmi?
+
+**469. Kodni aytgan / sertifikat — qo'lda** — taxmin
+Kod og'zaki aytilsa yoki sertifikat raqami bo'lsa — «Qo'lda biriktirish». Lid formasida «referal kodi» maydoni yo'q
+(bor eski «Referal bergan o'quvchi» — o'sha o'quvchi taklif qiluvchi qilib qo'shilganda uning lidlari «Tavsiya» bo'lib
+ko'chiriladi). Lid formasiga kod maydoni qo'shaylikmi?
+
+**470. Sovg'a so'rovi — kim yuboradi** — QAROR KERAK
+Rasmda taklif qiluvchi sovg'ani o'zi so'raydi (kabinet/bot). Hozir so'rovni faqat xodim yaratadi: panelda «Berish» —
+darhol beriladi; tasdiqlash oqimi tayyor. O'quvchi kabinetida «Referallarim» (kod, balans, sovg'a so'rash) qilaylikmi?
+Ustoz/ota-ona uchun alohida kirish yo'q.
+
+**471. Referal hisoblanganda SMS** — QAROR KERAK
+Rasmda «Referal hisoblanganda SMS» va matn shabloni. SMS pulli — qilinmadi. Yoqamizmi (Eskiz)?
+
+**472. Balans va filial** — taxmin
+Balans = hisoblangan − sovg'aga sarflangan (narxicha). Taklif qiluvchi bitta filialga tegishli; uning takliflari
+boshqa filialdan bo'lishi mumkin. Taklif qiluvchini tahrirlash/o'chirish hali yo'q.
+
+**473. Gamifikatsiya bilan aloqasi** — taxmin
+«Do'st olib keldi» tanga bonusi (o'quvchi hamyoni) alohida — referal dasturi uni o'zgartirmaydi. O'quvchi ikkala
+joyda ham mukofot olishi mumkin. Birlashtiramizmi?
+
 ### 32-qism — Moliya: Kunlik topshiruv, Moliyaviy reja, Shartnomalar, Integratsiyalar, Oylik chiqarish (16.11.2026)
 
 Qism bo'laklarga bo'lib qilindi: Kunlik topshiruv (16.11), qolganlari — 17.11.2026 (savollar 457–466 shu bo'lim oxirida).
