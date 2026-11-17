@@ -1163,6 +1163,46 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   MessageDeliveryV2; `components/student-web/v2/LessonRatingCard.tsx`. Yon menyu nomlari: Davomat nazorati, Xodimlar davomati,
   Ustozlar reytingi, Support darslari, Xabarlar. Eski sahifalar — `?classic=1`. Rasmdan farqlar — `SAVOLLAR.md` 445–456.
 
+## Hisobotlar — katalog va yetti yangi hisobot (35-qism, yorug'/qorong'i + telefon, 17.11.2026)
+
+- **Katalog** (`/reports`): «N ta hisobot · har biri Excel va PDF'ga yuklanadi», qidiruv «Hisobot nomi yoki
+  ko'rsatkich»; «📌 Tez-tez ochiladi» — 4 karta (★ `warning`; Qarzdorlar `danger` summa, Sotuv voronkasi %, Kirim va
+  chiqim ± `success`/`danger`, Faol o'quvchilar). Guruh kartalari 3 ustunda (ikonka + nomi + «N ta»), ichida qatorlar
+  (nomi qalin, izoh, ›; boshqa bo'limga havola — →). Guruhlar: Moliya, O'quvchilar oqimi, Xodimlar va oylik, Sotuv,
+  O'quv sifati (oldin «Davomat»), Resurslar; «Nazoratda» — `danger-bg` ikonka va tabletka-havolalar.
+- **Umumiy qolip** (mavjud ReportShell): yo'l, sarlavha, izoh · filial, Excel / PDF; filtrlar qatori (sana oralig'i
+  `V2DateRange` yoki oy `V2MonthNav`, Filial / Kurs / … `V2Select value`), o'ngda segment-almashtirgich; KpiStrip;
+  `Panel` (sarlavha + izoh + o'ng qism), `Meter` (ingichka chiziq), `StackBar` (segmentli), `Callout`
+  (`info-bg` 💡 / `warning-bg` ⚠ + tugma) — `components/v2/reports/report35.tsx`.
+- **Sotuv voronkasi**: «Bosqichlar» (besh qator: nom + izoh, keng chiziq `info`, oxirgisi `brand`, son + %, ostida
+  «−N» `danger-bg` · «N yopildi · N tasi …»), «Jarayonda · N» tabletkalari (`warning`/neytral/`info`/`success`);
+  o'ngda «Nega yopildi · N» (sabab, `warning` chiziq, izoh). «Kesimlar» — Manba/Filial/Admin/Kurs segmenti, jadval
+  «Liddan o'quvchiga» chizig'i bilan; pastda 💡 eng past filial. Telefonda chiziq nom ostiga tushadi.
+- **Ketish sabablari**: Hammasi / To'lab ketgan / To'lamay ketgan; 4 KPI; Sabablar · Qachon ketadi (birinchi oy
+  `danger`) · Kurslar bo'yicha (fan nuqtasi, % belgisi); «Ketganlar» jadvali (to'lov holati, sabab tabletkasi, izoh,
+  «Qaytdi» `success`).
+- **O'qituvchilar / Administratorlar samaradorligi**: o'ngda «O'qituvchilar | Administratorlar» (har biri o'z
+  hisoboti). O'qituvchilar: jadval + «Tarkib» StackBar (qolgan `brand`, qo'shilgan `success`, ketgan `danger`,
+  bitirgan/muzlatilgan kulrang) + «Saqlab qolish» tabletkasi (≥90 `success`, <85 `danger`); ⚠ Callout; telefonda —
+  ustoz kartalari. Administratorlar: voronka admin bo'yicha, «Konversiya» tabletkasi, «Birinchi javob» rangli;
+  «Birinchi javob tezligi» (StackBar 15 daq / 15–60 / 1 soat+) va «Kechki lidlar».
+- **Ustozlar tushumi**: oy; jadval Tushum qalin, «Oylik ulushi» chizig'i (>40% `danger`), «Markazga qoldi», «1
+  o'quvchidan»; pastda 💡 va «Guruhga bog'lanmagan to'lovlar».
+- **Xonalar bandligi**: Toq / Juft kunlar segmenti; vaqt jadvali (08–22, xona qatorlari, eng band soat ustuni
+  `warning-bg`, guruh bloklari — chap chegara `brand`, fan nuqtasi, «o'quvchi / sig'im · vaqt»), o'ngda «N soat · %»
+  va to'liqlik; uchta maslahat kartasi (bo'sh vaqt, kam ishlatilgan, sig'imga yetgan).
+- **Chegirma va istisnolar**: oy, filial, «Kim ruxsat bergan», «+ Imtiyoz»; o'ngda jami va ulush; 4 KPI; `warning-bg`
+  banner «N ta imtiyoz direktor tasdig'ini kutmoqda» + «Ko'rib chiqish»; «Kim ruxsat bergan» gorizontal qatori
+  (tanlanadi); turlar tablari; jadval Turi tabletkasi (Chegirma `violet`, Alohida narx `info`, Kechirilgan qarz `danger`,
+  Dars haqi neytral), Farq, Sabab, Kim · qachon, Holat. Oynalar: «Imtiyoz qo'shish» (o'quvchi, turi segmenti, guruh,
+  foiz/summa/narx/darslar, qaysi oygacha, sabab, oqibat qatori) va «… so'rovi» (narxlar qutisi, sabab, kim necha
+  imtiyoz yozgani, izoh; «Rad etish» `danger` chegarali + «Tasdiqlash»).
+- Kodda: `components/v2/reports/` — ReportsCatalogV2 (yangilandi), SotuvVoronkasiReport, KetishSabablariReport,
+  SamaradorlikReport, UstozlarTushumiReport, XonalarReport, ChegirmalarReport, report35; server `lib/reportLeads.ts`,
+  `lib/reportRetention.ts`, `lib/reportResources.ts`, `lib/priceExceptions.ts`, `/api/reports/{funnel,admins,
+  leave-reasons,teachers,teacher-revenue,rooms,exceptions,summary}`. Yangi versiya menyusida eski hisobotlar yangi
+  sahifalarga olib boradi (`V2_ITEM_HREFS`). Rasmdan farqlar — `SAVOLLAR.md` 474–484.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

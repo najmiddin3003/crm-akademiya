@@ -2611,6 +2611,55 @@ yozilmaydi — rasmdagi «Davomat: kelmadi» va «Qarzdorlik eslatmasi» qatorla
 yuborish yo'q. O'rniga «Yetmaganlarni ko'rish» va «Kanal sozlamalari» (Integratsiyalar). SMS telefonga yetgani — Eskiz
 yetkazish hisoboti ulanmaguncha noma'lum.
 
+### 35-qism — Hisobotlar: katalog, Sotuv voronkasi, Ketish sabablari, Samaradorlik, Ustozlar tushumi, Xonalar, Chegirma va istisnolar (17.11.2026)
+
+**474. Katalogdagi har karta ostidagi raqam** — taxmin
+Rasmda har hisobot qatori ostida jonli raqam bor («oktabr: +36 444 000 kirim»). Qilinmadi — faqat tepadagi 4 ta
+«Tez-tez ochiladi» kartasida (joriy filial). «★ yulduzcha bilan o'zingiz tanlaysiz» ham yo'q — to'rttasi doimiy.
+
+**475. «Telegramga avtomatik»** — QAROR KERAK
+Rasmda: har dushanba 09:00 da Qarzdorlar va Filiallar holati PDF'i direktorning Telegramiga. Qilinmadi. Yoqamizmi?
+
+**476. Voronka bosqichlari** — taxmin
+«Bog'lanildi» — lid kamida «Bog'lanildi» holatiga o'tgan; «Birinchi darsga keldi» — birinchi dars natijasi «Keldi»
+yoki guruhga qo'shilgan; «Birinchi to'lov» — lid o'quvchiga aylanib, kamida bitta kirim. Rad etilgan lid o'zi
+to'xtagan bosqichda «yopildi». «Reklama natijasi» havolasi yo'q (bunday sahifa yo'q).
+
+**477. Ketish sababi qayerdan** — taxmin
+Guruhdan chiqarishda sabab yozilmaydi — o'quvchi ARXIVGA o'tganda yozilgan sabab olinadi (« — » dan keyini — izoh).
+Arxivga o'tmay boshqa guruhda davom etayotgan — «Boshqa guruhda davom etyapti». «Keyingi qadam» (qo'ng'iroq,
+kechirish so'ralgan) yo'q — faqat «Qaytdi». Guruhdan chiqarish oynasida sabab majburiy bo'lsinmi?
+
+**478. «Bitirdi» va «Muzlatildi»** — taxmin
+Bitirdi — guruh tugagan/arxivlangan kuni chiqqan; muzlatildi — o'quvchi o'sha paytda «Muzlatilgan» holatiga o'tgan.
+Ikkalasi saqlab qolishni pasaytirmaydi. Rasmdagi «Dars kuzatuvini rejalashtirish» tugmasi o'rniga «Ustozlar reytingi».
+
+**479. Birinchi javob tezligi** — taxmin
+Lid yozilgandan birinchi holat o'zgarishigacha (lid holat tarixidan). Tarixi yo'q eski lidlar — hisobga kirmaydi.
+«Kechki lid» — 18:00 dan keyin yozilgan. Rasmdagi «kechki lidga darhol SMS» — taklif, qilinmadi.
+
+**480. Ustozlar tushumi** — taxmin
+Tushum — to'lovda ustoz ko'rsatilgan kirimlar (kassa filiali bo'yicha); ustozi yo'q to'lovlar — «Bog'lanmagan».
+Oylik — «Oylik va avans» hisobotidagi «Jami oylik» (ism bo'yicha bog'lanadi). Rasmdagi «Guruhga bog'lash» tugmasi
+o'rniga — Tranzaksiyalar sahifasiga havola.
+
+**481. Xonalar — ish vaqti va haftasi** — taxmin
+08:00–22:00, hafta 6 kun (Du–Sh), toq kunlar Du/Ch/Ju, juft — Se/Pa/Sh. «Hafta kunlari» guruhlari ikkala ko'rinishda.
+Oy tanlovi yo'q — joriy jadval. Ish vaqti sozlamada bo'lsinmi?
+
+**482. Imtiyozlar (price_exceptions)** — QAROR KERAK
+Yangi yozuv: Chegirma (oyiga foiz yoki summa), Alohida narx, Kechirilgan qarz, Dars haqi (darslar × dars narxi).
+30% yoki 200 000 so'mdan katta imtiyozni xodim yozsa — direktor tasdig'ini kutadi; admin yozgani darhol kuchga kiradi.
+Tasdiqlangan imtiyoz QARZDORLAR hisobida to'langan hisoblanadi (oylik — har oy boshida). Kassaga yozuv tushmaydi.
+Chegara va «kim tasdiqlaydi» (hozir faqat admin) to'g'rimi?
+
+**483. Tanga chegirmasi hisobotda** — taxmin
+Gamifikatsiyadagi «to'lovga chegirma» shu hisobotda «Chegirma · Tanga evaziga» bo'lib ko'rinadi (faqat o'qish uchun).
+
+**484. Telefon ko'rinishlari** — taxmin
+Telefonda sahifalar o'sha — filtrlar ustma-ust, jadvallar suriladi; voronka chiziqlari nom ostiga tushadi,
+O'qituvchilar samaradorligi — kartalar ro'yxati. Rasmdagi pastki «Jarayondagi 51 lid» tugmasi yo'q.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
