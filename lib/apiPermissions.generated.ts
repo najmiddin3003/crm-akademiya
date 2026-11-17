@@ -161,6 +161,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/group-tasks": ["/groups-tasks"],
   "/api/group-tasks/[id]": ["/groups-tasks"],
   "/api/features": ["/settings-features"],
+  "/api/subscription": ["/settings-subscription"],
   "/api/holidays": ["/settings-holidays"],
   "/api/groups": ["/active-students", "/archive-students", "/blok-testlar", "/finance-cash", "/finance-fin-contract", "/first-lessons", "/groups", "/groups-schedule", "/groups-students", "/imtihon", "/management-xodimlar", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups", "/offline-courses", "/online-courses", "/orders-list", "/reports-rooms", "/reports-served", "/seasonal-assessment", "/students-list"],
   "/api/groups/[id]": ["/groups", "/management-xodimlar"],

@@ -257,7 +257,7 @@ function ProfileTab({ d, onSaved }: { d: MyAccount; onSaved: () => void }) {
         </Card>
         <div className="flex flex-wrap items-center gap-3">
           <span className="mr-auto text-v2-small text-v2-text-2">
-            {[d.createdAt && t("Hisob yaratilgan: {d}", { d: `${fmt.dayMonth(d.createdAt.slice(0, 10))} ${d.createdAt.slice(0, 4)}` }), d.updatedAt && t("oxirgi o'zgarish: {d}", { d: fmt.dayMonth(d.updatedAt.slice(0, 10)) })].filter(Boolean).join(" · ")}
+            {[d.createdAt && t("Hisob yaratilgan: {d}", { d: ((x: string) => (x.includes(d.createdAt!.slice(0, 4)) ? x : `${x} ${d.createdAt!.slice(0, 4)}`))(fmt.dayMonth(d.createdAt.slice(0, 10))) }), d.updatedAt && t("oxirgi o'zgarish: {d}", { d: fmt.dayMonth(d.updatedAt.slice(0, 10)) })].filter(Boolean).join(" · ")}
           </span>
           {dirty && (
             <button type="button" onClick={() => (setFirst(d.firstName), setLast(d.lastName), setMiddle(d.middleName), setBm(d.birthday.slice(0, 2)), setBd(d.birthday.slice(3, 5)), setEmail(d.email), setAvatar(d.avatar))} className={secondaryBtn}>
