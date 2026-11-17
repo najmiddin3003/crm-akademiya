@@ -76,6 +76,23 @@ export async function setEnabled(db: Db, actor: GamActor, on: boolean): Promise<
 }
 
 /** Chegara o'zgarsa nechta o'quvchi darajasi pasayadi / ko'tariladi (TZ 4.2.5). */
+/**
+ * Darajalar bo'yicha faol (muzlatilmagan) hamyonlar soni — «Sozlamalar → Tanga tizimi» (33-qism):
+ * `levels` chegaralari bilan hisoblanadi (oldindan ko'rishda — yangi chegaralar).
+ */
+export async function levelCounts(db: Db, levels: GamLevel[]): Promise<number[]> {
+  const frozen = new Set(
+    (await db.collection("pupils").find({ status: { $in: ["Muzlatilgan", "Arxiv"] } }, { projection: { _id: 0, id: 1 } }).toArray()).map((p) => Number(p.id)),
+  );
+  const out = levels.map(() => 0);
+  const cur = db.collection(GAM.wallets).find({}, { projection: { _id: 0, pupilId: 1, earnedTotal: 1 } });
+  for await (const w of cur) {
+    if (frozen.has(Number(w.pupilId))) continue;
+    out[levelIndexOf(Number(w.earnedTotal) || 0, levels)]++;
+  }
+  return out;
+}
+
 async function levelImpact(db: Db, from: GamLevel[], to: GamLevel[]): Promise<{ down: number; up: number }> {
   let down = 0;
   let up = 0;
@@ -95,12 +112,12 @@ export async function saveLevels(
   actor: GamActor,
   raw: unknown,
   preview: boolean,
-): Promise<{ ok: true; levels: GamLevel[]; down: number; up: number; saved: boolean } | Fail> {
+): Promise<{ ok: true; levels: GamLevel[]; down: number; up: number; counts: number[]; saved: boolean } | Fail> {
   const checked = checkLevels(raw);
   if (!checked.ok) return { ok: false, status: 422, error: checked.error };
   const current = await loadSettings(db);
   const impact = await levelImpact(db, current.levels, checked.value);
-  if (preview) return { ok: true, levels: checked.value, ...impact, saved: false };
+  if (preview) return { ok: true, levels: checked.value, ...impact, counts: await levelCounts(db, checked.value), saved: false };
 
   await db.collection(GAM.settings).updateOne(
     { key: KEY },
@@ -118,7 +135,7 @@ export async function saveLevels(
     if (pos !== w.levelPosition) ops.push({ updateOne: { filter: { pupilId: w.pupilId }, update: { $set: { levelPosition: pos } } } });
   }
   if (ops.length) await db.collection(GAM.wallets).bulkWrite(ops, { ordered: false });
-  return { ok: true, levels: checked.value, ...impact, saved: true };
+  return { ok: true, levels: checked.value, ...impact, counts: await levelCounts(db, checked.value), saved: true };
 }
 
 /**

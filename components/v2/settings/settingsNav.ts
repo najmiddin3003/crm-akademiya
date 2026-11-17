@@ -65,7 +65,12 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
   },
   {
     title: "Gamifikatsiya",
-    items: [{ label: "Tanga qoidalari", href: "/settings-gamification?tab=reasons" }],
+    // 33-qism: «Tanga tizimi» (modul, cheklovlar, darajalar), «Tanga sabablari»; byudjet — eski tab.
+    items: [
+      { label: "Tanga tizimi", href: "/settings-gamification?tab=general" },
+      { label: "Tanga sabablari", href: "/settings-gamification?tab=reasons" },
+      { label: "Sovg'a byudjeti", href: "/settings-gamification?tab=branches" },
+    ],
   },
   {
     title: "Nazorat",
