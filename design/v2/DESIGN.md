@@ -1293,6 +1293,32 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   `lib/subscription.ts`; `/api/my-account`, `/api/holidays`, `/api/features`, `/api/subscription`. Rasmdan
   farqlar — `SAVOLLAR.md` 500–511.
 
+## MohirAI va ilovalar — AI sozlamalari, xodim va o'quvchi ilovasi (38-qism, 17.11.2026)
+
+- **Sozlamalar → Ilovalar** (yangi bo'lim): Xodim ilovasi, O'quvchi ilovasi, MohirAI — faqat direktor.
+- **MohirAI** (`/settings-mohirai`): sarlavha o'ngida Yoqilgan/O'chirilgan almashtirgichi (`success-bg`). «Kimlar
+  foydalanadi» — rol qatorlari (nom, xodim soni, kunlik savol maydoni, ruxsat almashtirgichi; o'chirilgan rolda «—»);
+  «Model va tezlik» — sukut model, sukut tezlik segmenti (Tezkor/Tez/O'rtacha/Chuqur), xodimlarga ochiq modellar
+  (nom + mono ID, «Sukut» `success` yoki «Sukut qilish», almashtirgich), «Yana N ta model», model ID qo'shish.
+  O'ngda «Amallar — faqat tasdiq bilan» (`warning` qulf ikonka; umumiy ruxsat + 11 amal turi, o'chirilsa xira),
+  qulf izohli quti; «Maxfiylik» (4 qator ikonka bilan); «{oy}da foydalanish» (jami savol, rol bo'yicha `info`
+  chiziqlar, tasdiqlangan / bekor qilingan amal, ko'p so'ralgan).
+- **Xodim ilovasi** (`/settings-staff-app`): 3 ko'rsatkich (ilovaga kirgan, yuzi ro'yxatda — chiziqli, bugun
+  kelgan); «Ishga kelish — «Keldim»» — usul segmenti (Joylashuv / Joylashuv + Face ID), filial qatorlari (radius
+  tanlovi, «xaritada belgilangan» `success` yoki «nuqta belgilanmagan» `warning` → Filiallar), «Ishdan ketishni ham
+  belgilash», «Yuz mos kelmasa — admin tasdiqlaydi» (Tez orada), qalqon izoh; o'ngda «Bugun ilovadan kelganlar»
+  (avatar, vaqt · joy, «Face ID» `success`) + «Xodimlar davomati →».
+- **O'quvchi ilovasi** (`/settings-student-app`): 3 ko'rsatkich (kabinetdan foydalanadi, ota-ona ham kiradi, oxirgi
+  yangilikni ko'rdi); guruhlar — To'lovlar (balans va qarz; Click/Payme Tez orada), Kontent (hikoyalar, yangiliklar
+  → Yangiliklar va hikoyalar), Kirish va profil, Support darslari (Tez orada); o'ngda telefon ramkasida «Kabinetda
+  shunday ko'rinadi» (sozlamaga qarab o'zgaradi) va «So'nggi o'zgarishlar».
+- **MohirAI to'liq oynasi**: keng ekranda (xl) «E'tibor talab qiladi · N» o'ng ustunda (320px, kartalar, «Ko'rish»,
+  pastda izoh); torroq ekran va suzuvchi oynada — avvalgidek suhbat tepasidagi yig'iladigan karta.
+- Kodda: `components/v2/settings/` — AiSettingsV2, StaffAppV2, StudentAppV2; `components/ai/AlertsCard.tsx`
+  (`variant="column"`). Server: `lib/ai/settings.ts` (roles, disabledActions), `lib/ai/adminOverview.ts`,
+  `lib/staffAppSettings.ts`, `lib/studentAppSettings.ts`; `/api/staff-app`, `/api/student-app`. Rasmdan farqlar —
+  `SAVOLLAR.md` 512–519.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

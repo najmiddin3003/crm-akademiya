@@ -2778,6 +2778,42 @@ Obuna muddati va to'lovlarni Tizimli jamoasi kiritadi (`app_settings` «subscrip
 Tarif narxlari (1 oy 1 500 000 … 12 oy 18 000 000, bonus oylar) rasmdan olingan — to'g'rimi? «Muddatni uzaytirish»
 faqat so'rov yozadi; hisob-faktura PDF va Click/Payme yo'q. Muddat tugaganda «faqat ko'rish» rejimi qilinmadi.
 
+**512. MohirAI rollari** — taxmin
+Rollar: Rahbar (administrator) va «Rollar va huquqlar»dagi rollar (xodim kartasidagi «turi»). Rol bo'yicha ruxsat
+va kunlik limit chat va panelda kuchga kiradi; yozuvi yo'q rol — ruxsatli, umumiy limit bilan (eski sozlama
+o'zgarmadi). Rasmdagi Menejer / Qabul admin / IT / Xizmat — tizimda alohida rol bo'lib yaratilsa shu ro'yxatga
+o'zi tushadi.
+
+**513. Amal turlari** — taxmin
+O'chirilgan amal turi (masalan Kirim) uchun MohirAI qoralama tuzmaydi, CRM'da qanday qilishni tushuntiradi.
+Rasmdagi «Ota-onaga Telegram xabar» va «Guruhni uzaytirish, arxivlash» amallari tizimda yo'q.
+
+**514. MohirAI oynasining ko'rinishi** — QAROR KERAK
+Mavjud MohirAI oynasi (to'liq ekran + suzuvchi oyna, tarix, qoralama va tasdiq, ogohlantirishlar) saqlandi; faqat
+«E'tibor talab qiladi» keng ekranda o'ng ustunga o'tdi. Rasmdagi to'liq qayta chizish (yangi sarlavha, javobdagi
+jadvallar, «Manba» qatori, «Sahifa bilan bog'langan» yon panel) — katta ish. Qilamizmi yoki hozirgisi yetadimi?
+
+**515. Sahifa bilan bog'langan savol** — QAROR KERAK
+Yon panelda «Sahifa: Sotuv voronkasi · filtr» almashtirgichi (javob shu sahifa filtri bilan) — qilinmadi. Kerakmi?
+
+**516. Xodim ilovasi — «Keldim» usullari** — taxmin
+Ulangan: Joylashuv yoki Joylashuv + Face ID (mavjud sozlama), filial radiusi, ishdan ketishni belgilash. «Faqat QR
+kiosk» usuli yo'q — kiosk doim zaxira. «Yuz mos kelmasa — admin tasdiqlaydi» va «Dars tartibi — ustoz ilovasida»
+(Keldim → baholash → vazifa → davomat ketma-ketligi) qilinmadi.
+
+**517. O'quvchi ilovasi** — taxmin
+Ulangan: balans va qarzni ko'rsatish (o'chirilsa qarz kartasi va To'lovlardagi qarz ko'rsatkichi yashiriladi; to'lov
+tarixi va cheklar qoladi), hikoyalar, yangiliklar. Arxivdagilar kirishi, profilni o'zi tahrirlash, support yozilish
+limiti (kabinetdan support darsiga yozilish hali yo'q), ilovadan to'lash — «Tez orada».
+
+**518. Telefon ko'rinishlari** — taxmin
+«MohirAI (admin) · kirim qoralamasi · telefon» — mavjud oyna telefonda to'liq ekran bo'lib ochiladi (alohida dizayn
+qilinmadi). «Ishga keldim · joylashuv + Face ID» — 34-qismda qilingan `/xodim/keldim` ishlatiladi.
+
+**519. Eski «Funksionallik» va «Obuna» tablari** — taxmin
+Eski versiyadagi Umumiy sozlamalar → Funksionallik (belgilar saqlanadi, lekin hech qayerda o'qilmaydi) va Obuna
+(faqat ko'rsatuv) tablari tegilmadi; yangi versiyada 37-qismdagi Funksiyalar va Obuna sahifalari ishlatiladi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
