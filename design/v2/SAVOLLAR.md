@@ -2474,6 +2474,58 @@ tayyorlanmay keldi» — bazadagi to'liq nomi bilan («(daftar, kitob yo'q)»).
 «Tanga berish (ustoz) · Telefon» alohida sahifa emas — o'sha sahifa telefonda kartalarga o'tadi; pastki menyu — mavjud
 xodim qobig'i.
 
+### 34-qism — Nazorat: Davomat nazorati, Xodimlar davomati, Ustozlar reytingi, Darsni baholash, Fikr-mulohaza, Support darslari, Xabarlar (17.11.2026)
+
+«Filiallar holati» rasmi eskirgan deb belgilangan (→ Rahbar paneli → Filiallar taqqoslash) — qurilmadi.
+
+**445. Davomat — muddat va tahrir** — taxmin
+Davomat dars boshlanganidan **30 daqiqa** ichida belgilanmasa «muddati o'tdi» bo'ladi; admin o'tgan darsni **7 kun**
+ichida tahrirlaydi. Ikkalasi rasmdagi matndan olindi — boshqa raqam kerakmi?
+
+**446. Davomat qilmagan ustozga jarima** — QAROR KERAK
+«Jarima» tugmasi faqat adminda; sukut summa **20 000 so'm** (oynada o'zgartiriladi), mavjud Jarimalar bo'limiga yoziladi.
+Avtomatik jarima YO'Q — faqat qo'lda. Avtomatik bo'lsinmi?
+
+**447. Xodimlar davomati — QR kioski yo'q** — egasi qarori
+QR kiosk va turniket tablari qurilmadi: belgilash — bot + joylashuv + Face ID (avvalgidek). Turniket qurilmasi ulansa —
+alohida qism.
+
+**448. «Dars kuzatuvi» va «Rahbar kuzatuvi» ustuni** — QAROR KERAK
+Rasmda menyuda «Dars kuzatuvi» va reytingda rahbar bahosi ustuni bor — tizimda bunday yozuv yo'q. Qachon qilamiz?
+
+**449. Dars bahosi — muddat va o'rtacha** — taxmin
+O'quvchi KELGAN darsini **2 kun** ichida bir marta baholaydi; o'rtachaga kirishi uchun ustozda kamida **3 ta** baho bo'lsin.
+Ustoz o'z bahosini ko'radigan sahifa hozircha yo'q.
+
+**450. Fikr-mulohaza — holat va mas'ul** — taxmin
+Eski yozuvlarda holat yo'q — «Yangi» deb o'qiladi. Mas'ul — adminlar ro'yxatidan (ixtiyoriy). «O'rtacha hal qilish» —
+faqat shikoyatlar bo'yicha, kelgan vaqtdan «Hal qilindi» bosilgan vaqtgacha. Mas'ulga bildirishnoma ketmaydi.
+
+**451. Fikr — o'quvchi kabinetidan / botdan** — QAROR KERAK
+Rasmda manba «Telegram bot» bor; hozir fikrni faqat admin yozadi. O'quvchi/ota-ona botdan yozadigan qilaylikmi?
+
+**452. Support darslari — yangi yozuv** — taxmin
+Eski «Support analitikasi» (`support_analytics`) hech qayerdan to'ldirilmas edi — bo'sh. Yangi `support_lessons`: dars
+ochiladi, o'quvchini HOZIRCHA admin yozadi; joy tugasa navbat, kimdir chiqsa navbatdagi birinchi joyga o'tadi; dars
+o'tgach keldi/kelmadi. Eski ro'yxat — `?classic=1`.
+
+**453. Support — kabinetdan yozilish va «so'ragan mavzular»** — QAROR KERAK
+Rasmda o'quvchi kabinetda o'zi yoziladi va mavzu so'raydi («O'quvchilar so'ragan mavzular», «Shu mavzuda dars ochish»),
+«kelmaganlar keyingi safar navbat oxirida». Bularni keyingi bosqichda qilamizmi?
+
+**454. Xabarlar — barcha filiallar** — taxmin
+Xabarlar jurnalida filial yozilmaydi, shuning uchun sahifa doim barcha filiallarni ko'rsatadi («Filial bo'yicha»
+chiplari yo'q). Telegram'da «Yetkazildi» — bot xabarni chatga yubora oldi.
+
+**455. Davomat va qarz xabarlari jurnalda yo'q** — QAROR KERAK
+Hozir jurnalga to'lov xabari, taklif, parol tiklash va qo'lda SMS yoziladi. Botning «darsga kelmadi» va qarz eslatmalari
+yozilmaydi — rasmdagi «Davomat: kelmadi» va «Qarzdorlik eslatmasi» qatorlari shuning uchun kam/yo'q. Yozaylikmi?
+
+**456. Banner tugmalari** — taxmin
+«To'lov SMS ini yoqish» va «N kishiga bot havolasini yuborish» qilinmadi: to'lov SMS i kodda to'xtatilgan, ommaviy havola
+yuborish yo'q. O'rniga «Yetmaganlarni ko'rish» va «Kanal sozlamalari» (Integratsiyalar). SMS telefonga yetgani — Eskiz
+yetkazish hisoboti ulanmaguncha noma'lum.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

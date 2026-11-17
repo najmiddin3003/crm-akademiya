@@ -1076,6 +1076,34 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   CoinSystemV2, CoinRulesV2 (yangilandi); `components/student-web/v2/TangaTab.tsx`. `PageShell flow` — bir nechta bo'limli
   sahifa o'zi aylanadi; `V2Dialog` `footer` ixtiyoriy. Rasmdan farqlar — `SAVOLLAR.md` 434–444.
 
+## Nazorat — Davomat nazorati, Xodimlar davomati, Ustozlar reytingi, Darsni baholash, Fikr-mulohaza, Support darslari, Xabarlar (34-qism, yorug'/qorong'i, 17.11.2026)
+
+- **Davomat nazorati** (`/nazorat-davomat`): «Bugun | Yozuvlar | Belgilanmagan darslar» tablari. Bugun — guruhlar holati
+  (belgilangan `success`, muddat ichida `warning` + sanoq, muddati o'tgan `danger`), «Eslatish» va «Jarima» (faqat admin).
+  Yozuvlar — tahrirlar jurnali (kim, qachon, nima o'zgardi). Belgilanmagan — o'tgan darslar, «Sababli» / «Jarima» oynalari.
+- **Xodimlar davomati** (`/nazorat-qr`): «Bugun | Belgilash usuli | Kirish-chiqish». QR kioski yo'q (egasi qarori — bot +
+  joylashuv + Face ID); qatorlar: o'z vaqtida `success`, kechikdi `warning`, kelmadi `danger`, kutilmoqda, jadvaldan tashqari.
+- **Ustozlar reytingi** (`/nazorat-staff-rating`): oy, filial, kurs; 4 ko'rsatkich, jadval (o'rtacha ★, 5…1 taqsimot chizig'i,
+  o'tgan oy, past baholar), «Diqqat» kartasi va izohlar (o'quvchi ismi ko'rinmaydi).
+- **Darsni baholash** (o'quvchi kabineti → Darslar, telefon): «Darsni baholang» kartasi, pastdan oyna — 5 yulduz, baho nomi
+  (`warning`), teg chiplari, izoh, 🔒 «Ustozga ismingiz ko'rinmaydi»; «Oxirgi baholarim».
+- **Fikr-mulohaza** (`/nazorat-feedback`): 4 karta (Shikoyat `danger`, Taklif `info`, Maqtov `success`, o'rtacha hal qilish
+  kuni), Hammasi / Yangi / Ko'rib chiqilmoqda / Hal qilindi tabletkalari, qidiruv + Turi / Kimdan / Filial; jadval Turi
+  (rangli tabletka), Kimdan (ism · kimligi · o'quvchi), Mazmuni, Holat · mas'ul («mas'ul tayinlanmagan» `warning`), Kelgan
+  (sana | vaqt · manba). Qator — boshqarish oynasi (holat segmenti, mas'ul, natija). «Fikr qo'shish» oynasi: Kimdan segmenti,
+  o'quvchi qidiruvi (o'quvchi / ota-ona), Ism, Telefon, Turi chiplari, Izoh, Mas'ul, Filial.
+- **Support darslari** (`/nazorat-support-analytics`): sana oralig'i, Kurs, Excel, «Support dars ochish»; 4 karta (darslar ·
+  o'tdi / rejada, yozilganlar, keldi %, navbatda); jadval Dars (sana | vaqt · xona), Mavzu (fan nuqtasi + kurs), Support ustoz,
+  Yozildi (N / joy, «+N navbatda» `warning`), Keldi, Holat (Yozilish ochiq `success`, Joy to'ldi `warning`, O'tdi neytral,
+  Davomat qilinmagan `danger`); o'ngda «Support ustozlar» (% — chiziq `success`). Qator — yozilganlar, navbat, keldi/kelmadi.
+- **Xabarlar yetkazilishi** (`/nazorat-sms-analytics`): 4 karta (nuqta rangi bilan; Yetmadi — `danger` son), yetmaganlar banneri
+  `danger-bg` (sabablar ro'yxati), «Maqsad bo'yicha» — to'rt rangli chiziq (Telegram `success`, SMS `info`, Yetmadi `danger`,
+  Kutilmoqda kulrang), «Kanallar» (Ulangan `success-bg` / Ulanmagan `warning-bg`), «Oxirgi xabarlar» (Yetmadi qatori `danger-bg`,
+  matn o'rnida sabab).
+- Kodda: `components/v2/nazorat/` — AttendanceControlV2, StaffAttendanceV2, TeacherRatingsV2, FeedbackV2, SupportLessonsV2,
+  MessageDeliveryV2; `components/student-web/v2/LessonRatingCard.tsx`. Yon menyu nomlari: Davomat nazorati, Xodimlar davomati,
+  Ustozlar reytingi, Support darslari, Xabarlar. Eski sahifalar — `?classic=1`. Rasmdan farqlar — `SAVOLLAR.md` 445–456.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

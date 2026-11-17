@@ -232,22 +232,22 @@ export const SIDEBAR_ITEMS = [
         {
           title: "Amallar",
           items: [
-            { label: "Davomat", href: "/nazorat-davomat", medium: true },
+            { label: "Davomat nazorati", href: "/nazorat-davomat", medium: true },
             { label: "Davomat analitikasi", href: "/nazorat-davomat-analytics" },
-            { label: "Ishga keldim", href: "/nazorat-qr" },
+            { label: "Xodimlar davomati", href: "/nazorat-qr" },
             { label: "Fikr-mulohaza", href: "/nazorat-feedback" },
           ],
         },
         {
           title: "Hisobotlar",
           items: [
-            { label: "Xodimlar reytingi", href: "/nazorat-staff-rating" },
+            { label: "Ustozlar reytingi", href: "/nazorat-staff-rating" },
             { label: "Davomat qilinmagan guruhlar", href: "/nazorat-missed-groups" },
             { label: "Filiallar holati", href: "/nazorat-branches" },
             { label: "Turniket analitikasi", href: "/nazorat-turnstile" },
             { label: "Turniket kirish-chiqish analitikasi", href: "/nazorat-turnstile-io" },
-            { label: "Support analitikasi", href: "/nazorat-support-analytics" },
-            { label: "SMS analitikasi", href: "/nazorat-sms-analytics" },
+            { label: "Support darslari", href: "/nazorat-support-analytics" },
+            { label: "Xabarlar", href: "/nazorat-sms-analytics" },
           ],
         },
       ],
