@@ -49,6 +49,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "Kirim-chiqim toifalari", href: "/finance-tx-types" },
       { label: "To'lov turlari", href: "/settings-finance?tab=payment-methods" },
       { label: "Bonus sabablari", note: "Bonus sabablari ro'yxati hali yo'q" },
+      { label: "Integratsiyalar", href: "/settings-integrations", adminOnly: true },
     ],
   },
   {
