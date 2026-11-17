@@ -619,6 +619,14 @@ export function askForStaff(
 
 // ── Avtomatik xabarlar ──────────────────────────────────────────────
 
+/** Davomat xabari sarlavhasi («❌ Darsga kelmadingiz») — Avtomatik xabarlar shablonidagi {holat} (36-qism). */
+export function attendanceHolat(status: AttendanceStatus): string {
+  return `${STATUS_EMOJI[status]} ${ATTENDANCE_PUSH_TITLE[status]}`;
+}
+
+/** «03.09.2026» — shablon o'zgaruvchilari uchun. */
+export const dmyDate = (iso: string) => dmy(iso);
+
 export function attendancePush(
   pupil: Pupil,
   opts: { date: string; status: AttendanceStatus; grade: number | null; reason: string | null; groupName: string },

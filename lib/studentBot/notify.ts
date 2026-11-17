@@ -10,6 +10,8 @@ import { pupilFullName } from "@/lib/pupilsData";
 import { chatsForPupil, markBlocked, pupilHasBlockedChat, type NotifyKind } from "@/lib/studentBot/users";
 import * as V from "@/lib/studentBot/views";
 import { uzNow } from "@/lib/uzTime";
+import { autoMessageFor } from "@/lib/autoMessages";
+import { groupLabel } from "@/lib/groups";
 
 // AVTOMATIK XABARLAR — davomat belgilanganda va to'lov kelganda
 // o'quvchiga (va unga bog'langan ota-onaga) darhol xabar boradi.
@@ -88,7 +90,15 @@ async function deliverAttendance(db: Db, notice: AttendanceNotice): Promise<Noti
   if (!isStudentBotReady(cfg)) return { reason: "no_bot", chats, delivered: 0 };
   const pupil = await loadPupil(db, notice.pupilId);
   if (!pupil) return { reason: "no_pupil", chats, delivered: 0 };
-  const { sent, blocked } = await sendToChats(db, cfg, list, "attendance", V.attendancePush(pupil, notice));
+  // Avtomatik xabarlar (36-qism): o'chirilgan bo'lsa — yuborilmaydi; shablon bo'lsa — uning matni.
+  const html = await autoMessageFor(
+    db,
+    "attendance",
+    { ism: pupilFullName(pupil), holat: V.attendanceHolat(notice.status), sana: V.dmyDate(notice.date), guruh: notice.groupName, baho: notice.grade ? String(notice.grade) : "" },
+    () => V.attendancePush(pupil, notice),
+  );
+  if (html === null) return { reason: "push_off", chats, delivered: 0 };
+  const { sent, blocked } = await sendToChats(db, cfg, list, "attendance", html);
   return { reason: sent > 0 ? "sent" : blocked === chats ? "blocked" : "failed", chats, delivered: sent };
 }
 
@@ -129,7 +139,14 @@ export async function notifyGroupAdded(db: Db, pupilId: number, group: Group): P
     if (!studentBotPushEnabled()) return;
     const pupil = await loadPupil(db, pupilId);
     if (!pupil) return;
-    await fanOut(db, pupilId, "group", V.groupAddedPush(pupil, group));
+    const html = await autoMessageFor(
+      db,
+      "group",
+      { ism: pupilFullName(pupil), guruh: groupLabel(group), ustoz: group.teacher ?? "", kunlar: group.day ?? "", vaqt: group.time ?? "", xona: group.room ?? "" },
+      () => V.groupAddedPush(pupil, group),
+    );
+    if (html === null) return;
+    await fanOut(db, pupilId, "group", html);
   } catch (e) {
     console.error("[student-bot] guruh xabari:", e instanceof Error ? e.message : e);
   }
@@ -147,7 +164,9 @@ export async function notifyDue(db: Db, pupilId: number, month: string): Promise
     if (!studentBotPushEnabled()) return;
     const pupil = await loadPupil(db, pupilId);
     if (!pupil) return;
-    await fanOut(db, pupilId, "due", V.duePush(pupil, month));
+    const html = await autoMessageFor(db, "due", { ism: pupilFullName(pupil), oy: V.monthLabel(month) }, () => V.duePush(pupil, month));
+    if (html === null) return;
+    await fanOut(db, pupilId, "due", html);
   } catch (e) {
     console.error("[student-bot] to'lov eslatmasi:", e instanceof Error ? e.message : e);
   }
@@ -219,7 +238,13 @@ export async function notifyPayment(db: Db, notice: PaymentNotice): Promise<void
     if (notice.pupilId === null) return;
     const pupil = await loadPupil(db, notice.pupilId);
     if (!pupil) return;
-    const text = V.paymentPush(pupil, notice);
+    const text = await autoMessageFor(
+      db,
+      "payment",
+      { ism: notice.pupilName || pupilFullName(pupil), summa: `${V.fmtUZS(notice.amount)} so'm`, tolov_turi: notice.method, sana: V.dmyDate(notice.date), kassa: notice.cashboxName ?? "" },
+      () => V.paymentPush(pupil, notice),
+    );
+    if (text === null) return;
     const sent = await fanOut(db, notice.pupilId, "payment", text);
 
     // XABARLAR JURNALIGA yoziladi (Sotuv va marketing -> Xabarlar

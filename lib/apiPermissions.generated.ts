@@ -117,6 +117,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/bonuses": ["/finance-bonus", "/finance-cashflow", "/management-xodimlar"],
   "/api/bonuses/[id]": ["/finance-bonus"],
   "/api/branches": ["/amallar-jurnali", "/management-filiallar", "/management-xodimlar", "/nazorat-branches", "/nazorat-feedback", "/offline-courses", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
+  "/api/auto-messages": ["/sales-auto-messages"],
   "/api/branches/[id]": ["/management-filiallar"],
   "/api/cabinet-news": ["/sales-news", "/sales-stories"],
   "/api/campaign-links": ["/sales-campaigns"],
