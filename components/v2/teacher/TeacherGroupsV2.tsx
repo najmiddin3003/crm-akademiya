@@ -162,7 +162,7 @@ export default function TeacherGroupsV2({ teacher }: { teacher?: string }) {
       )}
 
       {g ? (
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
           <Card className="min-w-0 !p-0 sm:!p-0">
             <div className="flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
               <div>

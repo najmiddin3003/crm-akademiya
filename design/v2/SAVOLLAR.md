@@ -3005,6 +3005,42 @@ Xodim kartasi o'qituvchi ismi bilan topilmasa karta chiqmaydi.
 Vazifaga fayl / havola biriktirish, ota-onaga botdan xabar yozish, o'quvchi kartasidagi «Natijalari» (imtihon sahifasiga
 o'tadi, o'quvchi bo'yicha filtrsiz), qorong'i mavzu rasmlari alohida tekshirilmadi.
 
+**557. Qabul admin yoki Moderator — kim qaysi ish stolini ko'radi** — QAROR KERAK
+Ikkalasi ham xodim kartasida «moderator» turi. Filial biriktiruvidagi rol nomi «Moderator» bo'lsa — qo'ng'iroq navbati,
+qolganlari — qabul admin bosh sahifasi (yangi versiyada). Hozir ko'p xodimda rol tanlanmagan — ular qabul admin
+sahifasini ko'radi. Avval moderatorlar bosh sahifada Lidlar ro'yxatiga o'tardi (eski versiyada shunday qoladi).
+To'g'rimi yoki alohida «Qabul admin» lavozimi kerakmi?
+
+**558. Qo'ng'iroqlar jurnali** — taxmin
+Tizimda qo'ng'iroq yozuvi yo'q edi — yangi `lead_calls` (natija, keyingi qadam, qayta qo'ng'iroq vaqti, izoh). Faqat
+navbat panelidan yoziladi; telefondan avtomatik (IP-telefoniya) olinmaydi, davomiyligi («2 daqiqa») yo'q. Lid holati:
+yangi lidga «Javob berdi» — «Bog'lanildi»; «Birinchi darsga yozish» — guruh va kun bilan «Birinchi dars»; «Rad etdi»
+sababi lid sahifasida tanlanadi.
+
+**559. Navbat qoidalari** — taxmin
+Shoshilinch: vaqti o'tgan qayta qo'ng'iroq va 24 soatga 3 soatdan kam qolgan yangi lid. Dars bo'yicha: bugun sababsiz
+kelmagan o'quvchi (ota-onasi telefoni) va bugun birinchi darsga kelib, guruhga qo'shilmagan lid. Eslatma: ertangi birinchi
+dars, hali eslatilmagan («Javob berdi» — eslatildi belgisi qo'yiladi). Ismsiz lid yozuvlari navbatga tushmaydi.
+
+**560. Qabul admin · javobsiz lid** — taxmin
+Javobsiz = holati «Yangi» va hali birorta qo'ng'iroq yozilmagan (oxirgi 14 kun). Eski lidlarda qo'ng'iroq jurnali
+yo'qligi sababli ular ham javobsiz ko'rinishi mumkin. «Birinchi javob ≤ 15 daqiqa» — maqsad matni, sozlamasi yo'q.
+
+**561. To'lov qabul qilish va chek** — QAROR KERAK
+Rasmda alohida sahifa (qarz holati oylar bo'yicha, jonli chek ko'rinishi, «Chekni ota-onaga Telegram'da yuborish» va
+«Chop etish» tugmalari). Hozir bosh sahifadan mavjud «To'lov qabul qilish» oynasi ochiladi (19.10 dizayni) — saqlangach
+chek oynasi chiqadi. Alohida sahifa kerakmi yoki oynaga qarz holati va chek ko'rinishini qo'shaymi?
+
+**562. Birinchi darsga yozish (qabul admin)** — ma'lum
+Rasmdagi lid sahifasi (bosqichlar, so'rovnoma javoblari, tarix, guruh tanlovi «Daraja mos / pastroq / yuqori», bandlik
+10/14) — lid sahifasidagi mavjud «Birinchi darsga yozish» oynasi bilan qilinadi; bosh sahifa tugmasi lid sahifasini ochadi.
+Daraja mosligi va o'rin bandligi belgisi hali yo'q.
+
+**563. Moderator · natijalarim: qoidalar** — taxmin
+«Yangi lidga 24 soat ichida» — davrda tushgan filial lidlari, birinchi qo'ng'irog'i 24 soat ichida bo'lganlari.
+«Birinchi darsdan keyin» va «Darsga kelmaganga» — hozircha qilingan qo'ng'iroqlar soni (kerak bo'lganlar ro'yxati
+alohida hisoblanmaydi). Sotuv bonusi va «Oyligim» — mavjud sahifalarda.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)

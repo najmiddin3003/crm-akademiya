@@ -37,6 +37,9 @@ import GroupSchedulePage from "@/components/groups/GroupSchedulePage";
 import { getServerT } from "@/lib/serverT";
 import TeacherHomeV2 from "@/components/v2/teacher/TeacherHomeV2";
 import { resolveTeacher } from "@/lib/teacherDesk";
+import { resolveFront } from "@/lib/frontDesk";
+import FrontHomeV2 from "@/components/v2/front/FrontHomeV2";
+import CallQueueV2 from "@/components/v2/front/CallQueueV2";
 import { currentUiVersion } from "@/lib/uiVersionServer";
 
 /** `hr_employees.turi` -> o'sha lavozimning bosh sahifasi. */
@@ -72,10 +75,10 @@ async function positionHome(user: CurrentUser): Promise<string | null> {
   return isPathAllowed(target, user.permissions) ? target : null;
 }
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ teacher?: string }> }) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ teacher?: string; front?: string; mode?: string }> }) {
   const user = await getCurrentUser();
   const { t } = await getServerT();
-  const { teacher } = await searchParams;
+  const { teacher, front, mode } = await searchParams;
 
   // 45-qism: O'QITUVCHI — o'z ish stoli (components/v2/teacher/TeacherHomeV2.tsx). Rahbar `?teacher=ISM` bilan
   // istalgan o'qituvchi bosh sahifasini ko'radi. Faqat yangi versiyada; eski versiyada — avvalgi jadval.
@@ -83,6 +86,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     const asAdmin = user.role === "admin" && typeof teacher === "string" && teacher.trim();
     if (asAdmin) return <TeacherHomeV2 teacher={teacher!.trim()} />;
     if (user.role !== "admin" && (await resolveTeacher(await ensureIndexes(), user))) return <TeacherHomeV2 />;
+    // 46-qism: QABUL ADMIN / MODERATOR — rol nomi «Moderator» bo'lsa qo'ng'iroq navbati, aks holda qabul admin bosh
+    // sahifasi. Rahbar — `?front=ISM&mode=admin|moderator`.
+    if (user.role === "admin" && typeof front === "string" && front.trim()) return mode === "moderator" ? <CallQueueV2 as={front.trim()} /> : <FrontHomeV2 as={front.trim()} />;
+    if (user.role !== "admin") {
+      const fw = await resolveFront(await ensureIndexes(), user);
+      if (fw) return fw.mode === "moderator" ? <CallQueueV2 /> : <FrontHomeV2 />;
+    }
   }
 
   if (user) {

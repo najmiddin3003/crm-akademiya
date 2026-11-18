@@ -124,7 +124,7 @@ export default function TeacherCheckV2({ teacher, taskId }: { teacher?: string; 
         </div>
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[26rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[26rem_minmax(0,1fr)]">
         <Card className="!p-0 sm:!p-0">
           {tasks.length === 0 ? (
             <p className="p-5 text-v2-small text-v2-text-3">{filter === "wait" ? t("Kutayotgan ish yo'q — hammasi tekshirilgan.") : t("Vazifa yo'q.")}</p>

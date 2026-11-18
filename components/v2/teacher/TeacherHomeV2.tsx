@@ -108,7 +108,7 @@ export default function TeacherHomeV2({ teacher }: { teacher?: string }) {
         <Kpi icon={<Wallet className="size-5" strokeWidth={1.75} />} tone="neutral" value={d.salary?.left != null ? `${fmtSum(d.salary.left)}` : "—"} unit={d.salary?.left != null ? t("so'm") : ""} label={t("Qolgan oylik · {month}", { month: fmt.monthLower(d.today.slice(0, 7)) })} />
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
         <div className="flex min-w-0 flex-col gap-4">
           <Card className="!p-0 sm:!p-0">
             <div className="p-4 sm:p-5">

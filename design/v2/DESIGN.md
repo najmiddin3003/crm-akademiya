@@ -1496,6 +1496,25 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   ota-ona (bot), to'lov/qarz ko'rinmasligi izohi.
 - Kodda: `components/v2/teacher/*`, server `lib/teacherDesk.ts`, `/api/teacher`. Rasmdan farqlar — `SAVOLLAR.md` 550–556.
 
+## Qabul admin va Moderator: bosh sahifa, qo'ng'iroq navbati, natijalarim (46-qism, 18.11.2026)
+
+- **Qabul admin · bosh sahifa** (`/home`; rahbar — `/home?front=ISM&mode=admin`): 4 ko'rsatkich (javobsiz lid `danger`,
+  birinchi dars, qarzdor, kassam), «Bugungi ishlar» bo'limlari (`surface-2` sarlavha qatori): javobsiz lidlar (kutish
+  vaqti belgisi — 15 daqiqadan oshsa `danger`), birinchi darsga keladiganlar (Bugun / Ertaga `info`, «Eslatish» yoki
+  «✓ Eslatildi»), 2+ oy qarzdorlar, kassani topshirish; «Rolingiz». O'ngda Kassam (balans, to'lov turlari kataklari,
+  bugungi amallar, Kirim / Chiqim / Topshirish) va Savdo planim (chiziq — rejada `success`, orqada `danger`, bonus
+  `warning-bg`). Telefonda qator tugmalari matn ostiga tushadi.
+- **Moderator · qo'ng'iroq navbati** (`/home` moderatorda yoki `/front-calls`): 4 ko'rsatkich, navbat bo'limlari
+  (Shoshilinch · Yangi lidlar · Dars bo'yicha · Eslatmalar), qator — tur ikonkasi katagi (qayta `info`, yangi neytral,
+  darsga kelmadi `danger`, birinchi darsdan keyin `success`, eslatma `violet`), belgi, muddat (`danger` o'tgan /
+  `warning`), qo'ng'iroq tugmasi `brand-bg`. Tanlangani — `brand-bg` + chap chiziq. O'ngda natija paneli: telefon,
+  Natija 2×2 (tanlangani `success`), Keyingi qadam chiplari (`brand`), guruh tanlovi va 3 ta dars kuni, izoh,
+  «Saqlash · keyingisi». Pastda «Oxirgi qo'ng'iroqlar» (natija belgisi).
+- **Natijalarim** (`/front-results`): davr segmenti, 4 ko'rsatkich, kunlar bo'yicha ustunlar (bugun `brand`), qo'ng'iroq
+  turlari chiziqlari, «Liddan o'quvchigacha», Qoidalar (foiz belgisi ≥90 `success`, ≥70 `warning`, past `danger`),
+  oxirgi qo'ng'iroqlar jadvali.
+- Kodda: `components/v2/front/*`, server `lib/frontDesk.ts`, `/api/front`. Rasmdan farqlar — `SAVOLLAR.md` 557–563.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

@@ -235,7 +235,7 @@ export default function TeacherLessonV2({ groupId, teacher }: { groupId: number;
         ))}
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
         {/* Davomat va tanga — kengda doim, telefonda 1 va 4-qadamda. */}
         <Card className={`min-w-0 !p-0 sm:!p-0 ${step === 1 || step === 4 ? "" : "max-lg:hidden"}`}>
           <div className="flex flex-wrap items-start justify-between gap-2 p-4 sm:p-5">
