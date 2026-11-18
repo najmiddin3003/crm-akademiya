@@ -4,9 +4,11 @@ import { loadPupil } from "@/lib/studentBot/data";
 import { authStudentWeb } from "@/lib/studentBot/webapp";
 import { pupilFullName } from "@/lib/pupilsData";
 import { acceptOferta, myContracts, myFeedback, ofertaState, sendFeedback } from "@/lib/studentCabinetExtras";
+import { coursesForPupil, markLesson, supportCancel, supportEnroll, supportForPupil } from "@/lib/studentLearning";
 
 // O'quvchi kabineti — 42-qism (lib/studentCabinetExtras.ts). Kim ekani — Telegram `initData` imzosi (me bilan bir xil).
 //   POST { initData, action: "oferta" | "accept-oferta" (ids) | "feedback" | "send-feedback" (type, about, izoh, hideName) | "contracts" }
+//   43-qism (lib/studentLearning.ts): "support" | "support-enroll" (id) | "support-cancel" (id) | "courses" | "lesson-done" (courseId, lessonId)
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
@@ -34,6 +36,20 @@ export async function POST(req: Request) {
       const branch = await db.collection("branches").findOne({ id: Number((pupil as { branchId?: number }).branchId) }, { projection: { _id: 0, name: 1 } });
       const r = await sendFeedback(db, { pupilId: pupil.id, pupilName: pupilFullName(pupil), branch: String(branch?.name ?? ""), role, tgName: user.tgName, phone: user.phone }, b);
       return NextResponse.json(r.ok ? { ok: true, items: await myFeedback(db, pupil.id) } : r, { status: r.ok ? 200 : 400 });
+    }
+    case "support":
+      return NextResponse.json({ ok: true, ...(await supportForPupil(db, pupil as { id: number; branchId?: number })) });
+    case "support-enroll":
+    case "support-cancel": {
+      const p = { id: pupil.id, branchId: (pupil as { branchId?: number }).branchId, name: pupilFullName(pupil) };
+      const r = b.action === "support-enroll" ? await supportEnroll(db, p, Number(b.id)) : await supportCancel(db, p, Number(b.id));
+      return NextResponse.json(r.ok ? { ...r, ...(await supportForPupil(db, p)) } : r, { status: r.ok ? 200 : 400 });
+    }
+    case "courses":
+      return NextResponse.json({ ok: true, items: await coursesForPupil(db, pupil.id) });
+    case "lesson-done": {
+      const r = await markLesson(db, pupil.id, Number(b.courseId), String(b.lessonId ?? ""));
+      return NextResponse.json(r, { status: r.ok ? 200 : 400 });
     }
     case "contracts":
       return NextResponse.json({ ok: true, items: await myContracts(db, pupil.id) });
