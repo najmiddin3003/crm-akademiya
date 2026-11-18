@@ -4,7 +4,9 @@
 import "@fontsource-variable/onest/wght.css";
 import { useCallback, useState, type ComponentType } from "react";
 import {
+  Bell,
   CalendarDays,
+  Loader2,
   ChartColumn,
   Check,
   ChevronDown,
@@ -27,7 +29,7 @@ import DarslarTab from "./DarslarTab";
 import NatijalarTab from "./NatijalarTab";
 import TangaTab from "./TangaTab";
 import TolovlarTab from "./TolovlarTab";
-import ProfileDialogV2 from "./ProfileDialogV2";
+import { ContractsPage, FeedbackPage, NotificationsPage, OfertaGate, ProfilePage, useOfertaGate, useUnreadCount, type SubPage } from "./CabinetPages";
 import { initials, type CabinetTab, type CabinetTabProps } from "./bits";
 import { chooseStudentTheme, useHtmlDark } from "./studentPrefs";
 
@@ -147,7 +149,7 @@ function AccountMenu({ me, onProfile, onClassic }: { me: StudentMe; onProfile: (
               className={ROW}
             >
               <UserRound className={ICON} strokeWidth={1.75} />
-              {t("Mening ma'lumotlarim")}
+              {t("Profil")}
             </button>
             <div className="flex items-center gap-3 px-2.5 py-1.5 text-v2-body text-v2-text">
               <Contrast className={ICON} strokeWidth={1.75} />
@@ -210,17 +212,33 @@ export default function CabinetV2({
 }) {
   const { t } = useT();
   const [tab, setTab] = useState<CabinetTab>(initialTab);
-  const [profileOpen, setProfileOpen] = useState(false);
+  // 42-qism: ichki sahifalar (bildirishnomalar, profil, fikr, shartnomalar) va kirishdagi oferta.
+  const [sub, setSub] = useState<SubPage | null>(null);
   const cab = me.cabinet!;
   const hasDebt = cab.debt.total > 0 && me.appPrefs?.showDebt !== false;
+  const unread = useUnreadCount(me, cab);
+  const gate = useOfertaGate(initData, me.appPrefs?.ofertaGate === true);
 
   const go = useCallback((next: CabinetTab) => {
     setTab(next);
+    setSub(null);
+    window.scrollTo({ top: 0 });
+  }, []);
+  const openSub = useCallback((p: SubPage | null) => {
+    setSub(p);
     window.scrollTo({ top: 0 });
   }, []);
 
   const View = TAB_VIEW[tab];
   const brandLetter = (CENTER_SHORT.trim().charAt(0) || "T").toUpperCase();
+
+  if (gate.loading)
+    return (
+      <div data-ui="v2" className="flex min-h-dvh items-center justify-center bg-v2-bg">
+        <Loader2 className="size-6 animate-spin text-v2-text-3" aria-hidden />
+      </div>
+    );
+  if (gate.state?.gate && !gate.state.done) return <OfertaGate state={gate.state} initData={initData} onDone={gate.setState} />;
 
   return (
     <div data-ui="v2" className="min-h-dvh bg-v2-bg font-v2 text-v2-body text-v2-text">
@@ -239,7 +257,7 @@ export default function CabinetV2({
 
           <nav aria-label={t("Bo'limlar")} className="ml-2 hidden items-center gap-1 md:flex lg:ml-6">
             {TABS.map((tb) => {
-              const active = tb.key === tab;
+              const active = !sub && tb.key === tab;
               return (
                 <button
                   key={tb.key}
@@ -257,15 +275,29 @@ export default function CabinetV2({
             })}
           </nav>
 
-          <div className="ml-auto">
-            <AccountMenu me={me} onProfile={() => setProfileOpen(true)} onClassic={onClassic} />
+          <div className="ml-auto flex items-center gap-1.5">
+            <button type="button" onClick={() => openSub("notifications")} aria-label={t("Bildirishnomalar")} className="relative flex size-10 items-center justify-center rounded-v2-full text-v2-text-2 hover:bg-v2-surface-2">
+              <Bell className="size-5" strokeWidth={1.75} aria-hidden />
+              {unread > 0 && <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-v2-danger px-1 text-[10px] font-semibold leading-4 text-white">{unread > 9 ? "9+" : unread}</span>}
+            </button>
+            <AccountMenu me={me} onProfile={() => openSub("profile")} onClassic={onClassic} />
           </div>
         </div>
       </header>
 
       {/* SAHIFA */}
       <main className="mx-auto w-full max-w-[1120px] px-4 pb-28 pt-5 sm:px-6 md:pb-12 md:pt-7">
-        <View me={me} cab={cab} go={go} initData={initData} />
+        {sub === "notifications" ? (
+          <NotificationsPage me={me} cab={cab} go={go} onBack={() => openSub(null)} />
+        ) : sub === "profile" ? (
+          <ProfilePage me={me} cab={cab} initData={initData} open={openSub} onBack={() => openSub(null)} />
+        ) : sub === "feedback" ? (
+          <FeedbackPage me={me} initData={initData} onBack={() => openSub("profile")} />
+        ) : sub === "contracts" ? (
+          <ContractsPage me={me} initData={initData} onBack={() => openSub("profile")} />
+        ) : (
+          <View me={me} cab={cab} go={go} initData={initData} />
+        )}
         <p className="mt-8 text-center text-v2-caption font-normal text-v2-text-3">
           {t("Ma'lumotlar faqat ko'rish uchun. O'zgartirish kerak bo'lsa o'quv markaziga murojaat qiling.")}
         </p>
@@ -278,7 +310,7 @@ export default function CabinetV2({
       >
         <div className="mx-auto grid max-w-md grid-cols-5">
           {TABS.map((tb) => {
-            const active = tb.key === tab;
+            const active = !sub && tb.key === tab;
             return (
               <button
                 key={tb.key}
@@ -299,7 +331,6 @@ export default function CabinetV2({
         </div>
       </nav>
 
-      {profileOpen ? <ProfileDialogV2 me={me} paidTotal={cab.paid.total} onClose={() => setProfileOpen(false)} /> : null}
     </div>
   );
 }

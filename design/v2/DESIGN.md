@@ -1401,6 +1401,25 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
 - Kodda: `components/v2/settings/ActivitiesV2.tsx`, `AssessmentLevelsV2.tsx`, `components/v2/sales/LessonRemindersV2.tsx`.
   Rasmdan farqlar — `SAVOLLAR.md` 533–535.
 
+## O'quvchi kabineti — oferta, bildirishnomalar, profil, fikr, shartnomalar (42-qism, 18.11.2026)
+
+- Telegram ichidagi kabinet (`/oquvchi`, v2) — yuqori panelda qo'ng'iroqcha (o'qilmaganlar soni `danger` belgida) va
+  ism menyusida «Profil»; ichki sahifalar tab o'rnida ochiladi (← orqaga, pastki tablar tanlanmagan holatda).
+- **Bildirishnomalar**: filtr chiplari (Hammasi, Darslar, Vazifalar, To'lov, Natijalar, Yangiliklar — soni bilan,
+  tanlangan `brand` to'la), kun sarlavhalari (Bugun / Kecha / sana), qator — rangli ikonka, sarlavha, vaqt, matn,
+  «Bo'lim ›» havolasi, o'qilmaganida `brand-bg/30` fon va nuqta; ✓✓ — hammasini o'qilgan qilish.
+- **Profil**: ism kartasi (avatar, telefon, guruhlar), Shaxsiy ma'lumotlar, Ko'rinish (til va mavzu segmentlari),
+  Hujjatlar (oferta, shartnomalar), Yordam (Fikr bildirish, Markazga qo'ng'iroq — `tel:`).
+- **Fikr bildirish**: Turi segmenti (Taklif / Shikoyat / Minnatdorchilik), «Nima haqida» tanlovi (guruhlar, markaz),
+  matn, «Ustozga ismim ko'rinmasin», to'liq kenglikdagi «Yuborish»; «Murojaatlarim» — tur · sana, holat belgisi
+  (Yuborildi / Ko'rib chiqilmoqda `info` / Hal qilindi `success`), javob kulrang qutida.
+- **Shartnomalar** (faqat ko'rish): imzolanmagan bo'lsa `warning-bg` izoh, kartalar ochilib-yopiladi (markaz,
+  imzolovchi, o'quvchi, kurs, narx, muddat).
+- **Oferta (kirishda)**: sarlavha, «N / M tanishildi» + `success` chiziq, bo'limlar akkordeoni (raqam doirasi → ✓,
+  majburiy/ixtiyoriy belgisi, ochilganda matn va «O'qidim, tanishdim»), pastda yopishgan «Kabinetga kirish».
+- Kodda: `components/student-web/v2/CabinetPages.tsx`, `CabinetV2.tsx`; server `lib/studentCabinetExtras.ts`,
+  `/api/student-web/extras`. Rasmdan farqlar — `SAVOLLAR.md` 536–539.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

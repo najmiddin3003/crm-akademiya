@@ -2897,7 +2897,32 @@ saqlanadi, lekin YUBORUVCHI YO'Q — botdan xabar ketmaydi. Har guruhning har da
 eslatma yuborishni yoqaylikmi (jadval bo'yicha har daqiqa ishlaydigan vazifa kerak)? «O'zimga sinab yuborish» va
 oylik statistikasi shu bilan birga qilinadi. Telefon ko'rinishi (bot chati) — muharrirdagi «O'quvchi shunday ko'radi».
 
+**536. Kabinetga SMS kod bilan kirish** — KEYINROQ (egasi, 18.11.2026: «keyinroq qilinadigan ishlar ro'yxatiga
+yoz, keyinroq qilaman o'zim»)
+Rasmlar «Kabinetga kirish · telefon raqam / SMS kod» (kompyuter va telefon) qilinmadi: kabinet hozircha faqat
+Telegram ichida (bot raqamni tasdiqlagan). «Reja» bo'limiga qarang.
+
+**537. Shartnoma imzolash** — hal qilindi (egasi, 18.11.2026: «Faqat ko'rish»)
+Kabinetda shartnomalar faqat ko'rinadi (raqam, kurs, narx, muddat, holat); «imzo kutilmoqda» bo'lsa — markazga
+kelish/qo'ng'iroq izohi. SMS kod bilan imzolash va PDF qilinmadi.
+
+**538. Kabinet: oferta tasdig'i** — taxmin
+Sozlamalar → Ommaviy oferta → «Kabinetga kirishda tasdiq so'ralsin» (sukut o'chiq). Yoqilsa Telegram kabineti
+majburiy bo'limlar «Tanishdim» qilinmaguncha ochilmaydi; tasdiq Telegram hisobiga yoziladi (`oferta_accepts`).
+Bo'lim matni o'zgarsa qayta so'ralmaydi (Taklif). «Chiqish» tugmasi yo'q — Telegram oynasi yopiladi.
+
+**539. Kabinet: bildirishnomalar, profil, fikr** — taxmin
+Bildirishnomalar alohida saqlanmaydi — kabinetdagi ma'lumotdan yig'iladi (oxirgi 14 kun: davomat, to'lov, qarz,
+natija, vazifa muddati, yangilik); o'qilgani shu qurilmada. Profil: bildirishnoma almashtirgichlari va «O'zgartirishni
+so'rash» yo'q (botda bunday sozlama yo'q). Fikr bildirish → Nazorat → Fikr-mulohaza (manba «Kabinet», kuniga 5 tagacha),
+javob — «Hal qilish» izohi; «Rasm biriktirish» qilinmadi. «Minnatdorchilik» — tizimdagi «Maqtov» turi.
+
 ## Reja
+
+**Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)
+Brauzerdan: telefon raqam → 6 xonali SMS kod (5 daqiqa, 0:60 dan keyin qayta yuborish) → sessiya; raqam o'quvchi
+yoki ota-ona kartasida bo'lishi kerak, ota-ona barcha farzandlarini ko'radi. Kerak: urinishlar cheklovi, Eskiz SMS
+(pullik), sessiya cookie, chiqish. Egasi o'zi qiladi/keyin qaytamiz.
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
 Dizayn manbasi (Figma / HTML / rasm), qaysi sahifalardan boshlanadi, yangi versiyani
