@@ -90,7 +90,7 @@ export async function POST(req: Request) {
   });
   const season = await seasonCardsFor(db, pupil.id).catch(() => []);
   // 38-qism: Sozlamalar → O'quvchi ilovasi — o'chirilgan qismlar kabinetga yuborilmaydi.
-  const appPrefs = await loadStudentApp(db).catch(() => ({ showDebt: true, stories: true, news: true }));
+  const appPrefs = await loadStudentApp(db).catch(() => ({ showDebt: true, stories: true, news: true, ofertaGate: false }));
   if (!appPrefs.stories) feed.stories = [];
   if (!appPrefs.news) feed.news = [];
 

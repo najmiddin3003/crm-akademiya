@@ -6,5 +6,7 @@ export interface StudentAppPrefs {
   stories: boolean;
   /** Kabinet lentasidagi yangiliklar. */
   news: boolean;
+  /** 42-qism: kirishda majburiy oferta bo'limlarini «Tanishdim» qilish so'ralsin (Sozlamalar → Ommaviy oferta). */
+  ofertaGate: boolean;
 }
-export const DEFAULT_STUDENT_APP: StudentAppPrefs = { showDebt: true, stories: true, news: true };
+export const DEFAULT_STUDENT_APP: StudentAppPrefs = { showDebt: true, stories: true, news: true, ofertaGate: false };

@@ -7,6 +7,8 @@ import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import V2Confirm from "@/components/v2/form/V2Confirm";
 import { Segmented, TextInput, fieldCls } from "@/components/v2/form/fields";
+import { Switch } from "@/components/v2/settings/financeKit";
+import { useReportData } from "@/components/v2/reports/reportHooks";
 import { primaryBtn, secondaryBtn } from "@/components/v2/ui/buttons";
 import { NoticeBar } from "@/components/v2/students/lists/listKit";
 
@@ -36,6 +38,16 @@ export default function OfertaV2() {
   const [draft, setDraft] = useState<{ title: string; text: string }>({ title: "", text: "" });
   const [del, setDel] = useState<Section | null>(null);
   const [saving, setSaving] = useState(false);
+  // 42-qism: kirishda tasdiq so'ralsinmi (`app_settings` «student_app».ofertaGate, /api/student-app).
+  const { data: app, reload: reloadApp } = useReportData<{ ok: true; prefs: { ofertaGate?: boolean } }>("/api/student-app");
+  async function setGate(on: boolean) {
+    const r = await fetch("/api/student-app", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ofertaGate: on }) })
+      .then((x) => x.json())
+      .catch(() => null);
+    if (!r?.ok) return showError(t(r?.error || "Saqlab bo'lmadi"));
+    showSuccess(t("Saqlandi"));
+    reloadApp();
+  }
 
   useEffect(() => {
     let off = false;
@@ -105,15 +117,16 @@ export default function OfertaV2() {
           <Plus className="size-4" aria-hidden /> {t("Bo'lim qo'shish")}
         </button>
       </div>
-      <NoticeBar
-        action={
-          <Link href="/settings-student-app" className="inline-flex items-center gap-1 text-v2-small font-semibold text-v2-brand">
-            {t("O'quvchi ilovasi")} <ArrowRight className="size-3.5" aria-hidden />
-          </Link>
-        }
-      >
-        {t("«Tanishdim» tasdig'i hozircha so'ralmaydi — bo'limlar saqlanadi, kabinetga kirishda oferta tasdig'i keyingi bosqichda ulanadi.")}
-      </NoticeBar>
+      <section className="flex flex-wrap items-center gap-3 rounded-v2-lg border border-v2-border bg-v2-surface px-4 py-3 shadow-v2-sm">
+        <div className="min-w-0 flex-1">
+          <div className="text-v2-small font-semibold text-v2-text">{t("Kabinetga kirishda tasdiq so'ralsin")}</div>
+          <div className="text-v2-small text-v2-text-2">{t("Yoqilsa, o'quvchi va ota-ona majburiy bo'limlarni «Tanishdim» qilmaguncha kabinet ochilmaydi (Telegram kabineti).")}</div>
+        </div>
+        <Switch on={!!app?.prefs?.ofertaGate} label={t("Kabinetga kirishda tasdiq so'ralsin")} disabled={!app || !sections.length} onChange={(v) => void setGate(v)} />
+        <Link href="/settings-student-app" className="inline-flex items-center gap-1 text-v2-small font-semibold text-v2-brand">
+          {t("O'quvchi ilovasi")} <ArrowRight className="size-3.5" aria-hidden />
+        </Link>
+      </section>
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="rounded-v2-lg border border-v2-border bg-v2-surface p-4 shadow-v2-sm sm:p-5">
           <div className="mb-2 flex items-start gap-3">

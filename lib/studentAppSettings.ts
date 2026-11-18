@@ -15,10 +15,11 @@ export async function loadStudentApp(db: Db): Promise<StudentAppPrefs> {
     showDebt: d?.showDebt !== false,
     stories: d?.stories !== false,
     news: d?.news !== false,
+    ofertaGate: d?.ofertaGate === true,
   };
 }
 
-const LABEL: Record<keyof StudentAppPrefs, string> = { showDebt: "Balans va qarzni ko'rish", stories: "Hikoyalar", news: "Yangiliklar" };
+const LABEL: Record<keyof StudentAppPrefs, string> = { showDebt: "Balans va qarzni ko'rish", stories: "Hikoyalar", news: "Yangiliklar", ofertaGate: "Kirishda oferta tasdig'i" };
 
 export async function saveStudentApp(db: Db, p: Partial<StudentAppPrefs>, by: string) {
   const set: Record<string, boolean> = {};

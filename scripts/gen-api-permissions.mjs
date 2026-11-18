@@ -53,6 +53,7 @@ const PUBLIC = [
   // YO'Q va bo'lmasligi ham kerak. Himoya boshqacha: Telegram `initData`
   // imzosi bot tokeni bilan tekshiriladi va o'quvchi bog'lanish
   // yozuvidan topiladi (lib/studentBot/webapp.ts). Marshrut faqat O'QIYDI.
+  "/api/student-web/extras",
   "/api/student-web/me",
   "/api/student-web/rating",
   "/api/student-web/seen",
