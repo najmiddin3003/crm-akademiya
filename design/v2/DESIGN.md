@@ -1420,6 +1420,25 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
 - Kodda: `components/student-web/v2/CabinetPages.tsx`, `CabinetV2.tsx`; server `lib/studentCabinetExtras.ts`,
   `/api/student-web/extras`. Rasmdan farqlar — `SAVOLLAR.md` 536–539.
 
+## O'quvchi kabineti → Darslar: vazifalar, support, onlayn kurslar (43-qism, 18.11.2026)
+
+- Darslar tabi tepasida bo'lim chiplari (Jadval · Vazifalar N · Support · Onlayn kurslar; tanlangan `brand` to'la,
+  telefonda gorizontal suriladi). «Jadval» — avvalgi ko'rinish.
+- **Vazifalar**: kurs segmenti (bir nechta guruh bo'lsa), «Bajarish kerak · N» va «Muddati o'tgan · N» bo'limlari;
+  qator — guruh belgisi (`info`), nom, izoh · muddat, o'ngda «Ertaga / N kun qoldi» (`warning`) yoki «muddati o'tdi».
+  Tafsilot: belgilar, sarlavha, «Muddat» va «Maks. ball» kartalari, «Topshiriq» matni, izoh qutisi.
+- **Support**: tepada karta (ikonka, izoh, «Bu hafta yozildingiz a / 2» chizig'i); dars kartasi — sana kvadrati (kun +
+  hafta kuni), kurs belgisi, vaqt · xona, mavzu, ustoz; «N joy qoldi» `success` / «Joy to'ldi» `warning` + band chizig'i,
+  to'qnashuv `warning` matni; «+ Yozilish» / «Navbatga yozilish» yoki «Yozilgansiz / Navbatda N» + «Chiqish».
+  Tasdiq — telefonda pastdan chiqadigan oyna (dars kartasi, navbat o'rni doirasi, haftalik hisob, asosiy tugma).
+  «Mening yozilishlarim» — Keldi `success` / Kelmadi `danger`.
+- **Onlayn kurslar**: «Davom ettirish» kartasi; kurs kartasi — rangli muqova sarlavhasi (toifa, ▶ yoki qulf), Bepul
+  `success` / Pullik `warning`, nom, ustoz · modul · daqiqa, progress chizig'i va «Davom etish / Boshlash» yoki narx.
+  Pleer: video (yuklab olish yo'q), modul · davomiylik, sarlavha, «Oldingi / Keyingi (Tugatdim)», «Kurs tarkibi» —
+  modul sarlavhalari, darslar (✓ `success`, joriy ▶ `brand-bg`), «Test · N savol — Tez orada».
+- Kodda: `components/student-web/v2/LearningViews.tsx`, `DarslarTab.tsx`; server `lib/studentLearning.ts`
+  (/api/student-web/extras). Rasmdan farqlar — `SAVOLLAR.md` 540–542.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

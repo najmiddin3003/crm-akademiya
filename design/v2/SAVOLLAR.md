@@ -2917,6 +2917,24 @@ natija, vazifa muddati, yangilik); o'qilgani shu qurilmada. Profil: bildirishnom
 so'rash» yo'q (botda bunday sozlama yo'q). Fikr bildirish → Nazorat → Fikr-mulohaza (manba «Kabinet», kuniga 5 tagacha),
 javob — «Hal qilish» izohi; «Rasm biriktirish» qilinmadi. «Minnatdorchilik» — tizimdagi «Maqtov» turi.
 
+**540. Kabinet → Vazifalar: topshirish va baho** — QAROR KERAK
+Vazifalar ro'yxati (bajarish kerak / muddati o'tgan) va tafsiloti — guruh topshiriqlaridan. O'quvchining javobi
+(rasm/fayl yuklash), «Tekshirilmoqda / Tekshirildi 9/10», «+5 tanga / −5 tanga» va materiallar (PDF, audio, havola)
+tizimda yo'q: kabinetdan yuklash uchun o'quvchiga ochiq fayl yuklash yo'li, ustozga tekshirish oynasi kerak.
+Qilaylikmi? Hozircha «javob daftarda, darsda tekshiriladi» izohi.
+
+**541. Kabinet → Support darslari** — taxmin
+O'quvchi o'zi yoziladi (joy bo'lsa) yoki navbatga turadi, boshlanishidan oldin chiqa oladi (bo'shagan joyga navbatdagi
+o'tadi). Ko'rinadi: o'z filiali hovuzidagi, kursi o'z guruhlariga mos (yoki kurssiz) darslar. Cheklov — haftasiga 2 ta
+(joy + navbat). Shu vaqtda o'z darsi bo'lsa ogohlantirish. «Yozilib kelmasangiz navbat oxiriga» qoidasi va «Mavzu
+so'rash» qilinmadi.
+
+**542. Kabinet → Onlayn kurslar** — QAROR KERAK
+Bepul kurslar ochiq: video pleer (yuklab olish tugmasi o'chiq), dars tugasa yoki «Keyingi» bosilsa ko'rilgan deb
+yoziladi, «Davom ettirish». Pullik kurs — yopiq: kassada to'langach kim uchun ochilishini belgilash usuli yo'q
+(o'quvchiga kurs ochish tugmasi kerakmi?). Modul testlari — savollar tizimda yo'q («Tez orada»), modullar ketma-ket
+bloklanmaydi.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)

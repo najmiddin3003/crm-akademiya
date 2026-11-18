@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, ClipboardList, Minus, X } from "lucid
 import { useT } from "@/components/shared/Language";
 import type { CabinetGroup, CabinetLesson } from "@/lib/studentCabinetTypes";
 import { Bar, Card, CardHead, Empty, FanDot, Pill, addDays, initials, timeRange, useCabinetFmt, weekdayOf, type CabinetTabProps } from "./bits";
+import { CoursesView, SupportView, TasksView } from "./LearningViews";
 import LessonRatingCard from "./LessonRatingCard";
 import {
   MARK_CELL,
@@ -41,6 +42,7 @@ function useDaysText() {
 
 export default function DarslarTab({ me, cab, initData }: CabinetTabProps) {
   const { t } = useT();
+  const [section, setSection] = useState<"jadval" | "vazifalar" | "support" | "kurslar">("jadval");
   const groups = cab.groups;
   const perWeek = groups.reduce((s, g) => s + (g.status === "gathering" ? 0 : g.weekdays.length), 0);
   const sub = [
@@ -51,9 +53,28 @@ export default function DarslarTab({ me, cab, initData }: CabinetTabProps) {
     .filter(Boolean)
     .join(" · ");
 
+  const sections: { k: typeof section; label: string }[] = [
+    { k: "jadval", label: t("Jadval") },
+    { k: "vazifalar", label: me.tasks.length ? `${t("Vazifalar")} ${me.tasks.length}` : t("Vazifalar") },
+    { k: "support", label: t("Support") },
+    { k: "kurslar", label: t("Onlayn kurslar") },
+  ];
+
   return (
     <div className="space-y-4">
       <PageHead title={t("Darslar")} sub={sub} />
+      {/* 43-qism: bo'limlar — Jadval (avvalgi ko'rinish), Vazifalar, Support, Onlayn kurslar. */}
+      <div role="tablist" aria-label={t("Darslar bo'limlari")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+        {sections.map((x) => (
+          <button key={x.k} type="button" role="tab" aria-selected={section === x.k} onClick={() => setSection(x.k)} className={`h-9 shrink-0 rounded-v2-full border px-4 text-v2-small font-semibold transition-colors ${section === x.k ? "border-v2-brand bg-v2-brand text-v2-on-brand" : "border-v2-border bg-v2-surface text-v2-text"}`}>
+            {x.label}
+          </button>
+        ))}
+      </div>
+      {section === "vazifalar" && <TasksView me={me} cab={cab} />}
+      {section === "support" && <SupportView cab={cab} initData={initData} />}
+      {section === "kurslar" && <CoursesView initData={initData} />}
+      {section === "jadval" && (
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Telefonda tartib: hafta → davomat → vazifalar → guruhlar; kengda guruhlar chapda. */}
         <div className="flex min-w-0 flex-col gap-4">
@@ -72,6 +93,7 @@ export default function DarslarTab({ me, cab, initData }: CabinetTabProps) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
