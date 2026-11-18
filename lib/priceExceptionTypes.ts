@@ -5,7 +5,8 @@ export type ExceptionType = "chegirma" | "narx" | "qarz" | "dars";
 export const EXCEPTION_TYPES: ExceptionType[] = ["chegirma", "narx", "qarz", "dars"];
 export const EXCEPTION_LABELS: Record<ExceptionType, string> = { chegirma: "Chegirma", narx: "Alohida narx", qarz: "Kechirilgan qarz", dars: "Dars haqi" };
 
-/** Bu ulushdan (%) yoki summadan katta imtiyoz direktor tasdig'isiz kuchga kirmaydi. */
+/** Bu ulushdan (%) yoki summadan katta imtiyoz direktor tasdig'isiz kuchga kirmaydi — SUKUT; haqiqiy qiymat
+ *  Sozlamalar → Chegirmalar → «Admin chegarasi» da (lib/discountRules.ts, `ExceptionsReport.limits`). */
 export const APPROVAL_PERCENT = 30;
 export const APPROVAL_SUM = 200_000;
 
@@ -74,4 +75,6 @@ export interface ExceptionsReport {
   pending: (PriceException & { branch: string; givenBy: { count: number; sum: number } })[];
   givers: { who: string; count: number; sum: number; branch: string }[];
   canApprove: boolean;
+  /** Direktor tasdig'i chegarasi (Sozlamalar → Chegirmalar). */
+  limits: { percent: number; sum: number };
 }

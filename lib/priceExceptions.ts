@@ -7,9 +7,8 @@ import { groupWeekdays } from "@/lib/attendance";
 import { lessonsPerMonthFor } from "@/lib/debtorsTypes";
 import { pupilFullName } from "@/lib/pupilsData";
 import { uzDateIso, uzTimeHm } from "@/lib/uzTime";
+import { approvalLimits } from "@/lib/discountRules";
 import {
-  APPROVAL_PERCENT,
-  APPROVAL_SUM,
   EXCEPTION_LABELS,
   EXCEPTION_TYPES,
   type ExceptionRow,
@@ -116,7 +115,9 @@ export async function createException(db: Db, allowed: number[], who: { name: st
   const monthly = type === "chegirma" || type === "narx";
   const from = monthly ? (/^\d{4}-\d{2}$/.test(String(b.from)) ? String(b.from) : today.slice(0, 7)) : today;
   const to = monthly && /^\d{4}-\d{2}$/.test(String(b.to ?? "")) ? String(b.to) : null;
-  const big = amount >= APPROVAL_SUM || (base ? (amount / base) * 100 >= APPROVAL_PERCENT : false);
+  // Chegara — Sozlamalar → Chegirmalar → «Admin chegarasi» (lib/discountRules.ts, 39-qism).
+  const lim = await approvalLimits(db);
+  const big = amount >= lim.sum || (base ? (amount / base) * 100 >= lim.percent : false);
   const last = await db.collection(PRICE_EXCEPTIONS).find({}).sort({ id: -1 }).limit(1).toArray();
   const e: PriceException = {
     id: (Number(last[0]?.id) || 0) + 1,
@@ -169,9 +170,10 @@ export async function computeExceptions(db: Db, branchIds: number[], month: stri
     if (e.monthly) return e.from <= month && (!e.to || e.to >= month);
     return e.from.slice(0, 7) === month || e.createdAt.slice(0, 7) === month;
   });
+  const lim = await approvalLimits(db);
   const rows: ExceptionRow[] = relevant.map((e) => {
     const eff = e.status === "approved" ? exceptionEffect(e, mFrom, mTo) : e.status === "pending" ? e.amount : 0;
-    const big = e.amount >= APPROVAL_SUM || (e.basePrice ? (e.amount / e.basePrice) * 100 >= APPROVAL_PERCENT : false);
+    const big = e.amount >= lim.sum || (e.basePrice ? (e.amount / e.basePrice) * 100 >= lim.percent : false);
     let status: ExceptionRow["status"];
     let statusLabel: string;
     if (e.status === "pending") [status, statusLabel] = ["pending", "Tasdiq kutmoqda"];
@@ -271,6 +273,7 @@ export async function computeExceptions(db: Db, branchIds: number[], month: stri
       .map((e) => ({ ...e, branch: bName(e.branchId), givenBy: { count: giverMap.get(e.createdBy)?.count ?? 0, sum: giverMap.get(e.createdBy)?.sum ?? 0 } })),
     givers,
     canApprove: who.isAdmin,
+    limits: lim,
   };
 }
 

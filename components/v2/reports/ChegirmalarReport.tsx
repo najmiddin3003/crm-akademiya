@@ -147,7 +147,7 @@ export default function ChegirmalarReport({ report, author }: { report: ReportDe
             <div className="font-semibold text-v2-text">{t("{n} ta imtiyoz direktor tasdig'ini kutmoqda", { n: data.pending.length })}</div>
             <div className="text-v2-small text-v2-text-2">
               {data.pending.map((p) => `${p.pupilName} — ${fmtNum(p.amount)} (${t(EXCEPTION_LABELS[p.type]).toLowerCase()})`).join(", ")}.{" "}
-              {t("Qoida: {p}% dan ortiq yoki {s} so'mdan katta imtiyoz tasdiqsiz kuchga kirmaydi.", { p: APPROVAL_PERCENT, s: fmtNum(APPROVAL_SUM) })}
+              {t("Qoida: {p}% dan ortiq yoki {s} so'mdan katta imtiyoz tasdiqsiz kuchga kirmaydi.", { p: data.limits.percent, s: fmtNum(data.limits.sum) })}
             </div>
           </div>
           {data.canApprove && (
@@ -194,7 +194,7 @@ export default function ChegirmalarReport({ report, author }: { report: ReportDe
       </div>
       <NoteLine>{t("Har bir imtiyozda sabab va kim ruxsat bergani majburiy. Tasdiqlangan imtiyoz qarzdorlar hisobida to'langan hisoblanadi (tanga chegirmasi kabi).")}</NoteLine>
 
-      {add && <AddDialog onClose={() => setAdd(false)} onDone={reload} />}
+      {add && <AddDialog limits={data?.limits ?? { percent: APPROVAL_PERCENT, sum: APPROVAL_SUM }} onClose={() => setAdd(false)} onDone={reload} />}
       {reviewing && <ReviewDialog e={reviewing} onClose={() => setReview(null)} onDone={reload} />}
     </ReportShell>
   );
@@ -214,7 +214,7 @@ function nextMonths(n: number): string[] {
   });
 }
 
-function AddDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+function AddDialog({ limits, onClose, onDone }: { limits: { percent: number; sum: number }; onClose: () => void; onDone: () => void }) {
   const { t } = useT();
   const f = useReportFmt();
   const { showSuccess, showError } = useToast();
@@ -231,7 +231,7 @@ function AddDialog({ onClose, onDone }: { onClose: () => void; onDone: () => voi
   const [saving, setSaving] = useState(false);
   const g = pre?.groups.find((x) => String(x.id) === groupId) ?? null;
   const est = type === "chegirma" ? (percent && g?.price ? Math.round((g.price * Number(percent)) / 100) : Number(amount) || 0) : type === "narx" ? (g?.price && price ? g.price - Number(price) : 0) : type === "dars" ? (g?.lessonPrice ?? 0) * (Number(lessons) || 0) : Number(amount) || 0;
-  const big = est >= APPROVAL_SUM || (g?.price ? (est / g.price) * 100 >= APPROVAL_PERCENT : false);
+  const big = est >= limits.sum || (g?.price ? (est / g.price) * 100 >= limits.percent : false);
 
   async function pick(id: number) {
     const r = (await fetch(`/api/reports/exceptions?prefill=${id}`)
@@ -331,7 +331,7 @@ function AddDialog({ onClose, onDone }: { onClose: () => void; onDone: () => voi
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
               {t("Imtiyoz: {n} so'm", { n: fmtNum(est) })}
               {type === "chegirma" || type === "narx" ? ` ${t("oyiga")}` : ""}.{" "}
-              {big ? t("{p}% yoki {s} so'mdan katta — direktor tasdiqlagach kuchga kiradi.", { p: APPROVAL_PERCENT, s: fmtNum(APPROVAL_SUM) }) : t("Darhol kuchga kiradi va qarzdan ayiriladi.")}
+              {big ? t("{p}% yoki {s} so'mdan katta — direktor tasdiqlagach kuchga kiradi.", { p: limits.percent, s: fmtNum(limits.sum) }) : t("Darhol kuchga kiradi va qarzdan ayiriladi.")}
             </p>
           </>
         )}
