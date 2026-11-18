@@ -4,11 +4,14 @@ import { loadPupil } from "@/lib/studentBot/data";
 import { authStudentWeb } from "@/lib/studentBot/webapp";
 import { pupilFullName } from "@/lib/pupilsData";
 import { acceptOferta, myContracts, myFeedback, ofertaState, sendFeedback } from "@/lib/studentCabinetExtras";
+import { askReferralGift, joinReferral, myReferral } from "@/lib/studentReferral";
+import { setActivePupil } from "@/lib/studentBot/users";
 import { coursesForPupil, markLesson, supportCancel, supportEnroll, supportForPupil } from "@/lib/studentLearning";
 
 // O'quvchi kabineti — 42-qism (lib/studentCabinetExtras.ts). Kim ekani — Telegram `initData` imzosi (me bilan bir xil).
 //   POST { initData, action: "oferta" | "accept-oferta" (ids) | "feedback" | "send-feedback" (type, about, izoh, hideName) | "contracts" }
 //   43-qism (lib/studentLearning.ts): "support" | "support-enroll" (id) | "support-cancel" (id) | "courses" | "lesson-done" (courseId, lessonId)
+//   44-qism: "switch-kid" (pupilId — faqat shu Telegram akkauntiga bog'langan farzand) | "referral" | "referral-join" | "referral-gift" (giftId)
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
@@ -18,6 +21,13 @@ export async function POST(req: Request) {
   const auth = await authStudentWeb(db, typeof b.initData === "string" ? b.initData : "");
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   const { user } = auth;
+  // Farzand almashtirish — joriy o'quvchini yuklashdan OLDIN (bog'lanmagan id rad etiladi).
+  if (b.action === "switch-kid") {
+    const id = Number(b.pupilId);
+    if (!user.links.some((l) => l.pupilId === id)) return NextResponse.json({ ok: false, error: "Bu o'quvchi sizga bog'lanmagan" }, { status: 403 });
+    await setActivePupil(db, user.chatId, id);
+    return NextResponse.json({ ok: true });
+  }
   const pupil = await loadPupil(db, user.activePupilId);
   if (!pupil) return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   const role = user.links.find((l) => l.pupilId === pupil.id)?.role === "parent" ? ("parent" as const) : ("student" as const);
@@ -50,6 +60,13 @@ export async function POST(req: Request) {
     case "lesson-done": {
       const r = await markLesson(db, pupil.id, Number(b.courseId), String(b.lessonId ?? ""));
       return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+    }
+    case "referral":
+      return NextResponse.json({ ok: true, ...(await myReferral(db, pupil.id, role)) });
+    case "referral-join":
+    case "referral-gift": {
+      const r = b.action === "referral-join" ? await joinReferral(db, pupil as { id: number; branchId?: number }, role) : await askReferralGift(db, pupil.id, Number(b.giftId));
+      return NextResponse.json(r.ok ? { ok: true, ...(await myReferral(db, pupil.id, role)) } : r, { status: r.ok ? 200 : 400 });
     }
     case "contracts":
       return NextResponse.json({ ok: true, items: await myContracts(db, pupil.id) });

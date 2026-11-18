@@ -29,6 +29,7 @@ import type {
   CabinetMonthRow,
   CabinetMonths,
   CabinetPayment,
+  CabinetAttendanceMonth,
   CabinetResult,
   StudentCabinet,
 } from "@/lib/studentCabinetTypes";
@@ -256,7 +257,7 @@ async function loadResults(db: Db, pupilId: number): Promise<CabinetResult[]> {
     .collection("group_exams")
     .find(
       { "students.pupilId": pupilId, archived: { $ne: true } },
-      { projection: { _id: 0, id: 1, date: 1, month: 1, course: 1, level: 1, groupId: 1, groupName: 1, groupLabel: 1, total: 1, students: 1, avgPct: 1 } },
+      { projection: { _id: 0, id: 1, date: 1, month: 1, course: 1, level: 1, groupId: 1, groupName: 1, groupLabel: 1, total: 1, students: 1, avgPct: 1, teacher: 1, branchId: 1 } },
     )
     .sort({ date: -1, id: -1 })
     .limit(RESULTS_LIMIT)
@@ -288,9 +289,59 @@ async function loadResults(db: Db, pupilId: number): Promise<CabinetResult[]> {
       // Teng natija — teng o'rin (1, 2, 2, 4).
       rank: 1 + students.filter((s) => (Number(s.correct) || 0) > mine).length,
       participants: students.length,
+      groupId: Number(e.groupId) || 0,
+      teacher: String(e.teacher ?? ""),
+      branchAvg: null,
+    });
+  }
+  // Filial o'rtachasi (44-qism): shu oy + shu fan + shu filialdagi barcha Sarhisob natijalari (o'quvchilar foizi o'rtachasi).
+  const keys = [...new Map(exams.map((e) => [`${e.branchId}|${e.month}|${e.course}`, e])).values()];
+  if (keys.length) {
+    const peers = (await db
+      .collection("group_exams")
+      .find(
+        { archived: { $ne: true }, $or: keys.map((e) => ({ branchId: e.branchId, month: e.month, course: e.course })) },
+        { projection: { _id: 0, branchId: 1, month: 1, course: 1, students: 1 } },
+      )
+      .toArray()) as unknown as GroupExam[];
+    const avg = new Map<string, number>();
+    for (const k of keys) {
+      const key = `${k.branchId}|${k.month}|${k.course}`;
+      const pcts = peers
+        .filter((x) => `${x.branchId}|${x.month}|${x.course}` === key)
+        .flatMap((x) => (Array.isArray(x.students) ? x.students : []).map((st) => Number(st.pct) || 0));
+      if (pcts.length) avg.set(key, Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length));
+    }
+    exams.forEach((e) => {
+      const r = out.find((x) => x.examId === Number(e.id));
+      if (r) r.branchAvg = avg.get(`${e.branchId}|${e.month}|${e.course}`) ?? null;
     });
   }
   return out;
+}
+
+/** 44-qism: oxirgi 5 oy davomati (joriy oy bilan) — Darslar → Davomat → «Oylar bo'yicha». */
+async function loadAttendanceHistory(db: Db, pupilId: number, current: string): Promise<CabinetAttendanceMonth[]> {
+  const months = [-4, -3, -2, -1, 0].map((n) => shiftMonth(current, n));
+  const rows = await db
+    .collection("attendance")
+    .find({ pupilId, date: { $gte: `${months[0]}-01`, $lte: `${current}-31` } }, { projection: { _id: 0, date: 1, status: 1 } })
+    .toArray();
+  return months.map((month) => {
+    let came = 0;
+    let excused = 0;
+    let missed = 0;
+    for (const r of rows) {
+      if (!String(r.date ?? "").startsWith(month)) continue;
+      const m = markOf(r.status);
+      if (m === null) continue;
+      if (cameStatus(m)) came += 1;
+      else if (m === "sababli") excused += 1;
+      else if (m === "sababsiz") missed += 1;
+    }
+    const total = came + excused + missed;
+    return { month, came, excused, missed, total, percent: total ? Math.round((came / total) * 100) : null };
+  });
 }
 
 /**
@@ -352,6 +403,7 @@ export async function buildStudentCabinet(db: Db, pupil: Pupil, now: Date = new 
     db.collection("center_profile").findOne({ key: "main" }, { projection: { _id: 0, receipt: 1 } }),
     loadResults(db, pupil.id),
   ]);
+  const attendanceHistory = await loadAttendanceHistory(db, pupil.id, current).catch(() => []);
 
   // Hozirgi guruhlar (arxivlangani — yo'q). Kassa nomlari kutmasdan boshlanadi.
   const currentGroups = currentDocs.filter((g) => (g.status || "") !== "archive").sort((a, b) => a.id - b.id);
@@ -657,5 +709,6 @@ export async function buildStudentCabinet(db: Db, pupil: Pupil, now: Date = new 
     attendance,
     coins,
     results,
+    attendanceHistory,
   };
 }

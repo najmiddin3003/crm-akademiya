@@ -1,5 +1,6 @@
 import type { StudentAppPrefs } from "@/lib/studentAppTypes";
 import type { SeasonCard } from "@/lib/seasonGradeTypes";
+import type { UzbmbStat } from "@/lib/studentUzbmb";
 import type { CabinetFeedItem } from "@/lib/cabinetNewsTypes";
 import type { AttendanceMark } from "@/lib/attendance";
 import type { MonthlyExam, UzbmbExam } from "@/lib/imtihon";
@@ -24,7 +25,8 @@ export interface StudentProfile {
   coin: number;
   /** Jonli to'lovlar yig'indisi. Arxiv va `pupils.balance` berilmaydi — marshrutdagi izoh. */
   paid: number;
-  kids: { id: number; name: string }[];
+  /** 44-qism: groups/branch/course — farzand tanlash menyusi uchun (2+ farzandda). */
+  kids: { id: number; name: string; groups?: number; branch?: string; course?: string }[];
 }
 
 export interface StudentGroup {
@@ -70,6 +72,8 @@ export interface StudentMe {
   feed?: { news: CabinetFeedItem[]; stories: CabinetFeedItem[] };
   /** Oxirgi yuborilgan chorak baholari (36-qism, lib/seasonGrades.ts). */
   season?: SeasonCard[];
+  /** 44-qism: UzBMB testlari bo'yicha guruh/filial o'rtachasi va o'rin (lib/studentUzbmb.ts). */
+  uzbmbStats?: UzbmbStat[];
   /** Sozlamalar → O'quvchi ilovasi (38-qism). */
   appPrefs?: StudentAppPrefs;
 }

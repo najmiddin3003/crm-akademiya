@@ -223,6 +223,22 @@ export interface CabinetResult {
   rank: number | null;
   /** Natija kiritilgan o'quvchilar soni. */
   participants: number;
+  /** Guruh (CabinetGroup.id); guruhsiz ro'yxat — 0. 44-qism: natijalarni guruh kartalariga ajratish uchun. */
+  groupId: number;
+  /** Ustoz (imtihon yozuvidagi). */
+  teacher: string;
+  /** Filial o'rtachasi (shu oy, shu fan, o'quvchi filialidagi barcha Sarhisob natijalari, butun); yo'q — null. */
+  branchAvg: number | null;
+}
+
+/** 44-qism: oylar bo'yicha davomat (Darslar → Davomat → «Oylar bo'yicha»), eskidan yangiga. */
+export interface CabinetAttendanceMonth {
+  month: IsoMonth;
+  came: number;
+  excused: number;
+  missed: number;
+  total: number;
+  percent: number | null;
 }
 
 export interface StudentCabinet {
@@ -259,6 +275,8 @@ export interface StudentCabinet {
   coins: CabinetCoins | null;
   /** Sarhisob natijalari — yangidan eskiga, ko'pi bilan 24 ta. */
   results: CabinetResult[];
+  /** 44-qism: oxirgi 5 oy davomati (joriy oy bilan), eskidan yangiga. */
+  attendanceHistory: CabinetAttendanceMonth[];
 }
 
 /** Kabinet ko'rinishi tanlovi — brauzer xotirasida (localStorage). Sukut — yangi. */

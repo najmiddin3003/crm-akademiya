@@ -20,6 +20,7 @@ import { studentCoinSummary } from "@/lib/gamification/studentPage";
 import { buildStudentCabinet } from "@/lib/studentCabinet";
 import { cabinetFeed } from "@/lib/cabinetNews";
 import { seasonCardsFor } from "@/lib/seasonGrades";
+import { uzbmbStats } from "@/lib/studentUzbmb";
 import { loadStudentApp } from "@/lib/studentAppSettings";
 
 // O'QUVCHI WEB SAHIFASINING YAGONA MA'LUMOT MANBAI.
@@ -89,6 +90,9 @@ export async function POST(req: Request) {
     return { news: [], stories: [] };
   });
   const season = await seasonCardsFor(db, pupil.id).catch(() => []);
+  const ubStats = await uzbmbStats(db, exams.uzbmb as never).catch(() => []);
+  // 44-qism: farzand tanlash menyusi — har farzandning guruhlari soni, birinchi guruhi va filiali (qarz faqat ochilgan farzandda).
+  const kidInfo = await kidsSummary(db, user.links.map((l) => l.pupilId)).catch(() => new Map<number, { groups: number; branch: string; course: string }>());
   // 38-qism: Sozlamalar → O'quvchi ilovasi — o'chirilgan qismlar kabinetga yuborilmaydi.
   const appPrefs = await loadStudentApp(db).catch(() => ({ showDebt: true, stories: true, news: true, ofertaGate: false }));
   if (!appPrefs.stories) feed.stories = [];
@@ -114,7 +118,7 @@ export async function POST(req: Request) {
       paid: payments.liveTotal,
       // Ro'yxatdagi boshqa farzandlar — "kimni ko'ryapman" yozuvi uchun.
       // Faqat ID va ism: ular ham shu odamga bog'langan o'quvchilar.
-      kids: user.links.map((l) => ({ id: l.pupilId, name: names.get(l.pupilId) ?? `#${l.pupilId}` })),
+      kids: user.links.map((l) => ({ id: l.pupilId, name: names.get(l.pupilId) ?? `#${l.pupilId}`, ...(kidInfo.get(l.pupilId) ?? { groups: 0, branch: "", course: "" }) })),
     },
     groups: groups.map((g) => ({
       id: g.id,
@@ -148,6 +152,29 @@ export async function POST(req: Request) {
     cabinet,
     feed,
     season,
+    uzbmbStats: ubStats,
     appPrefs,
   });
+}
+
+async function kidsSummary(db: Awaited<ReturnType<typeof ensureIndexes>>, ids: number[]) {
+  const out = new Map<number, { groups: number; branch: string; course: string }>();
+  if (ids.length < 2) return out;
+  const [pupils, mems, branches] = await Promise.all([
+    db.collection("pupils").find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, branchId: 1 } }).toArray(),
+    db.collection("group_memberships").find({ pupilId: { $in: ids }, leftAt: null }, { projection: { _id: 0, pupilId: 1, groupId: 1 } }).toArray(),
+    db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1 } }).toArray(),
+  ]);
+  const groups = await db.collection("groups").find({ id: { $in: mems.map((m) => Number(m.groupId)) } }, { projection: { _id: 0, id: 1, name: 1, course: 1, level: 1 } }).toArray();
+  for (const id of ids) {
+    const my = mems.filter((m) => Number(m.pupilId) === id).map((m) => groups.find((g) => Number(g.id) === Number(m.groupId))).filter(Boolean);
+    const p = pupils.find((x) => Number(x.id) === id);
+    const g = my[0];
+    out.set(id, {
+      groups: my.length,
+      branch: String(branches.find((b) => Number(b.id) === Number(p?.branchId))?.name ?? ""),
+      course: g ? [g.course, g.level].filter(Boolean).join(" · ") : "",
+    });
+  }
+  return out;
 }

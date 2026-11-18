@@ -7,6 +7,7 @@ import type { TuitionDiscount } from "./discounts";
 import { groupRanking, pupilName } from "./ranking";
 import { levelIndexOf } from "./rules";
 import { branchNames, toGamGroup } from "./scope";
+import { listReasons } from "./reasons";
 import { loadSettings } from "./settings";
 import { fitsAudience, itemTitle, listItems, pupilShopInfo } from "./shop";
 import { studentHistory, studentProfile, type HistoryFilter } from "./students";
@@ -153,7 +154,10 @@ export async function studentPageData(db: Db, pupilId: number) {
         price: i.priceCoins,
         wished: wished.has(i.id),
         need: Math.max(0, i.priceCoins - balance),
+        // 44-qism: faqat «bor / tugagan» (soni emas — TZ 5.5: ombor ko'rinmaydi); chegirma — har doim bor.
+        inStock: i.kind !== "item" || Number(i.stock?.[String(Number(p.branchId) || 1)] ?? 0) > 0,
       })),
+    earnRules: await earnRules(db, settings),
     rankings,
     badges: prof.badges,
     history: stripHistory(history),
@@ -218,4 +222,29 @@ export async function setWish(db: Db, pupilId: number, itemId: number, on: boole
     await col.updateOne({ pupilId, itemId }, { $setOnInsert: { pupilId, itemId, addedAt: uzDateIso(), addedAtTs: new Date().toISOString() } }, { upsert: true });
     return { wished: true, count: info.wishes.length + 1, max: settings.wishlistMax };
   });
+}
+
+/**
+ * 44-qism: «Qanday tanga olaman» (kabinet → Tangalarim) — markaz sozlamalaridan (Sozlamalar → Tanga tizimi)
+ * va faol qo'shimcha sabablardan. Faqat nom va miqdor; ichki chegaralar (kunlik limit va h.k.) berilmaydi.
+ */
+async function earnRules(db: Db, s: Awaited<ReturnType<typeof loadSettings>>) {
+  const out: { name: string; amount: string; minus: boolean }[] = [];
+  const add = (name: string, amount: string, minus = false) => out.push({ name, amount, minus });
+  const range = (a: number, b: number) => (a === b ? `${a}` : `${Math.min(a, b)}…${Math.max(a, b)}`);
+  const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  if (s.attendanceOnTimeCoins) add("Davomat: keldi / kechikdi", `+${s.attendanceOnTimeCoins} / +${s.attendanceLateCoins}`);
+  if (s.homeworkDoneCoins) add("Uy vazifasi bajarildi", sign(s.homeworkDoneCoins));
+  if (s.activityMaxPerClick) add("Darsdagi faollik", `+${range(1, s.activityMaxPerClick)}`);
+  const exam = [s.examCoins70, s.examCoins80, s.examCoins90].filter((x) => x > 0);
+  if (exam.length) add("Sarhisob natijasi", `+${range(Math.min(...exam), Math.max(...exam))}`);
+  if (s.growthBonusCoins) add(`Natija o'sishi · ${s.growthThresholdPp} p.p. dan`, sign(s.growthBonusCoins));
+  if (s.streakBonusCoins) add(`Uzluksiz davomat · har ${s.streakLessons} dars`, sign(s.streakBonusCoins));
+  if (s.referralBonusCoins) add("Do'st olib keldi", sign(s.referralBonusCoins));
+  const custom = (await listReasons(db).catch(() => [])).filter((r) => !r.isSystem && r.isActive && !r.deletedAt && r.amountMin !== null);
+  for (const r of custom.filter((x) => x.direction === 1)) add(r.name, `+${range(r.amountMin ?? 0, r.amountMax ?? r.amountMin ?? 0)}`);
+  if (s.absencePenaltyCoins) add("Sababsiz dars qoldirish", `-${Math.abs(s.absencePenaltyCoins)}`, true);
+  if (s.homeworkMissedPenalty) add("Uy vazifasini bajarmaslik", `-${Math.abs(s.homeworkMissedPenalty)}`, true);
+  for (const r of custom.filter((x) => x.direction === -1)) add(r.name, `-${range(r.amountMin ?? 0, r.amountMax ?? r.amountMin ?? 0)}`, true);
+  return out;
 }
