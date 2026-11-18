@@ -9,6 +9,7 @@ import { invalidateStudents } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { useReasons } from "@/hooks/useSettingsList";
 
 // O'quvchining holatini o'zgartirish oynasi.
 //
@@ -64,6 +65,8 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
   // (route.ts: `if (status !== "Aktiv" && !reason)` → 400). Tugmani shu
   // yerdayoq o'chirib qo'yamiz — foydalanuvchi 400 xatoni ko'rmasin.
   const reasonRequired = status !== "Aktiv";
+  // Sozlamalar → Sabablar → «Ketdi» (40-qism): tez tanlash uchun; matnni baribir qo'lda to'ldirish mumkin.
+  const { names: leaveReasons } = useReasons("Ketdi");
   const canSave = !saving && (!reasonRequired || reason.trim().length > 0);
 
   async function submit() {
@@ -143,6 +146,15 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
             placeholder={reasonRequired ? t("Masalan: oilaviy sabablarga ko'ra") : t("Ixtiyoriy")}
             className={`${fieldCls} disabled:opacity-60`}
           />
+          {reasonRequired && leaveReasons.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {leaveReasons.map((r) => (
+                <button key={r} type="button" disabled={saving} onClick={() => setReason(r)} className={`rounded-full border px-2.5 py-1 text-[12px] ${reason.split(" — ")[0] === r ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground/80 hover:bg-muted"}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
           {reasonRequired && (
             <p className="mt-1.5 text-[12px] text-muted-foreground">
               {t("&laquo;Muzlatilgan&raquo; va &laquo;Arxiv&raquo; uchun sabab majburiy — u o'quvchi kartasida saqlanadi.")}

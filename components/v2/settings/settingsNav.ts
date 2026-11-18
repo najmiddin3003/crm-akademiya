@@ -33,6 +33,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "Xonalar", href: "/groups-rooms" },
       { label: "Ish kunlari va bayramlar", href: "/settings-holidays", adminOnly: true },
       { label: "Bildirishnomalar", href: "/settings-notifications", adminOnly: true },
+      { label: "Ommaviy oferta", href: "/settings-oferta", adminOnly: true },
     ],
   },
   {
@@ -41,6 +42,8 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "Kurslar", href: "/offline-courses" },
       { label: "Kategoriyalar", href: "/edu-category" },
       { label: "Imtihon fanlari", href: "/settings-academic?tab=exam-subjects" },
+      // 40-qism: sabablar (Ketdi / Bekor qilindi / Davomat).
+      { label: "Sabablar", href: "/settings-reasons", adminOnly: true },
     ],
   },
   {
@@ -51,6 +54,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "To'lov turlari", href: "/settings-finance?tab=payment-methods" },
       // 39-qism: oylik, bonus/KPI, chegirmalar, hamkorlar — faqat direktor.
       { label: "Oylik va soliq", href: "/settings-payroll", adminOnly: true },
+      { label: "Lavozim va stavkalar", href: "/settings-positions", adminOnly: true },
       { label: "Bonus va KPI", href: "/settings-bonus", adminOnly: true },
       { label: "Chegirmalar", href: "/settings-discounts", adminOnly: true },
       { label: "Hamkorlar", href: "/settings-partners", adminOnly: true },
@@ -61,6 +65,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
     title: "Lidlar",
     items: [
       { label: "Manbalar", href: "/sales-sources" },
+      { label: "Lid sozlamalari", href: "/settings-leads", adminOnly: true },
       { label: "So'rovnoma sahifasi", href: "/settings-sales?tab=leads" },
       { label: "Referal dasturi", href: "/settings-referral" },
     ],
