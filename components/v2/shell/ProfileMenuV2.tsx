@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Contrast, Globe, Lock, LockKeyhole, LogOut, Moon, RotateCcw, Sun, UserRound } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Contrast, Globe, Lock, LockKeyhole, LogOut, Moon, RotateCcw, Sun, Trophy, UserRound } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useBranch } from "@/components/shared/BranchContext";
 import { useLang, useT } from "@/components/shared/Language";
@@ -144,6 +144,11 @@ export default function ProfileMenuV2({ user }: { user: ShellUserV2 | null }) {
                 <Link href="/settings-security" role="menuitem" onClick={close} className={ROW}>
                   <LockKeyhole className={ICON} strokeWidth={1.75} />
                   {t("Parol va xavfsizlik")}
+                </Link>
+                {/* 39-qism: o'z sotuv bonusi (Savdo plani bo'yicha) — har bir xodimga ochiq, faqat o'zinikini ko'radi. */}
+                <Link href="/my-bonus" role="menuitem" onClick={close} className={ROW}>
+                  <Trophy className={ICON} strokeWidth={1.75} />
+                  {t("Bonusim")}
                 </Link>
               </div>
 
