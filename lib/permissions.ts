@@ -55,6 +55,9 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   "/teacher-lesson",
   "/teacher-check",
   "/teacher-groups",
+  // Qabul admin / moderator ish stoli (46-qism) — sahifa o'zi tekshiradi.
+  "/front-calls",
+  "/front-results",
   "/birthdays",
   // BOSH SAHIFA. Sidebar daraxtida "/home" bandi yo'q, ya'ni uni hech bir
   // rolda belgilab bo'lmaydi — ochiq qoldirilmasa proxy.ts dagi sahifa

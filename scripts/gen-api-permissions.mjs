@@ -112,6 +112,7 @@ const SHARED_EXTRA = [
   "/api/my-account",          // Mening hisobim (37-qism)
   "/api/my-bonus",            // Bonusim — faqat o'z bonusi (39-qism)
   "/api/teacher",             // O'qituvchi ish stoli — faqat o'z guruhlari (45-qism)
+  "/api/front",               // Qabul admin / moderator ish stoli — o'z filiali (46-qism)
   "/api/profile",             // Sozlamalar → Profil
   "/api/sessions",            // Sozlamalar → Qurilmalar
   // Navbardagi filial tanlagichi — har bir sahifada turadi, ya'ni sahifa
