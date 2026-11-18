@@ -126,9 +126,15 @@ export default function IntegrationsV2() {
               status={s.sms.eskiz ? t("Ulangan") : t("Ulanmagan")}
               lines={[s.sms.paymentSms ? t("To'lov SMS i yoqilgan") : t("To'lov SMS i o'chiq"), t("Taklif va parol tiklash SMS lari")]}
               action={
-                <Link href="/nazorat-sms-analytics" className={secondaryBtn}>
-                  {t("Xabarlar")}
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link href="/nazorat-sms-analytics" className={secondaryBtn}>
+                    {t("Xabarlar")}
+                  </Link>
+                  {/* 40-qism: SIM-kartali qurilmalar ro'yxati. */}
+                  <Link href="/settings-sms-devices" className={secondaryBtn}>
+                    {t("SMS qurilmalar")}
+                  </Link>
+                </div>
               }
             />
             <Tile letter="F" tint="bg-v2-surface-2 text-v2-text-2" name={t("Fiskal chek")} kind={t("Soliq tizimi")} tone="off" status={t("Ulanmagan")} lines={[t("To'lov cheki soliq tizimiga yuboriladi"), t("Chekda QR kod chiqadi")]} />
