@@ -1439,6 +1439,40 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
 - Kodda: `components/student-web/v2/LearningViews.tsx`, `DarslarTab.tsx`; server `lib/studentLearning.ts`
   (/api/student-web/extras). Rasmdan farqlar — `SAVOLLAR.md` 540–542.
 
+## O'quvchi kabineti — keng ekran: Darslar, Natijalar, Tanga, Do'kon, Taklif, Yangiliklar (44-qism, 18.11.2026)
+
+- **Bo'limlar** — chiziqli tablar (`UnderTabs`): tanlangani qalin matn + pastda `brand` chiziq, son — `surface-2` belgi.
+  Darslar: Jadval · Davomat · Vazifalar N · Support · Onlayn kurslar. Natijalar: o'ngda «Sarhisob | UzBMB» segmenti.
+- **Jadval** (kengda): soatlar to'ri — 7 ustun, soat qatori 52px, bugun ustuni `surface-2`, sana doirasi `brand`;
+  dars bloki — fan foni + chap 3px chegara, nom (fan rangida), vaqt, xona, holat belgisi (Keldi `success`, Kelmadi
+  `danger`, Ertaga `info`); kun sarlavhasida muddati shu kun bo'lgan vazifa — «Vazifa» `warning`. Telefonda — ro'yxat.
+  O'ngda «Keyingi dars» (fan nuqtasi, kun · **vaqt** · xona, ustoz, eng yaqin vazifa `warning-bg` qutisi) va
+  «Darsni baholash». «Guruhlarim» — kengda ikki ustunli kartalar (ustoz bosh harflari, kunlar · vaqt · narx).
+- **Davomat**: chapda oy kalendari (katakda kun raqami, darslar chiplari: fan nuqtasi + belgi rangi; rejadagi —
+  punktir, vaqt), tepada fanlar va belgilar izohi. O'ngda: foiz + chiziq + uch katak (keldi / sababli / kelmadi),
+  «Qoldirilgan darslar» (ikonka katagi, sana va hafta kuni, guruh, sabab), «Oylar bo'yicha» (oxirgi 5 oy, joriy — `brand`).
+- **Natijalar · Sarhisob**: guruh kartalari (2 ustun): fan belgisi, oldingidan farq (`success` / `warning`, «p.p.»),
+  ustoz · oy imtihoni, katta foiz + «22 / 25 to'g'ri», Siz (`brand`) / Guruh / Filial o'rtachasi chiziqlari, guruhdagi
+  o'rin, «Oylar bo'yicha» ustunlari (oxirgisi `brand`), joriy oy imtihoni bo'lmasa — izoh. «Chorak baholari» —
+  mezon kataklari, o'rtacha `success`, izoh; baholanmagan guruh — punktir «Ustoz baholamoqda · muddat».
+- **Natijalar · UzBMB**: 3 karta (oxirgi bal / 189 + farq + guruhdagi o'rin + formula izohi; Taqqoslash; Testlar
+  bo'yicha ustunlar), «Fanlar bo'yicha» qatorlari (blok · savol × koeffitsient · to'g'ri, chiziq, bal / maksimum).
+  O'nli kasr — vergul («141,6»). Ota-ona kabinetida «Siz» o'rniga farzand ismi.
+- **Tangalarim** (kengda): 3 karta (Balans, Darajam, Ketma-ket), Reyting · Top-5 — guruhlar yonma-yon (telefonda
+  segment), Istaklarim, Tanga tarixi (segment filtr), «Qanday tanga olaman» (+ `success`, − `danger`), Nishonlar to'ri.
+- **Do'kon**: tur segmenti (Hammasi · Buyum · Xizmat · Chegirma), 3 ustunli kartalar (tur rangidagi rasm maydoni, tur,
+  nom, «Bor / Tugagan», narx, «+ Istak» / «✓ Istakda» `brand`), o'ngda Qanday ishlaydi, Istaklarim, Olganlarim.
+- **Taklif qilish**: raqamlar (referallar, takliflar, to'lov qildi) + keyingi sovg'a chizig'i; kod kartasi (QR, mono kod,
+  havola + nusxa, «Ulashish» `brand`, «Kodni nusxalash»); Takliflarim (bosh harflar, holat belgisi); o'ngda Qanday ishlaydi
+  va referal Sovg'alar («So'rash» `brand` yoki «a / b» + chiziq).
+- **Yangiliklar**: Hikoyalar kartasi, e'lon kartalari (chapda turi rangli maydon, o'ngda sana, sarlavha, matn),
+  o'ngda «Chorak bahosi keldi».
+- **Farzand tanlash** (ota-ona): hisob menyusida «Farzandlarim» — qator (bosh harflar, ism, qarz `danger` / to'langan
+  `success`, guruh · filial), tanlangani `brand-bg` + ✓, bosilsa faol farzand almashadi.
+- Kodda: `components/student-web/v2/{DarslarTab,AttendanceView,NatijalarTab,TangaTab,CommunityPages,CabinetV2}.tsx`;
+  server `lib/studentCabinet.ts` (attendanceHistory, branchAvg), `lib/studentUzbmb.ts`, `lib/studentReferral.ts`,
+  `lib/gamification/studentPage.ts` (earnRules, inStock). Rasmdan farqlar — `SAVOLLAR.md` 543–549.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

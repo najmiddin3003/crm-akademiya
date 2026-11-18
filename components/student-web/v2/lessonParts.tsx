@@ -193,8 +193,36 @@ export function parseDeadline(s: string): string | null {
   return null;
 }
 
-/** Ball/foiz: butun bo'lsa butun, aks holda bitta kasr («77.5»). */
+/** Ball/foiz: butun bo'lsa butun, aks holda bitta kasr — vergul bilan («77,5»; 44-qism, dizayndagidek). */
 export function fmtScore(n: number): string {
   if (!Number.isFinite(n)) return "0";
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
+}
+
+/**
+ * 44-qism: chiziqli tablar (Darslar → Jadval / Davomat / Vazifalar …, Natijalar → Sarhisob / UzBMB).
+ * Telefonda gorizontal suriladi; tanlangani pastdan brand chiziq bilan.
+ */
+export function UnderTabs<K extends string>({ items, value, onChange, label }: { items: { k: K; label: ReactNode; count?: number }[]; value: K; onChange: (k: K) => void; label: string }) {
+  return (
+    <div role="tablist" aria-label={label} className="-mx-4 flex gap-1 overflow-x-auto border-b border-v2-border px-4 sm:mx-0 sm:px-0">
+      {items.map((x) => {
+        const on = x.k === value;
+        return (
+          <button
+            key={x.k}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(x.k)}
+            className={`relative inline-flex h-11 shrink-0 items-center gap-1.5 px-3 text-v2-body transition-colors focus-visible:outline-none focus-visible:shadow-v2-focus ${on ? "font-semibold text-v2-text" : "text-v2-text-2 hover:text-v2-text"}`}
+          >
+            {x.label}
+            {x.count ? <span className="rounded-v2-full bg-v2-surface-2 px-1.5 text-v2-caption tabular-nums text-v2-text-2">{x.count}</span> : null}
+            {on ? <span aria-hidden className="absolute inset-x-1 -bottom-px h-0.5 rounded-full bg-v2-brand" /> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
 }

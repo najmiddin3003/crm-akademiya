@@ -29,8 +29,9 @@ import DarslarTab from "./DarslarTab";
 import NatijalarTab from "./NatijalarTab";
 import TangaTab from "./TangaTab";
 import TolovlarTab from "./TolovlarTab";
-import { ContractsPage, FeedbackPage, NotificationsPage, OfertaGate, ProfilePage, useOfertaGate, useUnreadCount, type SubPage } from "./CabinetPages";
-import { initials, type CabinetTab, type CabinetTabProps } from "./bits";
+import { NewsPage, TaklifPage } from "./CommunityPages";
+import { ContractsPage, FeedbackPage, NotificationsPage, OfertaGate, ProfilePage, extras, useOfertaGate, useUnreadCount, type SubPage } from "./CabinetPages";
+import { fmtSom, initials, type CabinetTab, type CabinetTabProps } from "./bits";
 import { chooseStudentTheme, useHtmlDark } from "./studentPrefs";
 
 // O'QUVCHI KABINETI — YANGI KO'RINISH (v2, 28-qism; rasmlar 55–58).
@@ -80,7 +81,7 @@ const ROW =
   "flex w-full items-center gap-3 rounded-v2-md px-2.5 py-2 text-left text-v2-body text-v2-text transition-colors hover:bg-v2-hover focus-visible:bg-v2-hover focus-visible:outline-none";
 const ICON = "size-4 shrink-0 text-v2-text-2";
 
-function AccountMenu({ me, onProfile, onClassic }: { me: StudentMe; onProfile: () => void; onClassic: () => void }) {
+function AccountMenu({ me, initData, onProfile, onClassic }: { me: StudentMe; initData: string; onProfile: () => void; onClassic: () => void }) {
   const { t } = useT();
   const { open, ref, toggle, close } = usePopover();
   const isDark = useHtmlDark();
@@ -88,6 +89,19 @@ function AccountMenu({ me, onProfile, onClassic }: { me: StudentMe; onProfile: (
   const ini = initials(p.fullName);
   const roleLabel = p.role === "parent" ? t("Ota-ona") : t("O'quvchi");
   const kids = p.kids ?? [];
+  const [switching, setSwitching] = useState<number | null>(null);
+  const [err, setErr] = useState("");
+  const switchKid = (id: number) => {
+    setSwitching(id);
+    setErr("");
+    void extras(initData, { action: "switch-kid", pupilId: id }).then((j) => {
+      if (j.ok) window.location.reload();
+      else {
+        setSwitching(null);
+        setErr(j.error);
+      }
+    });
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -121,20 +135,48 @@ function AccountMenu({ me, onProfile, onClassic }: { me: StudentMe; onProfile: (
           </div>
 
           {kids.length > 1 ? (
+            // 44-qism (rasm «Kabinet · Ota-ona»): farzand tanlash — bosilsa faol farzand almashadi va kabinet qayta yuklanadi.
             <div className="border-b border-v2-border p-1.5">
-              <div className="px-2.5 pb-1 pt-1 text-v2-caption text-v2-text-3">{t("Farzandlar")}</div>
-              {kids.map((k) => (
-                <div key={k.id} className="flex items-center gap-3 px-2.5 py-1.5 text-v2-body text-v2-text">
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-v2-full bg-v2-surface-2 text-[10px] font-semibold text-v2-text-2">
-                    {initials(k.name)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{k.name}</span>
-                  {k.id === p.id ? <Check className="size-4 shrink-0 text-v2-brand-text" strokeWidth={2} aria-label={t("Hozir ko'rilmoqda")} /> : null}
-                </div>
-              ))}
-              <p className="px-2.5 pb-1.5 pt-1 text-v2-caption font-normal text-v2-text-3">
-                {t("Boshqa farzandni ko'rish uchun botda «Boshqa profil» tugmasini bosing va kabinetni qayta oching.")}
-              </p>
+              <div className="px-2.5 pb-1 pt-1">
+                <div className="text-v2-body font-semibold text-v2-text">{t("Farzandlarim")}</div>
+              </div>
+              {kids.map((k) => {
+                const on = k.id === p.id;
+                const info = on
+                  ? [me.cabinet ? t("{n} guruh", { n: me.cabinet.groups.length }) : null, me.cabinet?.branch.name || p.branch].filter(Boolean).join(" · ")
+                  : [k.course, k.groups && k.groups > 1 ? t("{n} guruh", { n: k.groups }) : null, k.branch].filter(Boolean).join(" · ");
+                const debt = on && me.cabinet && me.appPrefs?.showDebt !== false ? me.cabinet.debt.total : null;
+                return (
+                  <button
+                    key={k.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={on}
+                    disabled={switching !== null}
+                    onClick={() => !on && switchKid(k.id)}
+                    className={`flex w-full items-center gap-3 rounded-v2-md px-2.5 py-2 text-left transition-colors ${on ? "bg-v2-brand-bg" : "hover:bg-v2-hover"}`}
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-v2-full bg-v2-surface text-v2-caption font-semibold text-v2-brand-text">{initials(k.name)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-v2-body font-semibold text-v2-text">{k.name}</span>
+                      {debt !== null ? (
+                        <span className={`mt-0.5 inline-block rounded-v2-sm px-1.5 text-v2-caption font-medium ${debt > 0 ? "bg-v2-danger-bg text-v2-danger" : "bg-v2-success-bg text-v2-success"}`}>
+                          {debt > 0 ? t("Qarz {sum}", { sum: fmtSom(debt) }) : t("To'langan")}
+                        </span>
+                      ) : null}
+                      {info ? <span className="block truncate text-v2-caption text-v2-text-3">{info}</span> : null}
+                    </span>
+                    {switching === k.id ? (
+                      <Loader2 className="size-4 shrink-0 animate-spin text-v2-text-3" aria-hidden />
+                    ) : on ? (
+                      <Check className="size-5 shrink-0 rounded-full bg-v2-brand p-0.5 text-v2-on-brand" strokeWidth={2.5} aria-hidden />
+                    ) : (
+                      <span className="size-5 shrink-0 rounded-full border border-v2-border-strong" aria-hidden />
+                    )}
+                  </button>
+                );
+              })}
+              {err ? <p className="px-2.5 pt-1 text-v2-caption text-v2-danger">{err}</p> : null}
             </div>
           ) : null}
 
@@ -280,7 +322,7 @@ export default function CabinetV2({
               <Bell className="size-5" strokeWidth={1.75} aria-hidden />
               {unread > 0 && <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-v2-danger px-1 text-[10px] font-semibold leading-4 text-white">{unread > 9 ? "9+" : unread}</span>}
             </button>
-            <AccountMenu me={me} onProfile={() => openSub("profile")} onClassic={onClassic} />
+            <AccountMenu me={me} initData={initData} onProfile={() => openSub("profile")} onClassic={onClassic} />
           </div>
         </div>
       </header>
@@ -295,8 +337,12 @@ export default function CabinetV2({
           <FeedbackPage me={me} initData={initData} onBack={() => openSub("profile")} />
         ) : sub === "contracts" ? (
           <ContractsPage me={me} initData={initData} onBack={() => openSub("profile")} />
+        ) : sub === "taklif" ? (
+          <TaklifPage me={me} initData={initData} onBack={() => openSub(null)} />
+        ) : sub === "yangiliklar" ? (
+          <NewsPage me={me} cab={cab} initData={initData} go={go} onBack={() => openSub(null)} />
         ) : (
-          <View me={me} cab={cab} go={go} initData={initData} />
+          <View me={me} cab={cab} go={go} initData={initData} open={openSub} />
         )}
         <p className="mt-8 text-center text-v2-caption font-normal text-v2-text-3">
           {t("Ma'lumotlar faqat ko'rish uchun. O'zgartirish kerak bo'lsa o'quv markaziga murojaat qiling.")}

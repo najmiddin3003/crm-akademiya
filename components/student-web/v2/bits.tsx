@@ -24,6 +24,8 @@ export interface CabinetTabProps {
   go: (tab: CabinetTab) => void;
   /** Telegram initData — Tanga tabi (StudentGame) o'z API'siga shu bilan kiradi. */
   initData: string;
+  /** 44-qism: ichki sahifani ochish (Asosiy → «Taklif qilish», «Yangiliklar»). */
+  open?: (page: "taklif" | "yangiliklar") => void;
 }
 
 /** «1 250 000» — ICU sozlamalariga bog'liq bo'lmagan guruhlash (manfiy — «−»). */

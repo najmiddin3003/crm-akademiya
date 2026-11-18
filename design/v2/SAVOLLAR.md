@@ -2935,6 +2935,43 @@ yoziladi, «Davom ettirish». Pullik kurs — yopiq: kassada to'langach kim uchu
 (o'quvchiga kurs ochish tugmasi kerakmi?). Modul testlari — savollar tizimda yo'q («Tez orada»), modullar ketma-ket
 bloklanmaydi.
 
+**543. Kabinet → Darslar: Jadval va Davomat** — taxmin
+«Davomat» endi alohida tab (avval Jadval yonida edi). Hafta to'rining soatlari shu haftadagi darslardan olinadi (birinchi
+darsdan 1 soat oldin — oxirgi dars tugashigacha). Kun sarlavhasidagi «Vazifa» — muddati shu kun bo'lgan vazifa. «Oylar
+bo'yicha» — oxirgi 5 oy (davomat belgisi bor oylar). «Keyingi dars»dagi vazifa — muddati o'tmagan eng yaqini (guruh nomi
+bo'yicha mos kelgani).
+
+**544. Kabinet → Natijalar: Filial o'rtachasi** — taxmin
+Sarhisobda «Filial o'rtachasi» = o'quvchi filialida shu oy, shu fan bo'yicha barcha Sarhisob natijalari foizining
+o'rtachasi (boshqa bosqichdagi guruhlar ham kiradi). UzBMB'da guruh va filial o'rtachasi — shu testning o'zida (test
+filiali bo'yicha); testsiz eski yozuvlarda taqqoslash va o'rin chiqmaydi. Rasmdagi «Guruhda 4-o'rin · 8 kishi» — shu test
+guruhida.
+
+**545. Kabinet → Natijalar: «Ustoz baholamoqda»** — taxmin
+Joriy chorak bahosi hali yuborilmagan guruhda punktir quti «Ustoz baholamoqda · muddat (chorak oxirgi oyining
+25-kuni)». Rasmdagi mezonlar ro'yxati («5 mezon: gapirish, …») ko'rsatilmaydi — kurs mezonlari kabinetga berilmaydi.
+
+**546. Kabinet → Ota-ona: farzand tanlash** — QAROR KERAK
+Hisob menyusidagi «Farzandlarim»dan farzand bosilsa faol farzand almashadi (botdagi «Boshqa profil» bilan bir xil —
+botda ham o'sha farzand ochiladi). Qarz belgisi faqat ochilgan farzandda ko'rinadi (boshqasiniki uchun to'liq hisob
+kerak — sekin); boshqalarida guruh va filial. Rasmdagi ota-ona ismi («Rahimov Bahodir · farzand: Diyora») yo'q —
+tizimda ota-onaning o'z ismi saqlanmaydi, yuqorida farzand ismi turadi. Ota-ona ismi kerakmi (Telegram ismi bilan)?
+
+**547. Kabinet → Do'kon: ombor soni** — QAROR KERAK
+Rasmda «Chortoq 1 omborida 14 ta», «4 kishi kutmoqda». TZ 5.5 bo'yicha o'quvchiga ombor ko'rinmaydi — hozir faqat
+«Bor / Tugagan». Soni ko'rsatilsinmi? «Oldin olgansiz» belgisi va chegirmaning «Oyiga 1 marta» qoidasi — matn,
+tekshiruvi yo'q (sovg'ani admin beradi, xaridni kabinet qilmaydi).
+
+**548. Kabinet → Taklif qilish** — taxmin
+Ma'lumot — Sotuv → Referallar (29-qism). O'quvchi/ota-ona hali taklif qiluvchi bo'lmasa «Kodimni olish» uni qo'shadi
+(Sozlamalar → Referal dasturida o'sha tur yoqilgan bo'lsa) — kod ISM+raqam. Havola — ariza sahifasi `/sorovnoma?ref=KOD`
+(rasmdagi `/akademiya/r/KOD` manzili yo'q; Telegram botni ochmaydi). Takliflarda ism — birinchi harf bilan. Sovg'a
+«So'rash» — so'rov yaratadi, rahbar Referallar → So'rovlarda tasdiqlaydi; bir vaqtda bitta so'rov.
+
+**549. Kabinet → To'lovlar: chek** — ma'lum
+Chek oynasi (28-qism, ReceiptDialogV2) rasm bilan bir xil — o'zgartirilmadi. Rasmdagi to'lov tarixidagi «Guruh» ustuni
+yo'q: to'lov yozuvi guruhga bog'lanmaydi (qaysi oy uchun — bor).
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)

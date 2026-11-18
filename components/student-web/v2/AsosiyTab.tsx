@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Check, CircleAlert, CircleCheck, Clock, Contrast, Gift, MapPin, Minus, X } from "lucide-react";
+import { ArrowRight, Building2, Check, CircleAlert, CircleCheck, Clock, Contrast, Gift, MapPin, Minus, X } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import type { CabinetGroup, CabinetLesson, CabinetMark, StudentCabinet } from "@/lib/studentCabinetTypes";
 import {
@@ -541,7 +541,7 @@ function ResultCard({ cab, go }: { cab: StudentCabinet; go: CabinetTabProps["go"
 
 // ── Tab ──────────────────────────────────────────────────────────────
 
-export default function AsosiyTab({ me, cab, go, initData }: CabinetTabProps) {
+export default function AsosiyTab({ me, cab, go, initData, open }: CabinetTabProps) {
   const { t } = useT();
   const fmt = useCabinetFmt();
   const parent = me.profile.role === "parent";
@@ -579,7 +579,13 @@ export default function AsosiyTab({ me, cab, go, initData }: CabinetTabProps) {
           </div>
           {me.feed?.news.length ? (
             <div className="max-lg:order-8">
-              <NewsFeed items={me.feed.news} initData={initData} today={cab.today} />
+              <NewsFeed items={me.feed.news.slice(0, 2)} initData={initData} today={cab.today} />
+              {open ? (
+                <button type="button" onClick={() => open("yangiliklar")} className="mt-2 inline-flex items-center gap-1 text-v2-small font-medium text-v2-brand-text hover:underline">
+                  {t("Barcha yangiliklar")}
+                  <ArrowRight className="size-3.5" strokeWidth={1.75} aria-hidden />
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -600,6 +606,21 @@ export default function AsosiyTab({ me, cab, go, initData }: CabinetTabProps) {
           {cab.results.length > 0 ? (
             <div className="max-lg:order-6">
               <ResultCard cab={cab} go={go} />
+            </div>
+          ) : null}
+          {open ? (
+            // 44-qism: «Taklif qilish» kirishi (rasm «Kabinet · Taklif qilish» — Asosiy'dan ochiladi).
+            <div className="max-lg:order-9">
+              <button type="button" onClick={() => open("taklif")} className="flex w-full items-center gap-3 rounded-v2-lg border border-v2-border bg-v2-surface p-4 text-left shadow-v2-sm hover:bg-v2-surface-2">
+                <span className="grid size-10 shrink-0 place-items-center rounded-v2-md bg-v2-success-bg text-v2-success">
+                  <Gift className="size-5" strokeWidth={1.75} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-v2-body font-semibold text-v2-text">{t("Do'stingizni taklif qiling")}</span>
+                  <span className="block text-v2-small text-v2-text-2">{t("birinchi oyini to'lasa — +1 referal va sovg'a")}</span>
+                </span>
+                <ArrowRight className="size-4 shrink-0 text-v2-text-3" strokeWidth={1.75} aria-hidden />
+              </button>
             </div>
           ) : null}
         </div>

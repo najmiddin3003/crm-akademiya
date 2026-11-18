@@ -1,32 +1,20 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { Check, ChevronLeft, ChevronRight, ClipboardList, Minus, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import type { CabinetGroup, CabinetLesson } from "@/lib/studentCabinetTypes";
-import { Bar, Card, CardHead, Empty, FanDot, Pill, addDays, initials, timeRange, useCabinetFmt, weekdayOf, type CabinetTabProps } from "./bits";
+import { fanOf, FAN_BG, FAN_BORDER, FAN_TEXT } from "@/components/v2/ui/fan";
+import { Card, CardHead, Empty, FanDot, Pill, addDays, fmtSom, initials, timeRange, useCabinetFmt, type CabinetTabProps } from "./bits";
+import AttendanceView from "./AttendanceView";
 import { CoursesView, SupportView, TasksView } from "./LearningViews";
 import LessonRatingCard from "./LessonRatingCard";
-import {
-  MARK_CELL,
-  MARK_DOT,
-  MARK_WEIGHT,
-  MarkPill,
-  MonthStepper,
-  PageHead,
-  cameOf,
-  isMarkKey,
-  mondayOf,
-  parseDeadline,
-  useMarkLabel,
-  useWeekRange,
-  type MarkKey,
-} from "./lessonParts";
+import { MarkPill, PageHead, UnderTabs, isMarkKey, mondayOf, parseDeadline, useMarkLabel, useWeekRange } from "./lessonParts";
 
-// O'QUVCHI KABINETI (v2) — «DARSLAR» TABI. Dizayn rasmi yo'q: «Asosiy» va
-// «To'lovlar» rasmlarining tili (kartalar, «Bu hafta» qatorlari, jadval).
-//   chap: hafta (← o'tgan · bu hafta · keyingi →) va «Guruhlarim»;
-//   o'ng: oy davomati (faqat davomati bor oylar) va «Vazifalar».
+// O'QUVCHI KABINETI (v2) — «DARSLAR» TABI (44-qism, rasmlar «Kabinet · Jadval», «Kabinet · Davomat»).
+//   bo'limlar (chiziqli tablar): Jadval · Davomat (AttendanceView) · Vazifalar · Support · Onlayn kurslar;
+//   Jadval — chap: hafta (telefonda ro'yxat, kengda soatlar to'ri) va «Guruhlarim» kartalari;
+//   o'ng: «Keyingi dars» (+ eng yaqin vazifa) va «Darsni baholash» (LessonRatingCard).
 // Hafta faqat `cab.lessons` oynasi ichida yuradi (o'tgan oyning 1-kunidan
 // bugun + 21 kungacha) — undan tashqarida jadval ma'lumoti yo'q.
 
@@ -42,65 +30,111 @@ function useDaysText() {
 
 export default function DarslarTab({ me, cab, initData }: CabinetTabProps) {
   const { t } = useT();
-  const [section, setSection] = useState<"jadval" | "vazifalar" | "support" | "kurslar">("jadval");
+  const [section, setSection] = useState<"jadval" | "davomat" | "vazifalar" | "support" | "kurslar">("jadval");
   const groups = cab.groups;
   const perWeek = groups.reduce((s, g) => s + (g.status === "gathering" ? 0 : g.weekdays.length), 0);
   const sub = [
-    me.profile.fullName,
-    groups.length ? t("{n} ta guruh", { n: groups.length }) : null,
+    groups.length ? groups.map((g) => g.title).join(t(" va ")) : me.profile.fullName,
+    cab.branch.name || me.profile.branch || null,
     perWeek ? t("haftada {n} dars", { n: perWeek }) : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
-  const sections: { k: typeof section; label: string }[] = [
-    { k: "jadval", label: t("Jadval") },
-    { k: "vazifalar", label: me.tasks.length ? `${t("Vazifalar")} ${me.tasks.length}` : t("Vazifalar") },
-    { k: "support", label: t("Support") },
-    { k: "kurslar", label: t("Onlayn kurslar") },
-  ];
-
   return (
     <div className="space-y-4">
       <PageHead title={t("Darslar")} sub={sub} />
-      {/* 43-qism: bo'limlar — Jadval (avvalgi ko'rinish), Vazifalar, Support, Onlayn kurslar. */}
-      <div role="tablist" aria-label={t("Darslar bo'limlari")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-        {sections.map((x) => (
-          <button key={x.k} type="button" role="tab" aria-selected={section === x.k} onClick={() => setSection(x.k)} className={`h-9 shrink-0 rounded-v2-full border px-4 text-v2-small font-semibold transition-colors ${section === x.k ? "border-v2-brand bg-v2-brand text-v2-on-brand" : "border-v2-border bg-v2-surface text-v2-text"}`}>
-            {x.label}
-          </button>
-        ))}
-      </div>
+      {/* 43–44-qism: bo'limlar — Jadval, Davomat, Vazifalar, Support, Onlayn kurslar (chiziqli tablar). */}
+      <UnderTabs
+        label={t("Darslar bo'limlari")}
+        value={section}
+        onChange={setSection}
+        items={[
+          { k: "jadval", label: t("Jadval") },
+          { k: "davomat", label: t("Davomat") },
+          { k: "vazifalar", label: t("Vazifalar"), count: me.tasks.length },
+          { k: "support", label: t("Support") },
+          { k: "kurslar", label: t("Onlayn kurslar") },
+        ]}
+      />
+      {section === "davomat" && <AttendanceView me={me} cab={cab} />}
       {section === "vazifalar" && <TasksView me={me} cab={cab} />}
       {section === "support" && <SupportView cab={cab} initData={initData} />}
       {section === "kurslar" && <CoursesView initData={initData} />}
       {section === "jadval" && (
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        {/* Telefonda tartib: hafta → davomat → vazifalar → guruhlar; kengda guruhlar chapda. */}
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* 34-qism: kelgan darsni baholash va «Oxirgi baholarim». */}
-          <LessonRatingCard cab={cab} initData={initData} />
-          <WeekCard me={me} cab={cab} />
-          <div className="hidden lg:block">
-            <GroupsCard groups={groups} />
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="flex min-w-0 flex-col gap-4">
+            <WeekCard me={me} cab={cab} />
+            <div className="hidden lg:block">
+              <GroupsCard groups={groups} />
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
+            <NextLessonCard me={me} cab={cab} onTasks={() => setSection("vazifalar")} />
+            {/* 34-qism: kelgan darsni baholash va «Oxirgi baholarim». */}
+            <LessonRatingCard cab={cab} initData={initData} />
+            <div className="lg:hidden">
+              <GroupsCard groups={groups} />
+            </div>
           </div>
         </div>
-        <div className="flex min-w-0 flex-col gap-4">
-          <AttendanceCard me={me} cab={cab} />
-          <TasksCard me={me} cab={cab} />
-          <div className="lg:hidden">
-            <GroupsCard groups={groups} />
-          </div>
-        </div>
-      </div>
       )}
     </div>
   );
 }
 
+/* ───────────────────────── Keyingi dars ───────────────────────── */
+
+function NextLessonCard({ me, cab, onTasks }: Pick<CabinetTabProps, "me" | "cab"> & { onTasks: () => void }) {
+  const { t } = useT();
+  const fmt = useCabinetFmt();
+  const l = cab.upcoming;
+  if (!l) return null;
+  const tomorrow = addDays(cab.today, 1);
+  const when = l.date === cab.today ? t("Bugun") : l.date === tomorrow ? t("Ertaga") : fmt.dayMonth(l.date);
+  // Shu guruhning eng yaqin muddatli vazifasi (muddati o'tmagan).
+  const task = me.tasks
+    .map((tk) => ({ tk, due: parseDeadline(tk.deadline) }))
+    .filter((x) => x.due && x.due >= cab.today && (!x.tk.groupName || l.title.includes(x.tk.groupName) || x.tk.groupName.includes(l.course)))
+    .sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""))[0];
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-v2-small text-v2-text-2">{t("Keyingi dars")}</span>
+        <Pill tone="info">{when}</Pill>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <FanDot course={l.course} className="size-2.5" />
+        <span className="text-v2-section text-v2-text">{l.title}</span>
+      </div>
+      <p className="mt-1 text-v2-small text-v2-text-2">
+        {fmt.weekdayFull(l.date)}, {fmt.dayMonth(l.date)}
+        {l.start ? (
+          <>
+            {" · "}
+            <b className="font-semibold tabular-nums text-v2-text">{timeRange(l.start, l.end)}</b>
+          </>
+        ) : null}
+        {l.room ? ` · ${l.room}` : ""}
+      </p>
+      {l.teacher ? <p className="text-v2-small text-v2-text-2">{l.teacher}</p> : null}
+      {task ? (
+        <button type="button" onClick={onTasks} className="mt-3 flex w-full items-center gap-2.5 rounded-v2-md bg-v2-warning-bg px-3 py-2.5 text-left text-v2-small text-v2-text hover:opacity-90 focus-visible:outline-none focus-visible:shadow-v2-focus">
+          <ClipboardList className="size-4 shrink-0 text-v2-warning" strokeWidth={1.75} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <b className="font-semibold">{t("Vazifa:")}</b> {task.tk.name}
+            {task.due ? ` — ${task.due === tomorrow ? t("ertagacha") : t("{date} gacha", { date: fmt.dayMonth(task.due) })}` : ""}
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-v2-text-3" strokeWidth={1.75} aria-hidden />
+        </button>
+      ) : null}
+    </Card>
+  );
+}
+
 /* ───────────────────────── Hafta ───────────────────────── */
 
-function WeekCard({ cab }: Pick<CabinetTabProps, "me" | "cab">) {
+function WeekCard({ me, cab }: Pick<CabinetTabProps, "me" | "cab">) {
   const { t } = useT();
   const fmt = useCabinetFmt();
   const weekRange = useWeekRange();
@@ -124,6 +158,8 @@ function WeekCard({ cab }: Pick<CabinetTabProps, "me" | "cab">) {
   for (const list of byDay.values()) list.sort((a, b) => a.start.localeCompare(b.start));
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const taskDays = new Set(me.tasks.map((tk) => parseDeadline(tk.deadline)).filter((d): d is string => !!d));
+  const weekCount = [...byDay.values()].reduce((a, l) => a + l.length, 0);
   const title = offset === 0 ? t("Bu hafta") : offset === -1 ? t("O'tgan hafta") : offset === 1 ? t("Keyingi hafta") : t("Hafta");
 
   if (cab.lessons.items.length === 0) {
@@ -148,7 +184,9 @@ function WeekCard({ cab }: Pick<CabinetTabProps, "me" | "cab">) {
         {/* Telefonda sana oralig'i nom ostida — «Bu hafta» tugmasiga joy qolsin. */}
         <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
           <h2 className="truncate text-v2-body font-semibold text-v2-text">{title}</h2>
-          <span className="truncate text-v2-small tabular-nums text-v2-text-3">{weekRange(start, end)}</span>
+          <span className="truncate text-v2-small tabular-nums text-v2-text-3">
+            {weekRange(start, end)} · {t("{n} ta dars", { n: weekCount })}
+          </span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {offset !== 0 ? (
@@ -169,7 +207,8 @@ function WeekCard({ cab }: Pick<CabinetTabProps, "me" | "cab">) {
         </div>
       </div>
 
-      <ul className="divide-y divide-v2-border">
+      <WeekGrid days={days} byDay={byDay} today={cab.today} tomorrow={tomorrow} taskDays={taskDays} />
+      <ul className="divide-y divide-v2-border md:hidden">
         {days.map((d) => {
           const list = byDay.get(d) ?? [];
           const isToday = d === cab.today;
@@ -286,325 +325,107 @@ function GroupsCard({ groups }: { groups: CabinetGroup[] }) {
               </li>
             ))}
           </ul>
-          {/* Keng ekran: jadval («To'lovlar» jadvali uslubida). */}
-          <div className="-mx-4 hidden overflow-x-auto sm:-mx-5 md:block">
-            <table className="w-full min-w-[36rem] border-collapse text-left">
-              <thead>
-                <tr className="bg-v2-surface-2 text-v2-caption text-v2-text-3">
-                  <th className="py-2 pl-4 pr-3 font-medium sm:pl-5">{t("Guruh")}</th>
-                  <th className="px-3 py-2 font-medium">{t("Ustoz")}</th>
-                  <th className="px-3 py-2 font-medium">{t("Xona")}</th>
-                  <th className="px-3 py-2 font-medium">{t("Kunlar")}</th>
-                  <th className="py-2 pl-3 pr-4 font-medium sm:pr-5">{t("Vaqt")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((g) => (
-                  <tr key={g.id} className="border-t border-v2-border text-v2-small text-v2-text">
-                    <td className="py-2.5 pl-4 pr-3 sm:pl-5">
-                      <div className="flex items-center gap-2">
-                        <FanDot course={g.course} />
-                        <span className="whitespace-nowrap font-medium">{g.title}</span>
-                        {g.status === "gathering" ? <Pill tone="warning">{t("Yig'ilmoqda")}</Pill> : null}
-                      </div>
-                      {since(g) ? <div className="whitespace-nowrap pl-4 text-v2-caption font-normal text-v2-text-3">{since(g)}</div> : null}
-                    </td>
-                    <td className="px-3 py-2.5">{g.teacher || "—"}</td>
-                    <td className="whitespace-nowrap px-3 py-2.5">{g.room || "—"}</td>
-                    <td className="whitespace-nowrap px-3 py-2.5">{daysText(g) || "—"}</td>
-                    <td className="whitespace-nowrap py-2.5 pl-3 pr-4 tabular-nums sm:pr-5">{timeRange(g.start, g.end) || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Keng ekran: kartalar (44-qism, rasm «Kabinet · Jadval» → «Guruhlarim»). */}
+          <ul className="hidden gap-4 md:grid md:grid-cols-2">
+            {groups.map((g) => (
+              <li key={g.id} className="flex items-start gap-3 border-v2-border md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-4">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-v2-full bg-v2-surface-2 text-v2-caption font-semibold text-v2-text-2">{initials(g.teacher || g.title)}</span>
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-v2-body font-semibold text-v2-text">{g.title}</span>
+                    {g.status === "gathering" ? <Pill tone="warning">{t("Yig'ilmoqda")}</Pill> : null}
+                  </div>
+                  <div className="text-v2-small text-v2-text-2">{[g.teacher, g.room].filter(Boolean).join(" · ")}</div>
+                  <div className="text-v2-small tabular-nums text-v2-text-2">
+                    {[daysText(g), timeRange(g.start, g.end), g.monthlyPrice ? t("{sum} so'm/oy", { sum: fmtSom(g.monthlyPrice) }) : null].filter(Boolean).join(" · ")}
+                  </div>
+                  {since(g) ? <div className="text-v2-caption text-v2-text-3">{since(g)}</div> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </Card>
   );
 }
 
-/* ───────────────────────── Oy davomati ───────────────────────── */
+/* ───────────────────────── Hafta to'ri (keng ekran) ───────────────────────── */
 
-interface DayMark {
-  groupId: number;
-  status: MarkKey;
-  reason: string | null;
-  grade: number | null;
-}
+const HOUR_PX = 52;
+const toMin = (hm: string) => {
+  const [h, m] = hm.split(":").map(Number);
+  return Number.isFinite(h) ? h * 60 + (m || 0) : NaN;
+};
 
-function AttendanceCard({ me, cab }: Pick<CabinetTabProps, "me" | "cab">) {
-  const { t, weekdaysShort } = useT();
-  const fmt = useCabinetFmt();
-  const markLabel = useMarkLabel();
-  const current = cab.today.slice(0, 7);
-
-  // Faqat davomati bor oylar (+ joriy oy — bo'sh bo'lsa ham «bu oy hali belgi yo'q»).
-  const months = useMemo(() => {
-    const s = new Set(me.attendance.months.filter((m) => /^\d{4}-\d{2}$/.test(m)));
-    s.add(current);
-    return [...s].sort();
-  }, [me.attendance.months, current]);
-  const [month, setMonth] = useState(current);
-
-  // Guruh nomi: hozirgi guruhlar, keyin darslar oynasi (chiqib ketgan guruh ham).
-  const titleOf = useMemo(() => {
-    const map = new Map<number, { title: string; course: string }>();
-    for (const l of cab.lessons.items) map.set(l.groupId, { title: l.title, course: l.course });
-    for (const g of cab.groups) map.set(g.id, { title: g.title, course: g.course });
-    return (id: number) => map.get(id) ?? { title: t("{id}-guruh", { id }), course: "" };
-  }, [cab.lessons.items, cab.groups, t]);
-
-  const byDay = useMemo(() => {
-    const map = new Map<string, DayMark[]>();
-    for (const m of me.attendance.marks) {
-      if (!m.date?.startsWith(month) || !isMarkKey(m.status)) continue;
-      const list = map.get(m.date) ?? [];
-      list.push({ groupId: m.groupId, status: m.status, reason: m.reason ?? null, grade: typeof m.grade === "number" && m.grade > 0 ? m.grade : null });
-      map.set(m.date, list);
-    }
-    return map;
-  }, [me.attendance.marks, month]);
-
-  const all = useMemo(() => [...byDay.values()].flat(), [byDay]);
-  const came = all.filter((m) => cameOf(m.status)).length;
-  const excused = all.filter((m) => m.status === "sababli").length;
-  const missed = all.filter((m) => m.status === "sababsiz").length;
-  const total = all.length;
-  const percent = total ? Math.round((came / total) * 100) : null;
-  const grades = all.map((m) => m.grade).filter((g): g is number => g !== null);
-  const avgGrade = grades.length ? grades.reduce((s, g) => s + g, 0) / grades.length : null;
-  const tone = percent === null ? "brand" : percent >= 90 ? "success" : percent >= 70 ? "warning" : "danger";
-
-  // Guruhlar bo'yicha: keldi / jami.
-  const perGroup = useMemo(() => {
-    const map = new Map<number, { came: number; total: number }>();
-    for (const m of all) {
-      const r = map.get(m.groupId) ?? { came: 0, total: 0 };
-      r.total += 1;
-      if (cameOf(m.status)) r.came += 1;
-      map.set(m.groupId, r);
-    }
-    return [...map.entries()].map(([id, r]) => ({ id, ...r, ...titleOf(id) }));
-  }, [all, titleOf]);
-
-  // Kelgusi darslar (belgisiz, bugundan keyin) — kalendarda punktir chegara.
-  const planned = useMemo(() => {
-    const s = new Set<string>();
-    for (const l of cab.lessons.items) if (l.date.startsWith(month) && l.date >= cab.today && !l.mark) s.add(l.date);
-    return s;
-  }, [cab.lessons.items, month, cab.today]);
-
-  const absences = [...byDay.entries()]
-    .flatMap(([date, list]) => list.filter((m) => m.status === "sababli" || m.status === "sababsiz").map((m) => ({ date, ...m })))
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  // Kalendar: dushanbadan.
-  const first = `${month}-01`;
-  const lead = (weekdayOf(first) + 6) % 7;
-  const [y, mo] = month.split("-").map(Number);
-  const daysIn = new Date(Date.UTC(y, mo, 0)).getUTCDate();
-  const cells: (string | null)[] = [...Array.from({ length: lead }, () => null), ...Array.from({ length: daysIn }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`)];
-  const head = [1, 2, 3, 4, 5, 6, 0].map((d) => weekdaysShort[d] ?? "");
-
-  return (
-    <Card>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="truncate text-v2-body font-semibold text-v2-text">{t("Davomat")}</h2>
-        <MonthStepper months={months} value={month} onChange={setMonth} thisYear={cab.today.slice(0, 4)} />
-      </div>
-
-      {total === 0 ? (
-        <Empty>{month === current ? t("Bu oyda hali davomat belgilanmagan.") : t("Bu oyda davomat belgilanmagan.")}</Empty>
-      ) : (
-        <>
-          <div className="flex items-end justify-between gap-3">
-            <span className="text-v2-number tabular-nums text-v2-text">{percent}%</span>
-            <span className="pb-1 text-v2-small tabular-nums text-v2-text-3">{t("{came} / {total} dars", { came, total })}</span>
-          </div>
-          <div className="mt-2">
-            <Bar value={percent ?? 0} tone={tone} />
-          </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-v2-small text-v2-text-2">
-            <Counter icon={<Check className="size-3" strokeWidth={2.25} aria-hidden />} cls="bg-v2-success-bg text-v2-success" n={came} label={t("keldi")} />
-            <Counter icon={<Minus className="size-3" strokeWidth={2.25} aria-hidden />} cls="bg-v2-warning-bg text-v2-warning" n={excused} label={t("sababli")} />
-            <Counter icon={<X className="size-3" strokeWidth={2.25} aria-hidden />} cls="bg-v2-danger-bg text-v2-danger" n={missed} label={t("kelmadi")} />
-            {avgGrade !== null ? (
-              <span className="text-v2-small text-v2-text-3">
-                {t("o'rtacha baho")} <b className="font-semibold tabular-nums text-v2-text">{avgGrade.toFixed(1)}</b>
-              </span>
-            ) : null}
-          </div>
-
-          {perGroup.length > 1 ? (
-            <ul className="mt-3 space-y-2 border-t border-v2-border pt-3">
-              {perGroup.map((g) => (
-                <li key={g.id}>
-                  <div className="flex items-center justify-between gap-2 text-v2-small">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <FanDot course={g.course} />
-                      <span className="truncate text-v2-text">{g.title}</span>
-                    </span>
-                    <span className="shrink-0 tabular-nums text-v2-text-3">
-                      {g.came}/{g.total}
-                    </span>
-                  </div>
-                  <div className="mt-1 pl-4">
-                    <Bar value={g.total ? (g.came / g.total) * 100 : 0} tone="brand" />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      )}
-
-      {/* Kalendar — belgi ham, kelgusi dars ham bo'lmasa chizilmaydi (yangi o'quvchi). */}
-      {total > 0 || planned.size > 0 ? (
-        <div className="mt-4 border-t border-v2-border pt-3">
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {head.map((h, i) => (
-              <span key={i} className="pb-1 text-[0.6875rem] leading-4 text-v2-text-3">
-                {h}
-              </span>
-            ))}
-            {cells.map((d, i) => {
-              if (!d) return <span key={`b${i}`} aria-hidden />;
-              const list = byDay.get(d) ?? [];
-              const worst = list.reduce<MarkKey | null>((w, m) => (w === null || MARK_WEIGHT[m.status] > MARK_WEIGHT[w] ? m.status : w), null);
-              const isToday = d === cab.today;
-              const plan = !worst && planned.has(d);
-              const label = list.length ? `${fmt.dayMonth(d)}: ${list.map((m) => `${titleOf(m.groupId).title} — ${markLabel(m.status)}`).join("; ")}` : fmt.dayMonth(d);
-              return (
-                <span
-                  key={d}
-                  title={label}
-                  aria-label={label}
-                  className={`relative flex h-9 flex-col items-center justify-center rounded-v2-sm text-v2-caption tabular-nums ${
-                    worst ? MARK_CELL[worst] : plan ? "border border-dashed border-v2-border-strong text-v2-text-2" : "text-v2-text-3"
-                  } ${isToday ? "ring-2 ring-v2-brand ring-offset-1 ring-offset-v2-surface" : ""}`}
-                >
-                  {Number(d.slice(8, 10))}
-                  {list.length > 1 ? (
-                    <span className="absolute bottom-0.5 flex gap-0.5" aria-hidden>
-                      {list.map((m, k) => (
-                        <span key={k} className={`size-1 rounded-full ${MARK_DOT[m.status]}`} />
-                      ))}
-                    </span>
-                  ) : null}
-                </span>
-              );
-            })}
-          </div>
-          <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-v2-caption font-normal text-v2-text-3">
-            {(["keldi", "birinchi", "sababli", "sababsiz"] as MarkKey[]).map((k) => (
-              <span key={k} className="inline-flex items-center gap-1">
-                <span className={`size-2 rounded-full ${MARK_DOT[k]}`} aria-hidden />
-                {markLabel(k)}
-              </span>
-            ))}
-            <span className="inline-flex items-center gap-1">
-              <span className="size-2 rounded-[2px] border border-dashed border-v2-border-strong" aria-hidden />
-              {t("Kelgusi dars")}
-            </span>
-          </div>
-        </div>
-      ) : null}
-
-      {total > 0 ? (
-        <div className="mt-4 border-t border-v2-border pt-3">
-          <h3 className="mb-2 text-v2-small font-semibold text-v2-text">{t("Qoldirilgan darslar")}</h3>
-          {absences.length === 0 ? (
-            <p className="text-v2-small text-v2-success">{t("Bu oyda dars qoldirilmagan.")}</p>
-          ) : (
-            <ul className="space-y-2">
-              {absences.map((a, i) => {
-                const g = titleOf(a.groupId);
-                return (
-                  <li key={`${a.date}-${a.groupId}-${i}`} className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-v2-small font-medium text-v2-text">
-                        {fmt.dayMonth(a.date)}
-                        <span className="font-normal text-v2-text-3"> · {fmt.weekdayShort(a.date)}</span>
-                      </div>
-                      <div className="flex min-w-0 items-center gap-1.5 text-v2-caption font-normal text-v2-text-3">
-                        <FanDot course={g.course} className="size-1.5" />
-                        <span className="truncate">{g.title}</span>
-                      </div>
-                    </div>
-                    <MarkPill mark={a.status} reason={a.reason} />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      ) : null}
-    </Card>
-  );
-}
-
-function Counter({ icon, cls, n, label }: { icon: ReactNode; cls: string; n: number; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`inline-flex size-4 items-center justify-center rounded-full ${cls}`}>{icon}</span>
-      <b className="font-semibold tabular-nums text-v2-text">{n}</b>
-      {label}
-    </span>
-  );
-}
-
-/* ───────────────────────── Vazifalar ───────────────────────── */
-
-function TasksCard({ me, cab }: Pick<CabinetTabProps, "me" | "cab">) {
+function WeekGrid({ days, byDay, today, tomorrow, taskDays }: { days: string[]; byDay: Map<string, CabinetLesson[]>; today: string; tomorrow: string; taskDays: Set<string> }) {
   const { t } = useT();
   const fmt = useCabinetFmt();
-  const tomorrow = addDays(cab.today, 1);
-  const tasks = me.tasks;
+  const markLabel = useMarkLabel();
+  const all = [...byDay.values()].flat().filter((l) => Number.isFinite(toMin(l.start)));
+  if (!all.length) return <div className="hidden md:block"><Empty>{t("Bu haftada dars yo'q.")}</Empty></div>;
+  const from = Math.floor(Math.min(...all.map((l) => toMin(l.start))) / 60) - 1;
+  const to = Math.ceil(Math.max(...all.map((l) => (Number.isFinite(toMin(l.end)) ? toMin(l.end) : toMin(l.start) + 90))) / 60);
+  const hours = Array.from({ length: to - from }, (_, i) => from + i);
+  const height = hours.length * HOUR_PX;
 
   return (
-    <Card>
-      <CardHead
-        title={t("Vazifalar")}
-        sub={tasks.length ? t("{n} ta", { n: tasks.length }) : undefined}
-        icon={<ClipboardList className="size-4 text-v2-text-3" strokeWidth={1.75} aria-hidden />}
-      />
-      {tasks.length === 0 ? (
-        <Empty>{t("Hozircha topshiriq yo'q.")}</Empty>
-      ) : (
-        <ul className="divide-y divide-v2-border">
-          {tasks.map((tk) => {
-            const due = parseDeadline(tk.deadline);
-            let pill: ReactNode = null;
-            if (due && due < cab.today) pill = <Pill tone="danger">{t("Muddati o'tgan")}</Pill>;
-            else if (due === cab.today) pill = <Pill tone="warning">{t("Bugun")}</Pill>;
-            else if (due === tomorrow) pill = <Pill tone="warning">{t("Ertaga")}</Pill>;
-            const meta = [
-              tk.groupName,
-              due ? t("Muddat: {date}", { date: fmt.dayMonth(due) }) : tk.deadline ? t("Muddat: {date}", { date: tk.deadline }) : "",
-              tk.maxScore ? t("Maks. ball: {maxScore}", { maxScore: tk.maxScore }) : "",
-            ].filter(Boolean);
-            return (
-              <li key={tk.id} className="py-2.5 first:pt-0 last:pb-0">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="min-w-0 text-v2-body font-medium text-v2-text">{tk.name}</span>
-                  {pill}
-                </div>
-                {meta.length ? (
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 text-v2-caption font-normal text-v2-text-3">
-                    {meta.map((m, i) => (
-                      <span key={i} className="whitespace-nowrap">
-                        {m}
-                      </span>
-                    ))}
+    <div className="hidden overflow-hidden rounded-v2-md border border-v2-border md:block">
+      <div className="grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))]">
+        <div className="border-b border-r border-v2-border" />
+        {days.map((d) => {
+          const isToday = d === today;
+          return (
+            <div key={d} className="flex flex-col items-center gap-0.5 border-b border-r border-v2-border py-2 last:border-r-0">
+              <span className={`text-v2-caption ${isToday ? "font-semibold text-v2-brand-text" : "text-v2-text-3"}`}>{fmt.weekdayShort(d)}</span>
+              <span className={`inline-flex size-7 items-center justify-center rounded-v2-full text-v2-body font-semibold tabular-nums ${isToday ? "bg-v2-brand text-v2-on-brand" : "text-v2-text"}`}>{Number(d.slice(8, 10))}</span>
+              <span className={`h-4 text-[0.6875rem] leading-4 ${taskDays.has(d) ? "text-v2-warning" : ""}`}>{taskDays.has(d) ? t("Vazifa") : ""}</span>
+            </div>
+          );
+        })}
+        <div className="relative border-r border-v2-border" style={{ height }}>
+          {hours.map((h, i) => (
+            <span key={h} className="absolute left-2 text-v2-caption tabular-nums text-v2-text-3" style={{ top: i * HOUR_PX + 4 }}>
+              {String(h).padStart(2, "0")}:00
+            </span>
+          ))}
+        </div>
+        {days.map((d) => {
+          const list = byDay.get(d) ?? [];
+          const isToday = d === today;
+          return (
+            <div key={d} className={`relative border-r border-v2-border last:border-r-0 ${isToday ? "bg-v2-surface-2" : ""}`} style={{ height }}>
+              {hours.map((h, i) => (
+                <span key={h} aria-hidden className="absolute inset-x-0 border-t border-v2-border" style={{ top: i * HOUR_PX }} />
+              ))}
+              {list.length === 0 ? <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-v2-caption text-v2-text-3">{t("Dars yo'q")}</span> : null}
+              {list.map((l) => {
+                const s0 = toMin(l.start);
+                if (!Number.isFinite(s0)) return null;
+                const e0 = Number.isFinite(toMin(l.end)) ? toMin(l.end) : s0 + 90;
+                const top = ((s0 - from * 60) / 60) * HOUR_PX + 2;
+                const h = Math.max(36, ((e0 - s0) / 60) * HOUR_PX - 4);
+                const f = fanOf(l.course);
+                const status = l.mark && isMarkKey(l.mark) ? markLabel(l.mark) : l.date === tomorrow ? t("Ertaga") : l.date === today ? t("Bugun") : "";
+                const statusCls = l.mark === "sababsiz" ? "bg-v2-danger-bg text-v2-danger" : l.mark ? "bg-v2-success-bg text-v2-success" : "bg-v2-info-bg text-v2-info";
+                return (
+                  <div
+                    key={`${l.groupId}-${l.start}`}
+                    title={[l.title, timeRange(l.start, l.end), l.room, l.teacher].filter(Boolean).join(" · ")}
+                    className={`absolute inset-x-1 overflow-hidden rounded-v2-sm border border-l-[3px] px-1.5 py-1 ${FAN_BG[f]} ${FAN_BORDER[f]}`}
+                    style={{ top, height: h }}
+                  >
+                    <div className={`truncate text-v2-caption font-semibold ${FAN_TEXT[f]}`}>{l.course || l.title}</div>
+                    <div className="truncate text-[0.6875rem] leading-4 tabular-nums text-v2-text-2">{timeRange(l.start, l.end)}</div>
+                    {l.room ? <div className="truncate text-[0.6875rem] leading-4 text-v2-text-2">{l.room}</div> : null}
+                    {status ? <span className={`mt-1 inline-block rounded-v2-sm px-1.5 text-[0.6875rem] leading-4 ${statusCls}`}>{status}</span> : null}
                   </div>
-                ) : null}
-                {tk.note ? <p className="mt-1 text-v2-small text-v2-text-2">{tk.note}</p> : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

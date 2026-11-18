@@ -11,6 +11,7 @@ import {
   ChevronRight,
   FileSignature,
   FileText,
+  Gift,
   Loader2,
   LogIn,
   MessageSquare,
@@ -43,7 +44,7 @@ import { chooseStudentTheme, useHtmlDark } from "./studentPrefs";
 //   • Oferta — «Kirishda tasdiq so'ralsin» yoqilsa kabinetdan oldin chiqadi.
 // SMS kod bilan brauzerdan kirish — keyinroq (egasi qarori, SAVOLLAR «Reja»). Server: /api/student-web/extras.
 
-export type SubPage = "notifications" | "profile" | "feedback" | "contracts";
+export type SubPage = "notifications" | "profile" | "feedback" | "contracts" | "taklif" | "yangiliklar";
 type Icon = ComponentType<LucideProps>;
 
 export async function extras<T>(initData: string, body: Record<string, unknown>): Promise<(T & { ok: true }) | { ok: false; error: string }> {
@@ -334,6 +335,8 @@ export function ProfilePage({ me, cab, initData, open, onBack }: { me: StudentMe
       <SectionTitle>{t("Yordam")}</SectionTitle>
       <Card className="!py-1">
         <NavRow icon={MessageSquare} title={t("Fikr bildirish")} sub={t("taklif, shikoyat yoki minnatdorchilik")} onClick={() => open("feedback")} />
+        <NavRow icon={Gift} title={t("Taklif qilish")} sub={t("do'stingiz kelsa — referal va sovg'a")} onClick={() => open("taklif")} />
+        <NavRow icon={Newspaper} title={t("Yangiliklar")} sub={t("e'lonlar va hikoyalar")} onClick={() => open("yangiliklar")} />
         <NavRow icon={Phone} title={t("Markazga qo'ng'iroq")} sub={[CENTER_PHONE, p.branch].filter(Boolean).join(" · ")} href={telHref} />
       </Card>
       <p className="mt-4 text-center text-v2-caption text-v2-text-3">{CENTER_NAME}</p>
