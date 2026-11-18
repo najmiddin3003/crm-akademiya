@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { ensureIndexes } from "@/lib/mongodb";
 import { KIND_LABEL, kindNotifiesTelegram, loadSyncConfig, SYNC_KINDS, syncConfigIssues } from "@/lib/sync/config";
 import { flushPending } from "@/lib/sync/dispatch";
-import { listProblems, outboxCounts, resetBackoff } from "@/lib/sync/outbox";
+import { listProblems, OUTBOX, outboxCounts, resetBackoff } from "@/lib/sync/outbox";
 import { runSyncCycle } from "@/lib/sync/run";
 import { digestLines, digestMessages, digestPeriodFor } from "@/lib/sync/salaryDigest";
 import { latestRuns } from "@/lib/sync/runs";
@@ -30,10 +30,15 @@ export async function GET() {
   const db = await ensureIndexes();
   const cfg = loadSyncConfig();
 
-  const [counts, problems, runs] = await Promise.all([
+  const [counts, problems, runs, lastDone] = await Promise.all([
     outboxCounts(db),
     listProblems(db, 50),
     latestRuns(db, 10),
+    // Har oqimning oxirgi yuborilgan yozuvi (v2 sahifa «Oxirgi yozuv» ustuni, 39-qism).
+    db
+      .collection(OUTBOX)
+      .aggregate<{ _id: string; at: string }>([{ $match: { status: "done" } }, { $group: { _id: "$kind", at: { $max: "$doneAt" } } }])
+      .toArray(),
   ]);
 
   return NextResponse.json({
@@ -75,6 +80,7 @@ export async function GET() {
     counts,
     problems,
     runs,
+    lastDone: Object.fromEntries(lastDone.map((r) => [r._id, r.at])),
   });
 }
 

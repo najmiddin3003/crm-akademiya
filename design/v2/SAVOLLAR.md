@@ -2814,6 +2814,42 @@ qilinmadi). «Ishga keldim · joylashuv + Face ID» — 34-qismda qilingan `/xod
 Eski versiyadagi Umumiy sozlamalar → Funksionallik (belgilar saqlanadi, lekin hech qayerda o'qilmaydi) va Obuna
 (faqat ko'rsatuv) tablari tegilmadi; yangi versiyada 37-qismdagi Funksiyalar va Obuna sahifalari ishlatiladi.
 
+**520. Oylik va soliq — qoidalar** — taxmin
+Sahifa faqat ko'rsatadi: raqamlar Oylik chiqarish bilan bir xil hisobdan, oklad/foiz/soliq xodim kartasida va eski
+Soliq / Oylik foizlari tablarida tahrirlanadi. Rasmdagi hisoblash qoidalari almashtirgichlari (foiz chegirmadan
+keyingi summadan, kechikkan to'lov ulushi va h.k.) o'rniga «tizim qoidasi» belgisi — qoidalar kodda qat'iy, ularni
+o'chirish oylik hisobini o'zgartiradi. Rasmiy oylik (kartaga), to'lash kuni, jarima chegarasi, «O'zgarishlar tarixi» —
+qilinmadi (tizimda bunday maydonlar yo'q).
+
+**521. Bonus va KPI — oylikka avtomatik qo'shish** — QAROR KERAK
+Sotuv bonusi qoidalari saqlanadi va Savdo plani bo'yicha hisoblab ko'rsatiladi (Sozlamalar paneli va «Bonusim»).
+Oylik chiqarishdagi «Bonus» ustuniga AVTOMATIK tushirmadik — pulga ta'sir qiladi. Yoqaylikmi (oy yopilganda
+rahbar tasdiqlaydi)? Moliya bo'limi bonusi (qarz undirish, toza topshiruv), «birinchi oyda ketsa — qaytadi» va KPI
+ballari hisobi hali yo'q («Tez orada»); KPI ko'rsatkichlari va vaznlari (rasmda: saqlab qolish 40%, davomat 30%...)
+kelishilsa qilamiz. «Bonus sabablari» tabi qilinmadi.
+
+**522. Avtomatik chegirmalar** — QAROR KERAK
+Aka-uka (ona telefoni bir xil), ikki kurs, oldindan to'lov — foiz va almashtirgich saqlanadi, sahifada nechta
+o'quvchiga mos kelishi ko'rsatiladi, lekin to'lov/qarz hisobiga QO'LLANMAYDI. Qo'llaylikmi? «Chegirmalar
+qo'shilmaydi — eng kattasi» qoidasi ham shunda kerak bo'ladi. Ulangani: «Admin chegarasi» (foiz va summa) — Chegirma
+va istisnolar endi shu qiymatdan kattasini direktor tasdig'iga yuboradi (ilgari 30% / 200 000 qotib turardi).
+
+**523. Hamkorlar va 3-shaxslar** — taxmin
+Ro'yxatlar eski tablar bilan umumiy; qo'shish yangi oynadan, tahrirlash/o'chirish eski tabda. Hamkor ulushi o'tgan oy
+sof foydasidan (kassa amallari bo'yicha Foyda va zarar) faqat ko'rsatish uchun. 3-shaxslar kassa «Kimga» maydoni va
+Xarajat rejasiga bog'lanmagan — rasmdagi «to'langan / keyingisi» ustunlari yo'q. «Qamrov» (filiallar) maydoni yo'q.
+
+**524. Sinxronizatsiya — oqimlarni o'chirish** — taxmin
+Oqimlar va Telegram guruhlari server sozlamasida (muhit o'zgaruvchilari) — sahifada faqat holati; rasmdagi oqim
+almashtirgichlari qilinmadi. «Oxirgi yozuv» — navbatdan oxirgi yuborilgan vaqt.
+
+**525. Bonusim** — taxmin
+Profil menyusida «Bonusim»; xodim faqat o'z bonusini ko'radi, direktor Bonus va KPI panelidan istalgan admin
+oynasini ochadi. «Birinchi javob (daqiqa)» ko'rsatkichi yo'q — lidga birinchi javob vaqti saqlanmaydi.
+
+**526. Lavozim va stavkalar** — taxmin
+Rasmdagi menyuda «Lavozim va stavkalar» bandi bor — 39-qism rasmlarida sahifasi yo'q, menyuga qo'shilmadi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

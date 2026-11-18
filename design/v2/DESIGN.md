@@ -1319,6 +1319,42 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   `lib/staffAppSettings.ts`, `lib/studentAppSettings.ts`; `/api/staff-app`, `/api/student-app`. Rasmdan farqlar —
   `SAVOLLAR.md` 512–519.
 
+## Moliya sozlamalari — oylik, bonus va KPI, chegirmalar, hamkorlar, sinxronizatsiya, Bonusim (39-qism, 18.11.2026)
+
+- **Sozlamalar → Moliya** guruhiga: Oylik va soliq, Bonus va KPI, Chegirmalar, Hamkorlar — faqat direktor; o'chiq
+  «Bonus sabablari» bandi olib tashlandi. Umumiy bo'laklar — `components/v2/settings/financeKit.tsx` (almashtirgich,
+  fokusdan chiqqanda saqlanadigan summa/foiz maydoni, ikonkali qoida qatori, karta, «Tez orada» `info` belgisi).
+- **Oylik va soliq** (`/settings-payroll`): «Oylik turlari» — 3 karta (Tushumdan foiz / Oklad / Oklad + foiz;
+  ko'p uchraydigan foiz, nechta ustoz/moderator; bosilsa jadval shu turga kesiladi, `brand` halqa); xodimlar jadvali
+  (avatar, turi, «Sozlanmagan» `warning`, stavka, shu oy hozirgacha hisoblangani; 8 qator + «Yana N xodim»; ism
+  bosilsa misolga o'tadi); «Hisoblash qoidalari» — 7 qator, har birida «tizim qoidasi» `success` belgisi
+  (almashtirgich emas — qoidalar qat'iy). O'ngda «Soliq va ushlanmalar» (nom, nechta xodimga, foiz/summa),
+  «Misol: xodim» (oklad × kun/oy kunlari, foiz × tushum, bonus, jarima `danger`, jami, soliq, «Qo'lga» `success`),
+  «Foiz darajalari».
+- **Bonus va KPI** (`/settings-bonus`): tepada «oylikka avtomatik tushmaydi» izohi; kartalar — Sotuv bonusi (har
+  yangi o'quvchi, reja bajarilsa — summa + almashtirgich; «birinchi oyda ketsa» Tez orada), Moliya bo'limi bonusi
+  (qarz undirish %, toza topshiruv — Tez orada), KPI (90%+ va 80–89% summalari — Tez orada). O'ngda «{oy} — sotuv
+  bonusi» (admin, filial · yangi/reja, summa; ism → shu adminning Bonusim oynasi; «Jami · hozircha»; prognoz
+  bo'yicha rejani bajaradiganlar `brand-bg` qutida), «Qanday ishlaydi», «So'nggi o'zgarishlar».
+- **Chegirmalar** (`/settings-discounts`): «Avtomatik chegirmalar» (aka-uka, ikki kurs, oldindan to'lov — foiz +
+  almashtirgich, «Mos keladi: N o'quvchi», Tez orada; pastda «qo'llanmaydi» izohi); «Qoidalar» — admin chegarasi
+  foiz va summa (haqiqiy), «Qachondan», «Ustoz ulushi → Oylik va soliq». O'ngda «{oy}da imtiyozlar» (−summa, o'quvchi
+  soni, tur chiplari), «Direktor tasdig'i kutmoqda» (avatar, tur · summa · kim), «Ko'rib chiqish».
+- **Hamkorlar va 3-shaxslar** (`/settings-partners`): sarlavha o'ngida «Hamkor qo'shish» (ikkilamchi) va «3-shaxs
+  qo'shish» (asosiy) — 460px oyna; hamkorlar jadvali + ulushlar chizig'i (100% bo'lsa `brand`, aks holda `warning`
+  va izoh), «Jami N%» belgisi; 3-shaxslar ro'yxati; o'ngda «{o'tgan oy} foydasi» (daromad, xarajat `danger`, sof foyda
+  % bilan `success`) → Foyda va zarar.
+- **Google Sheets va Telegram** (`/finance-sync`, sozlamalar ramkasida, menyuda «Integratsiyalar» faol): holat
+  banneri (Hammasi sinxron `success` / navbatda `info` / xato `warning` / o'chirilgan `surface-2`) + «Qayta
+  yuborish»; 4 ko'rsatkich; «Oqimlar» jadvali (varaq, Telegram, oxirgi yozuv); «Yuborilmagan yozuvlar» (bo'sh bo'lsa
+  punktir ramkada `success` izoh); «Tekshiruvlar tarixi» (vaqt, kim, navbat, 4 oqim ✓/!, holat belgisi).
+- **Bonusim** (`/my-bonus`, telefon; profil menyusida «Bonusim»): `brand-bg` karta (shu oy bonusi, N × summa,
+  reja chizig'i, «yana N ta → +summa»), Ko'rsatkichlar (liddan o'quvchiga %, prognoz), O'tgan oy, izoh.
+- Kodda: `components/v2/settings/` — PayrollSettingsV2, BonusKpiV2, DiscountsV2, PartnersV2, SyncV2, financeKit;
+  `components/v2/account/MyBonusV2.tsx`. Server: `lib/payrollSettings.ts`, `lib/bonusKpi.ts`, `lib/discountRules.ts`,
+  `lib/discountSettingsPage.ts`, `lib/partnersPage.ts`; `/api/payroll-settings`, `/api/bonus-kpi`,
+  `/api/discount-rules`, `/api/partners-overview`, `/api/my-bonus`. Rasmdan farqlar — `SAVOLLAR.md` 520–526.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).
