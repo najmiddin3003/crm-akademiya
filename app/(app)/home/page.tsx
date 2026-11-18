@@ -35,6 +35,9 @@ import { isPathAllowed } from "@/lib/permissions";
 import { ensureIndexes } from "@/lib/mongodb";
 import GroupSchedulePage from "@/components/groups/GroupSchedulePage";
 import { getServerT } from "@/lib/serverT";
+import TeacherHomeV2 from "@/components/v2/teacher/TeacherHomeV2";
+import { resolveTeacher } from "@/lib/teacherDesk";
+import { currentUiVersion } from "@/lib/uiVersionServer";
 
 /** `hr_employees.turi` -> o'sha lavozimning bosh sahifasi. */
 const HOME_BY_POSITION: Record<string, string> = {
@@ -69,9 +72,18 @@ async function positionHome(user: CurrentUser): Promise<string | null> {
   return isPathAllowed(target, user.permissions) ? target : null;
 }
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ teacher?: string }> }) {
   const user = await getCurrentUser();
   const { t } = await getServerT();
+  const { teacher } = await searchParams;
+
+  // 45-qism: O'QITUVCHI — o'z ish stoli (components/v2/teacher/TeacherHomeV2.tsx). Rahbar `?teacher=ISM` bilan
+  // istalgan o'qituvchi bosh sahifasini ko'radi. Faqat yangi versiyada; eski versiyada — avvalgi jadval.
+  if (user && (await currentUiVersion()) === "v2") {
+    const asAdmin = user.role === "admin" && typeof teacher === "string" && teacher.trim();
+    if (asAdmin) return <TeacherHomeV2 teacher={teacher!.trim()} />;
+    if (user.role !== "admin" && (await resolveTeacher(await ensureIndexes(), user))) return <TeacherHomeV2 />;
+  }
 
   if (user) {
     const target = await positionHome(user);

@@ -2972,6 +2972,39 @@ Ma'lumot — Sotuv → Referallar (29-qism). O'quvchi/ota-ona hali taklif qiluvc
 Chek oynasi (28-qism, ReceiptDialogV2) rasm bilan bir xil — o'zgartirilmadi. Rasmdagi to'lov tarixidagi «Guruh» ustuni
 yo'q: to'lov yozuvi guruhga bog'lanmaydi (qaysi oy uchun — bor).
 
+**550. O'qituvchi → bosh sahifa: kim o'qituvchi** — taxmin
+O'qituvchi — `hr_employees.turi = teacher` xodimi, guruhlari — guruh kartasidagi o'qituvchi ismi bo'yicha (gamifikatsiya
+qoidasi bilan bir xil). Yangi versiyada uning `/home` sahifasi — o'qituvchi ish stoli; rahbar `/home?teacher=ISM` bilan
+istalgan o'qituvchi ko'rinishini ochadi. Chap menyu (rol ruxsatlari) o'zgartirilmadi — «Guruhlarim» va «Tekshirish»ga
+bosh sahifadan o'tiladi. Menyuga alohida band kerakmi?
+
+**551. O'qituvchi → Dars oynasi: mavzu va kurs dasturi** — QAROR KERAK
+Rasmda «Kurs dasturidan · 17 / 36 o'tilgan» va keyingi mavzu tanlovi bor — tizimda kurs dasturi (darslar ro'yxati) yo'q.
+Hozir mavzu erkin matn + oldingi 3 dars mavzusi ko'rinadi (`lesson_topics`). Kurs dasturini Kurs sahifasiga kiritish
+kerakmi? «18-dars» — guruhning shu kungacha davomat qo'yilgan kunlari soni + 1.
+
+**552. Dars oynasi: «Yangi vazifadan oldin baholash»** — QAROR KERAK
+Rasmdagi rahbar sozlamasi qurildi (`app_settings.teacher_desk.requireCheck`), lekin sukut bo'yicha O'CHIQ va hozircha
+sozlamalar sahifasida tugmasi yo'q. Yoqilsinmi va qaysi sahifaga qo'yilsin (Sozlamalar → O'quv bo'limi)?
+
+**553. Vazifa tekshirish: o'quvchining ishi** — QAROR KERAK
+Rasmda o'quvchi yuborgan daftar rasmi va izohi bor — o'quvchi kabinetidan ish yuborish hali yo'q (fayl saqlash kerak).
+Hozir o'qituvchi daftar yoki darsdagi tekshiruv bo'yicha baholaydi; «Topshirdi 7 / 10», «Vaqtida / kech» ko'rinmaydi.
+Ro'yxat — guruh a'zolari (`group_memberships`), darsda yo'qlar (muddat kuni kelmadi/sababli) hisobga olinmaydi.
+
+**554. Vazifa tekshirish: tanga qachon yoziladi** — taxmin
+✓ / × tangasi gamifikatsiya qoidasi bo'yicha faqat o'quvchi BUGUN shu guruhda darsda bo'lsa yoziladi. Boshqa kunda
+tekshirilsa — keyingi darsda dars oynasi ochilganda (davomatdan keyin) o'zi yoziladi. Ball tangaga ta'sir qilmaydi.
+
+**555. Bosh sahifa: Oyligim** — taxmin
+«Jami oylik» = shu oy o'qituvchi orqali tushgan pul (qaytarilgani ayirilgan) × xodim kartasidagi foiz; «Chiqarilgan
+avans va oylik» — kassadan chiqqani; qolgani — farq (Moliya → Oylik bilan bir manba, oklad va bonus/jarima kirmaydi).
+Xodim kartasi o'qituvchi ismi bilan topilmasa karta chiqmaydi.
+
+**556. O'qituvchi: tez orada** — ma'lum
+Vazifaga fayl / havola biriktirish, ota-onaga botdan xabar yozish, o'quvchi kartasidagi «Natijalari» (imtihon sahifasiga
+o'tadi, o'quvchi bo'yicha filtrsiz), qorong'i mavzu rasmlari alohida tekshirilmadi.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)

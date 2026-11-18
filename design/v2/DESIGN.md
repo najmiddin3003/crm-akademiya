@@ -1473,6 +1473,29 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   server `lib/studentCabinet.ts` (attendanceHistory, branchAvg), `lib/studentUzbmb.ts`, `lib/studentReferral.ts`,
   `lib/gamification/studentPage.ts` (earnRules, inStock). Rasmdan farqlar — `SAVOLLAR.md` 543–549.
 
+## O'qituvchi ish stoli: bosh sahifa, dars oynasi, vazifa tekshirish, guruhlarim (45-qism, 18.11.2026)
+
+- **Bosh sahifa** (o'qituvchi `/home`; rahbar — `/home?teacher=ISM`, tepada «Rahbar ko'rinishi» `info` qatori): 4 ko'rsatkich
+  (Keldim, bugungi dars, tekshirilmagan ish `warning`, qolgan oylik), «Keldim» bosilmagan — `warning` qator + «Keldim».
+  «Bugungi darslar» — vaqt ustuni + `brand` chiziq, nom, holat belgisi (Hozir · N daqiqa `brand-bg` / boshlanadi /
+  Yakunlandi `success`), 4 qadam kartasi (✓ `success` doira · qulf `warning` · raqam), «Darsni ochish» (hozir — asosiy).
+  «Tekshirilmagan uy vazifalari» qatorlari, «Rolingiz» (Ko'rasiz ✓ / Ko'rinmaydi ×). O'ngda Oyligim, Birinchi darsga
+  keladiganlar (lid telefoni ko'rinmaydi — qulf izohi), Topshiriqlarim. Telefonda ko'rsatkichlar 2×2.
+- **Dars oynasi** (`/teacher-lesson?groupId=`): sarlavha «Dars · sana, kun», o'ngda «Davom etmoqda / Dars tugashiga N
+  daqiqa» va «Darsni yakunlash» (oxirgi 10 daqiqada — asosiy). 4 qadam kartasi (telefonda — bo'lim tanlovi).
+  «Davomat va tanga»: segment Keldi `success` / Kechikdi `warning` / Kelmadi `danger` / Sababli; ostida o'tgan vazifa
+  natijasi (✓ ball `success`, × `danger`, tekshirilmagan `warning`); faollik −/+; «Bugun» jami; «±» sabab oynasi.
+  Saqlanmagan bo'lsa — `warning-bg` qator «Qolganlarni «Keldi» deb saqlash». O'ngda «Mavzu» (matn, izoh, oldingi darslar)
+  va «Uy vazifasi» (qulf holati `warning-bg` qutisi + «Tekshirish · N ta ish»; berilgan — ko'rinish + «Tahrirlash»).
+- **Vazifa tekshirish** (`/teacher-check`): segment Kutmoqda / Tekshirilgan / Hammasi + guruh; chapda vazifa kartalari
+  (ochilgani — baholandi chizig'i, o'quvchilar: tanlangani `brand-bg` + chap chiziq, «Ochiq»), «Darsda yo'q» bloki.
+  O'ngda baholash: Bajarildi `success` / Bajarilmadi `danger`, ball kataklari (tanlangan `brand`), izoh, tanga izohi
+  `warning-bg`, oxirgi ish — `success-bg` qulf izohi, «Saqlash» / «Saqlash va keyingisi».
+- **Guruhlarim** (`/teacher-groups`): guruh kartalari (tanlangani `brand` chegara), o'quvchilar jadvali (sariq — oyda
+  dars yoki vazifa qoldirgan), o'ng kartada o'quvchi — «Faqat ko'rish», guruhlari, 4 katak, mavsumiy mezon chiziqlari,
+  ota-ona (bot), to'lov/qarz ko'rinmasligi izohi.
+- Kodda: `components/v2/teacher/*`, server `lib/teacherDesk.ts`, `/api/teacher`. Rasmdan farqlar — `SAVOLLAR.md` 550–556.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).
