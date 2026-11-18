@@ -1385,6 +1385,22 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   `lib/positionsPage.ts`, `lib/smsDevicesPage.ts`; `/api/lead-settings/stats`, `/api/reasons-overview`,
   `/api/positions-overview`, `/api/sms-devices-overview`. Rasmdan farqlar — `SAVOLLAR.md` 527–532.
 
+## Qolgan sozlamalar — mashg'ulotlar, baholash darajalari, dars eslatmalari (41-qism, 18.11.2026)
+
+- **Menyu** O'quv → Qo'shimcha mashg'ulotlar, Baholash (faqat direktor). Forma maydonlari — 40-qismdagi Lid sozlamalari.
+- **Qo'shimcha mashg'ulotlar** (`/settings-activities`): raqamlangan ro'yxat (qalam, ×), pastda «Yangi mashg'ulot nomi»
+  + «Qo'shish»; bo'sh bo'lsa punktir ramkada «Hali mashg'ulot yo'q». Sarlavhadagi tugma maydonga fokus beradi.
+- **Baholash** (`/settings-assessment`): 0–100% rangli shkala chizig'i (har daraja o'z rangida, nomi ichida), jadval
+  (nuqta + nom, minimal, maksimal, rang nomi, qalam/×), qamrov belgisi (`success` yoki `warning` — bo'shliq/ustma-ust).
+  Qo'shish/tahrir — sahifa ichidagi karta: nomi, 2 ta foiz, 7 ta tayyor rang doirasi, to'qnashuv `warning` izohi.
+  O'ngda namuna sarhisob (rangli belgilar) va «Qayerda ko'rinadi» (Tez orada) → Mavsumiy baholash.
+- **Avtomatik xabarlar → Dars eslatmalari**: sahifa tablari «Hodisalar · N / Dars eslatmalari · N»; `info` izoh
+  (yuboruvchi ulanmagan); shablonlar jadvali + «Bir dars misolida» vaqt chizig'i (oldin / davomida / keyin);
+  o'ngda muharrir — «Qachon yuboriladi» segmenti, daqiqa, nomi, monospace matn, o'zgaruvchi chiplari, «O'quvchi
+  shunday ko'radi», izoh, pastda o'chirish, «Faol», «Saqlash» (o'zgarsa «Saqlanmagan» belgisi).
+- Kodda: `components/v2/settings/ActivitiesV2.tsx`, `AssessmentLevelsV2.tsx`, `components/v2/sales/LessonRemindersV2.tsx`.
+  Rasmdan farqlar — `SAVOLLAR.md` 533–535.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

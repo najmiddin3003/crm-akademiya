@@ -2881,6 +2881,22 @@ oynalari hali o'qimaydi. Kartaga va formaga ulaymizmi? O'quvchi turlari — O'qu
 Sabablar — radio qatorlar, «Boshqa sabab» — matn, ixtiyoriy izoh lidning izohlariga yoziladi; tugma «Rad etildi».
 Telefonda pastdan chiqadi, kompyuterda markazda.
 
+**533. Qo'shimcha mashg'ulotlar** — taxmin
+Ro'yxat eski tab bilan bir (`settings_activities`); faqat nomi. Hozircha hech qayerda ishlatilmaydi — mashg'ulotni
+guruh/jadval/o'quvchiga bog'lash keyingi bosqich. Rasmdagi sudrab tartiblash qilinmadi.
+
+**534. Baholash darajalari** — QAROR KERAK
+Darajalar (nom, minimal/maksimal foiz, tayyor rang) saqlanadi, 0–100% qamrov va ustma-ust tushish tekshiriladi.
+Imtihon sarhisobi va o'quvchi kabinetidagi natijalar hali bu darajani ko'rsatmaydi («Tez orada») — ulaylikmi?
+Rasmdagi «Mezonlar · 9» tabi o'rniga Mavsumiy baholash sahifasiga havola (mezonlar o'sha yerda yuritiladi).
+O'ngdagi sarhisob — namuna foizlar bilan.
+
+**535. Dars eslatmalari (bot)** — QAROR KERAK
+Shablonlar (oldin / davomida / keyin, daqiqa, matn, o'zgaruvchilar, Faol) eski «Bot eslatmalari» bilan bir hujjatda
+saqlanadi, lekin YUBORUVCHI YO'Q — botdan xabar ketmaydi. Har guruhning har darsi uchun o'quvchi va ota-onaga
+eslatma yuborishni yoqaylikmi (jadval bo'yicha har daqiqa ishlaydigan vazifa kerak)? «O'zimga sinab yuborish» va
+oylik statistikasi shu bilan birga qilinadi. Telefon ko'rinishi (bot chati) — muharrirdagi «O'quvchi shunday ko'radi».
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

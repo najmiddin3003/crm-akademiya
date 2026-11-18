@@ -13,6 +13,7 @@ import { NoticeBar, PageHead, PageShell, TH } from "@/components/v2/students/lis
 import { useReportData, useToday } from "@/components/v2/reports/reportHooks";
 import { dateOfIso, isoOf } from "@/components/v2/reports/reportFormat";
 import { renderAutoHtml, type AutoMessagesPayload, type AutoRow } from "@/lib/autoMessageTypes";
+import LessonRemindersV2 from "./LessonRemindersV2";
 
 // YANGI VERSIYA — SOTUV VA MARKETING → «AVTOMATIK XABARLAR» (36-qism, rasm «Avtomatik xabarlar»).
 // Hodisa bo'lganda o'quvchi va ota-onaga botdan o'zi ketadigan xabarlar: davr statistikasi, hodisalar jadvali
@@ -25,6 +26,9 @@ export default function AutoMessagesV2() {
   const today = useToday();
   const [range, setRange] = useState<DateRange>(() => ({ start: dateOfIso(`${today.slice(0, 7)}-01`), end: dateOfIso(today) }));
   const [sel, setSel] = useState("payment");
+  // 41-qism: «Hodisalar» va «Dars eslatmalari» tablari.
+  const [tab, setTab] = useState<"events" | "lessons">("events");
+  const [lessonCount, setLessonCount] = useState<number | null>(null);
   const from = range.start ? isoOf(range.start) : `${today.slice(0, 7)}-01`;
   const to = range.start ? isoOf(range.end ?? range.start) : today;
   const { data: d, error, reload } = useReadyData(`/api/auto-messages?from=${from}&to=${to}`);
@@ -54,6 +58,20 @@ export default function AutoMessagesV2() {
             <Kpi label={t("Navbatda")} value={k.pending} sub={t("SMS — operatorga topshirish navbatida")} />
           </section>
 
+          <div role="tablist" aria-label={t("Xabar turlari")} className="inline-flex gap-1 self-start rounded-v2-md border border-v2-border bg-v2-surface-2 p-1">
+            {(
+              [
+                ["events", `${t("Hodisalar")} · ${d.rows.length}`],
+                ["lessons", `${t("Dars eslatmalari")}${lessonCount !== null ? ` · ${lessonCount}` : ""}`],
+              ] as const
+            ).map(([key, label]) => (
+              <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={`h-8 rounded-v2-sm px-3 text-v2-small font-semibold ${tab === key ? "bg-v2-surface text-v2-text shadow-v2-sm" : "text-v2-text-2"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {tab === "lessons" && <LessonRemindersV2 onCount={setLessonCount} />}
+          {tab === "events" && (
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_430px]">
             <section className="overflow-hidden rounded-v2-lg border border-v2-border bg-v2-surface shadow-v2-sm">
               <div className="flex items-center justify-between gap-2 px-4 py-3">
@@ -119,6 +137,7 @@ export default function AutoMessagesV2() {
             </section>
             <Editor key={`${cur.key}:${cur.text}:${cur.enabled}`} r={cur} onSaved={reload} />
           </div>
+          )}
         </>
       )}
     </PageShell>
