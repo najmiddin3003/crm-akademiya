@@ -51,6 +51,10 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   "/settings-devices",
   // «Bonusim» (39-qism) — xodim faqat O'Z sotuv bonusini ko'radi (app/api/my-bonus).
   "/my-bonus",
+  // O'qituvchi ish stoli (45-qism) — sahifa o'zi tekshiradi: faqat o'qituvchi (o'z guruhlari) yoki rahbar.
+  "/teacher-lesson",
+  "/teacher-check",
+  "/teacher-groups",
   "/birthdays",
   // BOSH SAHIFA. Sidebar daraxtida "/home" bandi yo'q, ya'ni uni hech bir
   // rolda belgilab bo'lmaydi — ochiq qoldirilmasa proxy.ts dagi sahifa
