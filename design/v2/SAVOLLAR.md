@@ -2848,7 +2848,38 @@ Profil menyusida «Bonusim»; xodim faqat o'z bonusini ko'radi, direktor Bonus v
 oynasini ochadi. «Birinchi javob (daqiqa)» ko'rsatkichi yo'q — lidga birinchi javob vaqti saqlanmaydi.
 
 **526. Lavozim va stavkalar** — taxmin
-Rasmdagi menyuda «Lavozim va stavkalar» bandi bor — 39-qism rasmlarida sahifasi yo'q, menyuga qo'shilmadi.
+39-qismda sahifasi yo'q edi; 40-qismda qo'shildi (527-savolga qarang).
+
+**527. Sabablar** — taxmin
+Uch tur: Ketdi (o'quvchi holati oynasi — endi ro'yxatdan tez tanlash chiplari bor, matnni qo'lda ham yozish mumkin),
+Bekor qilindi (eski buyurtma oynasidagi rad etish), Davomat («sababli»). Soni — oxirgi 3 oy. Tur ro'yxati bo'sh
+bo'lsa tizim standart ro'yxatni ishlatadi — sahifa uni «Tahrirlash uchun ro'yxatga olish» bilan ko'rsatadi; «Ketdi»
+uchun standart yo'q, eng ko'p yozilganlar taklif qilinadi. Rasmdagi sudrab tartiblash qilinmadi.
+
+**528. Lavozim va stavkalar — oklad** — QAROR KERAK
+Ro'yxatlar eski «Menejer / O'qituvchilar grading tizimi» bilan bir. Rasmda «Oylik va soliq'da oklad shu jadvaldan
+olinadi» deyilgan — tizimda oklad xodim kartasida filial bo'yicha alohida kiritiladi, stavkadan OLINMAYDI. Okladni
+lavozim + bandlikdan avtomatik olaylikmi (kartada qo'lda kiritish o'chadi)? Hozircha misol kartasi farqni ko'rsatadi.
+«O'zgarishlar tarixi» qilinmadi.
+
+**529. Ommaviy oferta** — taxmin
+Bo'limlar eski tab bilan bir hujjatda; tartib sudrash o'rniga yuqoriga/pastga tugmalari, har o'zgarish darhol
+saqlanadi. «Tanishdim» tasdig'i o'quvchi kabinetida hali so'ralmaydi (42-qism — kabinet kirishi). «Majburiy bo'lim
+matni o'zgarsa hamma qayta tasdiqlaydi» (Taklif) — qilinmadi.
+
+**530. SMS qurilmalar** — taxmin
+Ro'yxat eski tab bilan bir. Telefondagi SMS ilovasi bilan ulanish yo'q — barcha SMS Eskiz orqali ketadi; «Aloqa»
+(Onlayn/Oflayn) qo'lda belgilanadi. SMS operatorlar: Eskiz — server sozlamasidan (ulangan/sozlanmagan); Devo SMS,
+Play mobile — «Tez orada».
+
+**531. Lid sozlamalari — belgi, teg va forma maydonlari** — QAROR KERAK
+Yo'nalish va ro'yxatlar — haqiqiy (so'rovnoma va lid kartasi shu sozlamani o'qiydi). Telefon raqami belgilari va
+hashtaglar saqlanadi, lekin lid/o'quvchi kartasida hali tanlanmaydi; «Forma maydonlari» saqlanadi, lekin qo'shish
+oynalari hali o'qimaydi. Kartaga va formaga ulaymizmi? O'quvchi turlari — O'quv bo'limi → Kategoriya (yagona manba).
+
+**532. «Rad etdi» oynasi** — taxmin
+Sabablar — radio qatorlar, «Boshqa sabab» — matn, ixtiyoriy izoh lidning izohlariga yoziladi; tugma «Rad etildi».
+Telefonda pastdan chiqadi, kompyuterda markazda.
 
 ## Reja
 

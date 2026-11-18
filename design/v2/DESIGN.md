@@ -1355,6 +1355,36 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   `lib/discountSettingsPage.ts`, `lib/partnersPage.ts`; `/api/payroll-settings`, `/api/bonus-kpi`,
   `/api/discount-rules`, `/api/partners-overview`, `/api/my-bonus`. Rasmdan farqlar — `SAVOLLAR.md` 520–526.
 
+## Lid, o'quv va umumiy sozlamalar — sabablar, lavozimlar, oferta, SMS qurilmalar, Rad etdi (40-qism, 18.11.2026)
+
+- **Menyu**: Umumiy → Ommaviy oferta; O'quv → Sabablar; Moliya → Lavozim va stavkalar; Lidlar → Lid sozlamalari
+  (hammasi faqat direktor). SMS qurilmalar — Integratsiyalar ichida (menyuda «Integratsiyalar» faol, SMS kartasida
+  «SMS qurilmalar» tugmasi). Umumiy oyna — `ListItemDialogV2` (matn, summa, segment, tanlov maydonlari; 460px).
+- **Lid sozlamalari** (`/settings-leads?tab=`): 3 tab (segment). «Yo'nalish va ro'yxatlar» — yo'nalish kartalari
+  (rangli ikonka, «daraja/sinf so'raladi» belgisi, «So'rovnomada» almashtirgich, qalam; kurs chiplari soni bilan,
+  o'chirish ×, punktir «+ Kurs» — Enter bilan qo'shadi), daraja bosqichlari (nuqtali chiplar), «Boshqa joyda
+  sozlanadi» havolalari; o'ngda so'rovnoma ko'rinishi, Qulay vaqtlar, Sinflar, Rad etish sabablari. «Standartga
+  qaytarish» — tasdiq oynasi. «Belgi va teglar» — raqam belgilari (rang nuqtasi), hashtag chiplari, o'quvchi turlari
+  (Kategoriya'dan, soni bilan); tepada «kartaga hali chiqmaydi» izohi. «Forma maydonlari» — O'quvchi / Buyurtma /
+  Birinchi dars segmenti, 2 ustun almashtirgichlar, «Ism — doim · majburiy».
+- **Sabablar** (`/settings-reasons`): tur tablari (Hammasi/Ketdi/Bekor qilindi/Davomat, soni bilan), har tur kartasi
+  (ikonka `danger`/`warning`/`info`), sabab · soni · qalam · ×; ro'yxat bo'sh bo'lsa standart ro'yxat xira + «Tahrirlash
+  uchun ro'yxatga olish». O'ngda «Sabab turlari» va «Lid «Rad etdi» sabablari» → Lid sozlamalari.
+- **Lavozim va stavkalar** (`/settings-positions`): xodim lavozimlari jadvali (yarim / bir stavka, xodimlar), o'qituvchi
+  lavozimlari (bir stavka); o'ngda misol (stavka va kartadagi oklad, farq bo'lsa `warning` izoh), «Qanday ishlaydi».
+- **Ommaviy oferta** (`/settings-oferta`): `info` izoh («Tanishdim» hali so'ralmaydi), bo'limlar (raqam doirasi,
+  sarlavha, qisqa matn, Majburiy/Ixtiyoriy segmenti, ↑ ↓, qalam — joyida ochiladi: sarlavha + matn + «Bo'limni
+  saqlash», o'chirish); o'ngda ilovadagi ko'rinish (o'chiq almashtirgichlar, xira «Ilovaga kirish»).
+- **SMS qurilmalar** (`/settings-sms-devices`): `info` izoh; jadval (qurilma, kompaniya, `font-mono` yashirilgan IMEI,
+  moderator, Aloqa — bosib almashtiriladigan nuqta, Faol almashtirgich, qalam/savat); «Qurilma qo'shish» 3 qadam,
+  «SMS operatorlar» (ulangan `success`, sozlanmagan `warning`, Tez orada `info`).
+- **Rad etdi** (lid paneli, telefon/kompyuter): sabablar — to'liq kenglikdagi radio qatorlar (tanlangan `brand-bg` +
+  `brand` hoshiya), «Boshqa sabab», «Izoh (ixtiyoriy)», qizil «Rad etildi».
+- Kodda: `components/v2/settings/` — LeadSettingsV2, ReasonsV2, PositionsV2, OfertaV2, SmsDevicesV2, ListItemDialogV2;
+  `components/v2/leads/LeadRadModalV2.tsx`. Server: `lib/leadSettingsStats.ts`, `lib/reasonsPage.ts`,
+  `lib/positionsPage.ts`, `lib/smsDevicesPage.ts`; `/api/lead-settings/stats`, `/api/reasons-overview`,
+  `/api/positions-overview`, `/api/sms-devices-overview`. Rasmdan farqlar — `SAVOLLAR.md` 527–532.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).
