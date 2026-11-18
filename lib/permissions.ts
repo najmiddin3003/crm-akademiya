@@ -49,6 +49,8 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   "/settings-profile",
   "/settings-security",
   "/settings-devices",
+  // «Bonusim» (39-qism) — xodim faqat O'Z sotuv bonusini ko'radi (app/api/my-bonus).
+  "/my-bonus",
   "/birthdays",
   // BOSH SAHIFA. Sidebar daraxtida "/home" bandi yo'q, ya'ni uni hech bir
   // rolda belgilab bo'lmaydi — ochiq qoldirilmasa proxy.ts dagi sahifa

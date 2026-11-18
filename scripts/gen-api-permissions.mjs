@@ -109,6 +109,7 @@ const SHARED_EXTRA = [
   "/api/auth/unlock",
   "/api/auth/change-password", // Sozlamalar → Xavfsizlik
   "/api/my-account",          // Mening hisobim (37-qism)
+  "/api/my-bonus",            // Bonusim — faqat o'z bonusi (39-qism)
   "/api/profile",             // Sozlamalar → Profil
   "/api/sessions",            // Sozlamalar → Qurilmalar
   // Navbardagi filial tanlagichi — har bir sahifada turadi, ya'ni sahifa

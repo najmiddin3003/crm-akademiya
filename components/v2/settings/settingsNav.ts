@@ -49,7 +49,11 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "Kassalar", href: "/settings-finance?tab=cashboxes", adminOnly: true },
       { label: "Kirim-chiqim toifalari", href: "/finance-tx-types" },
       { label: "To'lov turlari", href: "/settings-finance?tab=payment-methods" },
-      { label: "Bonus sabablari", note: "Bonus sabablari ro'yxati hali yo'q" },
+      // 39-qism: oylik, bonus/KPI, chegirmalar, hamkorlar — faqat direktor.
+      { label: "Oylik va soliq", href: "/settings-payroll", adminOnly: true },
+      { label: "Bonus va KPI", href: "/settings-bonus", adminOnly: true },
+      { label: "Chegirmalar", href: "/settings-discounts", adminOnly: true },
+      { label: "Hamkorlar", href: "/settings-partners", adminOnly: true },
       { label: "Integratsiyalar", href: "/settings-integrations", adminOnly: true },
     ],
   },
