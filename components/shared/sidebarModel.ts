@@ -215,7 +215,7 @@ export const IMPLEMENTED_ROUTES = new Set([
   "/settings-profile", "/settings-security", "/settings-nazorat", "/settings-notifications", "/settings-referral",
   "/settings-holidays", "/settings-features", "/settings-subscription",
   "/settings-mohirai", "/settings-staff-app", "/settings-student-app", "/settings-payroll", "/settings-bonus", "/settings-discounts", "/settings-partners", "/my-bonus",
-  "/settings-reasons", "/settings-positions", "/settings-oferta", "/settings-sms-devices", "/settings-leads",
+  "/settings-reasons", "/settings-positions", "/settings-oferta", "/settings-sms-devices", "/settings-leads", "/settings-activities", "/settings-assessment",
   // Gamifikatsiya (TZ v1.4, 26.09.2026 dan bosqichma-bosqich)
   "/gamification-lesson", "/gamification-students", "/gamification-ranking", "/gamification-competition", "/gamification-shop",
   // Vaqtinchalik tugma (faqat admin)

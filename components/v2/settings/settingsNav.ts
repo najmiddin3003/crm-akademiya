@@ -43,6 +43,9 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: "Kategoriyalar", href: "/edu-category" },
       { label: "Imtihon fanlari", href: "/settings-academic?tab=exam-subjects" },
       // 40-qism: sabablar (Ketdi / Bekor qilindi / Davomat).
+      // 41-qism: qo'shimcha mashg'ulotlar va baholash darajalari.
+      { label: "Qo'shimcha mashg'ulotlar", href: "/settings-activities", adminOnly: true },
+      { label: "Baholash", href: "/settings-assessment", adminOnly: true },
       { label: "Sabablar", href: "/settings-reasons", adminOnly: true },
     ],
   },
