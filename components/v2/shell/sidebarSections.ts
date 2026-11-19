@@ -7,6 +7,7 @@ import {
   FileText,
   GraduationCap,
   House,
+  LayoutGrid,
   ListChecks,
   Megaphone,
   ScrollText,
@@ -37,7 +38,7 @@ export interface V2Section {
 export const HOME_KEY = "home";
 
 export const V2_SECTIONS: V2Section[] = [
-  { title: null, keys: [HOME_KEY, "tasks"] },
+  { title: null, keys: ["owner", HOME_KEY, "tasks"] },
   { title: "O'quv jarayoni", keys: ["leads", "groups", "students", "education", "imtihon", "blok-test", "gamification"] },
   { title: "Moliya va sotuv", keys: ["finance", "sales", "reports"] },
   { title: "Jamoa va nazorat", keys: ["boshqaruv", "nazorat"] },
@@ -48,6 +49,7 @@ export const V2_BOTTOM_KEYS = ["settings", "action-log", "temp"];
 
 /** Ikonkalar — lucide, chiziq 1.75 (DESIGN.md → Ikonkalar). */
 export const V2_ICONS: Record<string, LucideIcon> = {
+  owner: LayoutGrid,
   [HOME_KEY]: House,
   tasks: ListChecks,
   leads: Megaphone,

@@ -333,7 +333,7 @@ export default function DailyHandoverV2() {
   );
 }
 
-function AcceptDialog({ card, data, onClose, onDone }: { card: HandoverCard; data: Payload; onClose: () => void; onDone: () => void }) {
+export function AcceptDialog({ card, data, onClose, onDone }: { card: HandoverCard; data: Payload; onClose: () => void; onDone: () => void }) {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
   const sys = card.pending ? card.pending.methods : card.methods;
@@ -500,7 +500,7 @@ function AcceptDialog({ card, data, onClose, onDone }: { card: HandoverCard; dat
   );
 }
 
-function ReturnDialog({ card, onClose, onSubmit }: { card: HandoverCard; onClose: () => void; onSubmit: (comment: string) => Promise<boolean> }) {
+export function ReturnDialog({ card, onClose, onSubmit }: { card: HandoverCard; onClose: () => void; onSubmit: (comment: string) => Promise<boolean> }) {
   const { t } = useT();
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);

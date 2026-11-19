@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUp, CalendarCheck, Check, ChevronRight, Clock, Eye, Info, Loader2, LogOut, Megaphone, PlusCircle, Target, UserRound, Wallet, X } from "lucide-react";
+import { ArrowUp, HandCoins, CalendarCheck, Check, ChevronRight, Clock, Eye, Info, Loader2, LogOut, Megaphone, PlusCircle, Target, UserRound, Wallet, X } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
+import AdvanceRequestDialog from "@/components/v2/owner/AdvanceRequestDialog";
 import { useToast } from "@/components/ui/Toast";
 import { initialsOf } from "@/components/v2/employees/employeeBits";
 import { useReportData } from "@/components/v2/reports/reportHooks";
@@ -36,6 +37,7 @@ interface Data {
 
 export default function ManagerHomeV2({ as }: { as?: string }) {
   const { t } = useT();
+  const [advance, setAdvance] = useState(false);
   const fmt = useProfileFmt();
   const { open } = useCreate();
   const { showError, showSuccess } = useToast();
@@ -92,12 +94,17 @@ export default function ManagerHomeV2({ as }: { as?: string }) {
             <PlusCircle className="size-4" strokeWidth={1.75} aria-hidden />
             {t("Topshiriq berish")}
           </Link>
+          <button type="button" onClick={() => setAdvance(true)} className={secondaryBtn}>
+            <HandCoins className="size-4" strokeWidth={1.75} aria-hidden />
+            {t("Avans so'rovi")}
+          </button>
           <button type="button" onClick={() => open("payment")} className={primaryBtn}>
             <Wallet className="size-4" strokeWidth={1.75} aria-hidden />
             {t("To'lov qabul qilish")}
           </button>
         </div>
       </div>
+      {advance ? <AdvanceRequestDialog onClose={() => setAdvance(false)} /> : null}
 
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-v2-lg border border-v2-border bg-v2-border xl:grid-cols-4">
         <Kpi icon={<Wallet className="size-5" strokeWidth={1.75} />} tone="bg-v2-success-bg text-v2-success" value={fmtSum(d.kpi.revenue)} unit={t("so'm")} label={t("Tushum · {m} · {n} ta to'lov", { m: fmt.monthLower(d.today.slice(0, 7)), n: d.kpi.payments })} />

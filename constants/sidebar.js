@@ -26,6 +26,32 @@
 // bo'lsa ko'rsatiladi (Sozlamalar — menu + href, shuning uchun chevronsiz).
 
 export const SIDEBAR_ITEMS = [
+  // RAHBAR PANELI (48-qism, 19.11.2026) — barcha filiallar bitta joyda, faqat Rahbar (admin). `adminOnly` —
+  // ruxsatlar daraxtiga tushmaydi (lib/permissions.ts); haqiqiy to'siq sahifalarda va /api/owner da.
+  // Ichki bandlarning oxirgi beshtasi — mavjud Moliya sahifalari (Moliya menyusida ham qoladi: menejer va
+  // boshqa rollar ularni o'z ruxsati bilan ko'radi).
+  {
+    key: "owner",
+    icon: "i-grid",
+    label: "Rahbar paneli",
+    mobileHref: "/owner",
+    adminOnly: true,
+    menu: {
+      variant: "list",
+      width: 240,
+      items: [
+        { label: "Umumiy ko'rinish", href: "/owner" },
+        { label: "Rahbar kassasi", href: "/owner-cash" },
+        { label: "Ko'chirmalar", href: "/owner-transfers" },
+        { label: "Tasdiqlar", href: "/owner-approvals" },
+        { label: "Oylik chiqarish", href: "/finance-payroll" },
+        { label: "Moliyaviy reja", href: "/finance-revenue-plan" },
+        { label: "Bonus", href: "/finance-bonus" },
+        { label: "Jarima", href: "/finance-penalty" },
+        { label: "Moliya analitikasi", href: "/finance-analytics" },
+      ],
+    },
+  },
   {
     key: "tasks",
     icon: "i-list-todo",

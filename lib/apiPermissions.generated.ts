@@ -89,6 +89,7 @@ export const SHARED_API: readonly string[] = [
   "/api/teacher",
   "/api/front",
   "/api/staff-desk",
+  "/api/owner",
   "/api/people/directory",
   "/api/profile",
   "/api/pupils",

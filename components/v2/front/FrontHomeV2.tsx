@@ -1,8 +1,10 @@
 "use client";
 
-import { ArrowUp, Bell, CalendarDays, Check, ChevronRight, Clock, Eye, Loader2, Megaphone, MessageSquare, MinusCircle, Phone, PlusCircle, Wallet, X } from "lucide-react";
+import { useState } from "react";
+import { ArrowUp, HandCoins, Bell, CalendarDays, Check, ChevronRight, Clock, Eye, Loader2, Megaphone, MessageSquare, MinusCircle, Phone, PlusCircle, Wallet, X } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
+import AdvanceRequestDialog from "@/components/v2/owner/AdvanceRequestDialog";
 import { useReportData } from "@/components/v2/reports/reportHooks";
 import { useCreate } from "@/components/v2/shell/CreateContext";
 import { NoticeBar } from "@/components/v2/students/lists/listKit";
@@ -50,6 +52,7 @@ export function fmtWait(t: (k: string, v?: Record<string, string | number>) => s
 
 export default function FrontHomeV2({ as }: { as?: string }) {
   const { t } = useT();
+  const [advance, setAdvance] = useState(false);
   const fmt = useProfileFmt();
   const { open } = useCreate();
   const { data: d, error } = useReportData<Data>(`/api/front?view=admin${as ? `&as=${encodeURIComponent(as)}&mode=admin` : ""}`);
@@ -87,12 +90,17 @@ export default function FrontHomeV2({ as }: { as?: string }) {
             <PlusCircle className="size-4" strokeWidth={1.75} aria-hidden />
             {t("Yangi lid")}
           </Link>
+          <button type="button" onClick={() => setAdvance(true)} className={secondaryBtn}>
+            <HandCoins className="size-4" strokeWidth={1.75} aria-hidden />
+            {t("Avans so'rovi")}
+          </button>
           <button type="button" onClick={() => open("payment")} className={primaryBtn}>
             <Wallet className="size-4" strokeWidth={1.75} aria-hidden />
             {t("To'lov qabul qilish")}
           </button>
         </div>
       </div>
+      {advance ? <AdvanceRequestDialog onClose={() => setAdvance(false)} /> : null}
 
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-v2-lg border border-v2-border bg-v2-border xl:grid-cols-4">
         <Kpi tone="danger" icon={<Megaphone className="size-5" strokeWidth={1.75} />} value={String(d.unansweredTotal)} label={d.unanswered[0] ? t("Javobsiz lid · biri {w}dan oshdi", { w: fmtWait(t, d.unanswered[0].waitMin) }) : t("Javobsiz lid")} />
