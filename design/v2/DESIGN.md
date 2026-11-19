@@ -1515,6 +1515,26 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   oxirgi qo'ng'iroqlar jadvali.
 - Kodda: `components/v2/front/*`, server `lib/frontDesk.ts`, `/api/front`. Rasmdan farqlar — `SAVOLLAR.md` 557–563.
 
+## Menejer, IT va xizmat xodimi: bosh sahifa, tasdiq kutmoqda, sozlamalar faqat ko'rish (47-qism, 19.11.2026)
+
+- **Menejer · bosh sahifa** (`/home`; rahbar — `/home?desk=ISM&mode=manager`): 4 ko'rsatkich (tushum, yangi o'quvchi
+  rejasi — orqada `danger`, davomat, qarzdor). «Tasdiq kutmoqda» bo'limlari (Topshiriqlar · Sovg'a so'rovi · Rahbarda —
+  ko'rish), qatorda tur katagi (topshiriq `brand-bg`, sovg'a `warning-bg`, rahbarda `surface-2` qulf), «Qaytarish /
+  Rad etish» va «Tasdiqlash» `brand`. «Xodimlar · bugun» jadvali (Vaqtida `success`, Kechikdi `warning`, Kelmadi
+  `danger`), Kechikdi / Ketdi qatorlari. O'ngda Savdo plani (adminlar bo'yicha chiziq, liddan o'quvchigacha 4 katak —
+  to'ladi `danger-bg`), Kassalar (kun — `warning`), «E'tibor talab qiladi» (ikonka katagi + ›). «Rolingiz» — 3 ustun
+  (Boshqarasiz ✓, Faqat ko'rasiz 👁 `info`, Ko'rinmaydi ×).
+- **Tasdiq kutmoqda** (`/approvals`): tur segmenti, chapda ro'yxat (tanlangani `brand-bg` + chap chiziq, tur belgisi,
+  vaqt), «Bugun hal qilingan». O'ngda panel: topshiriq — holat, bajaruvchi, muddat, muhimlik/jarima, xodim izohi;
+  Qaror: Tasdiqlash `success` / Qaytarish `warning` (izoh + yangi muddat majburiy, «Qaytarish · sana»). Sovg'a — taklif
+  qiluvchi, sovg'a `warning-bg`, 3 katak (balans a → b), «Tasdiqlansa» ro'yxati; rahbarda — faqat ko'rish (qulf izohi).
+- **Sozlamalar faqat ko'rish** (menejer, Nazorat qoidalari): tepada `info-bg` banner (qulf, matn, «Faqat ko'rish»),
+  tugmalar o'chiq.
+- **IT / xizmat xodimi · bosh sahifa** (telefon birinchi): «Keldingiz · vaqt» `success-bg` kartasi (bosilmagan —
+  `warning-bg`), «Topshiriqlarim» — har biri katta «✓ Bajardim» tugmasi, qolgan vaqt `warning`; IT — «Tizim holati»
+  (Ishlayapti `success` / Oflayn `warning`, qulf izohi); xizmat — «Bu hafta · ish vaqti» (bugun `brand`), «Qolgan oylik».
+- Kodda: `components/v2/staffdesk/*`, server `lib/staffDesk.ts`, `/api/staff-desk`. Rasmdan farqlar — `SAVOLLAR.md` 564–570.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

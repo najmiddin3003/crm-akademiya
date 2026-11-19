@@ -3041,6 +3041,39 @@ Daraja mosligi va o'rin bandligi belgisi hali yo'q.
 «Birinchi darsdan keyin» va «Darsga kelmaganga» — hozircha qilingan qo'ng'iroqlar soni (kerak bo'lganlar ro'yxati
 alohida hisoblanmaydi). Sotuv bonusi va «Oyligim» — mavjud sahifalarda.
 
+**564. Menejer, IT, xizmat xodimi — qanday aniqlanadi** — QAROR KERAK
+Xodim kartasida turi faqat «o'qituvchi» yoki «moderator». Ish stoli filial biriktiruvidagi ROL NOMIDAN olinadi:
+«Menejer» → menejer, «IT …» → IT mutaxassisi, «Xizmat / farrosh / qorovul» → xizmat xodimi. Hozir bunday rollar
+yo'q — Boshqaruv → Rollarda yaratib, xodimga biriktirish kerak. Shunday qilaylikmi yoki xodim kartasiga «lavozim»
+maydoni qo'shilsinmi?
+
+**565. Tasdiq kutmoqda: profil so'rovlari** — QAROR KERAK
+Rasmda ota-ona kabinetidan «telefon / ism o'zgartirish» so'rovlari bor — kabinetda bunday so'rov yuborish yo'q (42-qismda
+kabinet faqat ko'rish). Hozir ro'yxatda: tasdiq kutayotgan topshiriqlar, referal sovg'a so'rovlari va rahbardagi alohida
+narx so'rovlari (faqat ko'rish). «Keldim — yuzi mos kelmadi» tasdig'i ham yo'q (Face ID xatosi faqat xabar).
+
+**566. Menejer · tushum va reja** — taxmin
+Tushum — shu oy filial kirimlari (to'lovlar); rasmdagi «rejaning 48%» uchun tushum rejasi (Moliyaviy reja) ulanmagan,
+faqat to'lovlar soni. Yangi o'quvchi rejasi — Sotuv → Savdo plani bilan bir xil. Davomat — shu oy filial o'quvchilari.
+
+**567. Menejer · E'tibor talab qiladi** — taxmin
+Hozir 3 xil: 24 soatdan beri qo'ng'iroq qilinmagan yangi lidlar, 2+ oy qarzdorlar, bugun kelmagan xodimlar. Rasmdagi
+«dars kuzatuvi — o'quvchilar bahosi past» (Ustozlar reytingi) hali ulanmagan.
+
+**568. Sozlamalar faqat ko'rish** — taxmin
+Menejer yangi versiyada Sozlamalar → Nazorat qoidalarini ko'radi, o'zgartira olmaydi (server ham rad etadi). Rasmdagi
+yangi ko'rinish (belgilash muddati, ketma-ket qoldirish, qo'ng'iroq 24 soat, dars kuzatuvi mezonlari) — bu sahifada
+hozir faqat avtomatik xabarlar; qolgan qoidalar sozlanmaydi (kod ichida). Boshqa sozlamalar menejerga ochilmadi.
+
+**569. IT · tizim holati** — taxmin
+Sinxron — oxirgi `sync_runs`; SMS qurilma — 3 soatdan ko'p aloqasiz bo'lsa «Oflayn»; QR/turniket — bugungi qaydlar;
+xodim ilovasi — ulangan qurilmalar; loginlar — 3 kun kirmagan hisoblar. Faqat ko'rish — sozlash rahbarda.
+
+**570. IT / xizmat · qolgan oylik** — taxmin
+Oklad (filial biriktiruvlaridagi ish haqi) × o'tgan ish kunlari / oydagi ish kunlari (ish jadvali bo'yicha) − shu oy
+chiqarilgan avans va oylik. Bonus, jarima, soliq kirmaydi — aniq hisob Moliya → Oylikda. «Bajardim»dan keyin rasm
+qo'shish — Topshiriqlar sahifasida.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)
