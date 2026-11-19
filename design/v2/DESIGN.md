@@ -1566,6 +1566,19 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
 - Kodda: `components/v2/owner/*`, server `lib/ownerPanel.ts`, `lib/advanceRequests.ts`, `/api/owner`. Farqlar —
   `SAVOLLAR.md` 571–580.
 
+## Umumiy tekshiruv — 1–48-qismlar moslandi (49-qism, 19.11.2026)
+
+Rasm «49-qism · Tekshiruv natijasi» — 24 band; ko'pi namuna raqamlari va atamalarni taxtalararo moslash (kodga
+tegmaydi). Koddagi o'zgarishlar:
+- **Dividend va Sarmoya — faqat Rahbar kassasida** (23-band): Kassalar kartasi menyusida (yangi va eski versiya)
+  faqat bosh kassada; server ham rad etadi (`lib/cashboxAdjust.ts` — «Dividend va Sarmoya faqat Rahbar kassasida»).
+- **Kassalar** (5-band): adminga Rahbar kassasi kartasi ko'rinmaydi, sarlavha «N ta filial kassasi» + «Rahbar kassasi
+  endi Rahbar panelida →». Bosh kassa egasi admin bo'lmasa — o'zgarishsiz.
+- **Ko'chgan bo'limlar** (15-band): Kunlik topshiruv va Filiallar holati tepasida `info-bg` izoh — yangi joyi
+  (Rahbar paneli → Ko'chirmalar / Umumiy ko'rinish) havolasi bilan; faqat admin.
+- Atamalar (16–21) yangi versiyada avvalgi qismlarda kiritilgan: Tanga, Birinchi dars, Sarhisob, Qabul admin.
+  Eski versiya matnlari o'zgarmadi. Farqlar — `SAVOLLAR.md` 581–584.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

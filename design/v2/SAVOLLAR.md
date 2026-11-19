@@ -3122,6 +3122,23 @@ ro'yxatida hozir faqat avans va narx/chegirma. Qo'shaylikmi?
 Rasmdagi «Panel · Kassa · Tasdiqlar · Filiallar · Menyu» pastki menyusi qilinmadi — telefonda sahifalar odatdagi
 yon menyu orqali ochiladi. Ko'chirmani telefonda sanab qabul qilish — o'sha oyna (moslashgan).
 
+**581. Chortoqni ikki filialga ajratish (49-qism, 22-band)** — SIZ QILASIZ
+Saytda «Akademiya 1 Chortoq» va «Akademiya 2 Chortoq» hali bitta filial. Bu kod emas, ma'lumot: Boshqaruv →
+Filiallar → «Filial qo'shish», so'ng guruh, xodim va kassalarni yangi filialga biriktirish. Kassalarga filial
+biriktirish (574) bilan birga qilinsa, Rahbar panelidagi taqqoslash to'g'ri bo'ladi.
+
+**582. Saytdagi 1 so'mlik «test» dividend yozuvlari (23-band)** — SIZ QILASIZ
+Endi filial kassasida Dividend/Sarmoya tugmasi yo'q va server rad etadi. 16-oktabrdagi eski «test» yozuvlarni
+Moliya → Kirim-chiqimda bekor qilish kerak (men prod bazaga tegmayman).
+
+**583. Nomlar xaritasi (24-band)** — ma'lumot uchun
+Yangi versiyada: «Blok testlar» → Imtihon → UzBMB, «Blok test turlari» → Sozlamalar → Imtihon fanlari (menyuda
+yashirilgan, havolalar ishlaydi), «Vaqtinchalik tugma» → «Vaqtinchalik bo'lim». Eski versiya menyusi o'zgarmadi.
+
+**584. Moslashning qolgan qismi** — taxmin
+Rasmdagi Rahbar telefoni pastki menyusi (12-band) va Rollar jadvalidagi Rahbar qatorlari (13-band) qilinmadi:
+Rahbar paneli `adminOnly`, rollarga berilmaydi. Moliya menyusidagi bandlar ikki joyda qoldi (572).
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)

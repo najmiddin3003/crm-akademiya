@@ -10774,5 +10774,9 @@
   "yopilgan oy": "closed month",
   "zarar": "loss",
   "Qaytim uchun mayda pul": "Small change",
-  "Filial xarajati uchun": "For branch expenses"
+  "Filial xarajati uchun": "For branch expenses",
+  "Rahbar kassasi endi Rahbar panelida": "The director's cash desk is now in the Director panel",
+  "Topshiruvni qabul qilish endi Rahbar paneli → Ko'chirmalarda": "Receiving handovers is now in Director panel → Transfers",
+  "Filiallar holati endi Rahbar paneli → Umumiy ko'rinish → Filiallar taqqoslashda": "Branch status is now in Director panel → Overview → Branch comparison",
+  "Dividend va Sarmoya faqat Rahbar kassasida": "Dividends and investment only in the director's cash desk"
 }
