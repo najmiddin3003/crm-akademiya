@@ -138,6 +138,12 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   const current = await col.findOne({ id: cashboxId });
   if (!current) return fail("Kassa topilmadi", 404);
 
+  // DIVIDEND VA SARMOYA — FAQAT RAHBAR (BOSH) KASSASIDA (49-qism, 19.11.2026): saytda filial kassasida ham
+  // chiqib, 1 so'mlik «test» yozuvlar qolgan edi. Rahbar paneli → Rahbar kassasi shu yerga yozadi.
+  if (/divid|sarmoya|investits/i.test(String(category ?? "")) && !current.isPrimary) {
+    return fail("Dividend va Sarmoya faqat Rahbar kassasida");
+  }
+
   const signedAmount = mode === "kirim" ? amount : -amount;
   // ERTA TEKSHIRUV — pastdagi oylik chegarasi so'rovlarini bekorga
   // qilmaslik uchun. Bu HIMOYA EMAS: haqiqiy qorovul quyida,

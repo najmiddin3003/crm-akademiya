@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bell, Check, CheckCircle2, Clock, Download, Info, Minus, Plus, TriangleAlert, Wallet } from "lucide-react";
+import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import V2Dialog from "@/components/v2/form/V2Dialog";
@@ -10,6 +11,7 @@ import V2Checkbox from "@/components/v2/ui/V2Checkbox";
 import V2Select from "@/components/v2/ui/V2Select";
 import { primaryBtn, secondaryBtn } from "@/components/v2/ui/buttons";
 import { emitMoneyChanged } from "@/components/v2/shell/v2Events";
+import { useShell } from "@/components/v2/shell/ShellContext";
 import { Avatar, Badge, NoticeBar, PageHead, PageShell, TH, dayMonth, downloadCsv, fmtNum, monthName } from "@/components/v2/students/lists/listKit";
 import { DENOMINATIONS, type DailyHandoverPayload, type HandoverCard } from "@/lib/dailyHandoverTypes";
 import { daysBetween } from "@/lib/studentListsTypes";
@@ -44,6 +46,7 @@ export default function DailyHandoverV2() {
   const [error, setError] = useState("");
   const [cashier, setCashier] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { isAdmin } = useShell();
   const [boxFilter, setBoxFilter] = useState("");
   const [acceptFor, setAcceptFor] = useState<HandoverCard | null>(null);
   const [returnFor, setReturnFor] = useState<HandoverCard | null>(null);
@@ -191,6 +194,12 @@ export default function DailyHandoverV2() {
           </button>
         }
       />
+      {/* 49-qism: qabul tomoni endi Rahbar paneli → Ko'chirmalarda ham (bir xil ma'lumot va oyna). */}
+      {isAdmin && (
+      <NoticeBar action={<Link href="/owner-transfers" className="font-medium text-v2-brand-text hover:underline">{t("Ko'chirmalar")} →</Link>}>
+        {t("Topshiruvni qabul qilish endi Rahbar paneli → Ko'chirmalarda")}
+      </NoticeBar>
+      )}
 
       <NoticeBar icon={Info}>
         {t("Rahbar qabul qilgach pul {primary}ga ko'chirma bo'lib o'tadi — kirim hisoblanmaydi, faqat joyi o'zgaradi. Farq bo'lsa izoh yozish majburiy.", { primary: data?.primary.name ?? t("Rahbar kassasi") })}

@@ -1365,7 +1365,8 @@ export default function CashboxesPage() {
                     </ActionTile>
                   </div>
                 )}
-                {showActions && showMore && (
+                {/* 49-qism: Dividend va Sarmoya — faqat bosh (Rahbar) kassasida. */}
+                {showActions && showMore && c.isPrimary && (
                   <div className="fc-tiles mt-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }} onClick={(e) => e.stopPropagation()}>
                     <ActionTile tone="#f59e0b" label={t("Dividend")} onClick={() => setDividendTarget(c)}>
                       <Coins />

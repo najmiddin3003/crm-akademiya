@@ -6,6 +6,7 @@ import { ChartColumn, Download, FileText, Plus, Wallet } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
 import { useToast } from "@/components/ui/Toast";
+import Link from "@/components/ui/Link";
 import Modal from "@/components/ui/Modal";
 import type { DateRange } from "@/components/ui/DateRangePicker";
 import CashboxDividendDrawer from "@/components/finance/CashboxDividendDrawer";
@@ -216,12 +217,15 @@ export default function CashboxesV2() {
 
   // Ro'yxat: bosh kassa eng tepada, qolgani id tartibida (API shunday beradi).
   const sorted = useMemo(() => [...cashboxes].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.id - b.id), [cashboxes]);
+  const shown = isAdmin ? cashboxes.filter((c) => !c.isPrimary) : cashboxes;
   const counts = {
-    active: cashboxes.filter((c) => !c.archived).length,
-    archived: cashboxes.filter((c) => c.archived).length,
-    all: cashboxes.length,
+    active: shown.filter((c) => !c.archived).length,
+    archived: shown.filter((c) => c.archived).length,
+    all: shown.length,
   };
-  const listed = sorted.filter((c) => (tab === "active" ? !c.archived : tab === "archived" ? c.archived : true));
+  // 49-qism: admin uchun Rahbar (bosh) kassasi bu ro'yxatda yo'q — u Rahbar paneli → Rahbar kassasida. Bosh kassa
+  // egasi admin bo'lmasa (eski sozlama) — ko'rinaveradi, aks holda o'z kassasini yo'qotardi.
+  const listed = sorted.filter((c) => (isAdmin && c.isPrimary ? false : tab === "active" ? !c.archived : tab === "archived" ? c.archived : true));
   const branchCount = cashboxes.filter((c) => !c.archived && !c.isPrimary).length;
   const hasPrimary = cashboxes.some((c) => c.isPrimary && !c.archived);
   const rangeText = rangeLabel(dateRange, lang, t);
@@ -363,8 +367,16 @@ export default function CashboxesV2() {
               ? t("Yuklanmoqda…")
               : cashboxes.length === 0
                 ? t("Kassa biriktirilmagan")
-                : [t("{n} ta filial kassasi", { n: branchCount }), hasPrimary ? t("bosh kassa") : ""].filter(Boolean).join(" · ")}
+                : isAdmin
+                  ? t("{n} ta filial kassasi", { n: branchCount })
+                  : [t("{n} ta filial kassasi", { n: branchCount }), hasPrimary ? t("bosh kassa") : ""].filter(Boolean).join(" · ")}
           </p>
+          {isAdmin && hasPrimary ? (
+            <p className="mt-1 text-v2-small text-v2-text-2">
+              {t("Rahbar kassasi endi Rahbar panelida")} ·{" "}
+              <Link href="/owner-cash" className="font-medium text-v2-brand-text hover:underline">{t("Rahbar kassasi")} →</Link>
+            </p>
+          ) : null}
         </div>
         {isAdmin && (
           <div className="flex flex-wrap items-center gap-2">

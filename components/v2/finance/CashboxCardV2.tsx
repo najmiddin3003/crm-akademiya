@@ -119,8 +119,13 @@ export default function CashboxCardV2(props: CashboxCardV2Props) {
               { key: "d1", divider: true },
             ] as ActionMenuEntry[])
           : []),
-        { key: "div", label: t("Dividend"), icon: Coins, onSelect: props.onDividend },
-        { key: "inv", label: t("Sarmoya"), icon: ChartNoAxesCombined, onSelect: props.onInvestment },
+        // 49-qism: Dividend va Sarmoya — faqat Rahbar (bosh) kassasida (server ham tekshiradi, lib/cashboxAdjust.ts).
+        ...(c.isPrimary
+          ? ([
+              { key: "div", label: t("Dividend"), icon: Coins, onSelect: props.onDividend },
+              { key: "inv", label: t("Sarmoya"), icon: ChartNoAxesCombined, onSelect: props.onInvestment },
+            ] as ActionMenuEntry[])
+          : []),
         ...(isAdmin
           ? ([
               { key: "d2", divider: true },
