@@ -1535,6 +1535,37 @@ telefon, ustunlar, o'ngda amallar); pastda «1–10 / N ta» va «10 qator». Ra
   (Ishlayapti `success` / Oflayn `warning`, qulf izohi); xizmat — «Bu hafta · ish vaqti» (bugun `brand`), «Qolgan oylik».
 - Kodda: `components/v2/staffdesk/*`, server `lib/staffDesk.ts`, `/api/staff-desk`. Rasmdan farqlar — `SAVOLLAR.md` 564–570.
 
+## Rahbar paneli: umumiy ko'rinish, Rahbar kassasi, ko'chirmalar, tasdiqlar (48-qism, 19.11.2026)
+
+- **Menyu**: «Rahbar paneli» — faqat Rahbar (admin, `adminOnly`), «Bosh sahifa»dan yuqorida, `LayoutGrid` ikonka.
+  Ichida: Umumiy ko'rinish `/owner`, Rahbar kassasi `/owner-cash`, Ko'chirmalar `/owner-transfers`, Tasdiqlar
+  `/owner-approvals`, so'ng mavjud Oylik chiqarish, Moliyaviy reja, Bonus, Jarima, Moliya analitikasi.
+- **Umumiy ko'rinish**: tepada 3 ustunli blok (1px chiziq bilan): «Jami pul» (ko'z — yashirish; chiziq: Rahbar kassasi
+  `brand`, filial kassalari `border-strong`, yo'lda `info`), «Bugungi tushum» (to'lov turi nuqtalari `methodDot`,
+  filiallar kataklari), «Oy tushumi · rejaning %» (chiziqda oyning o'tgan qismi — qora belgi; «reja bo'yicha oldinda»
+  `success` / «rejadan orqada» `warning`). «Filiallar taqqoslash» jadvali (Moliya / Sotuv / O'quvchilar bo'limlari;
+  eng yaxshi — `success-bg`, e'tibor kerak — `danger-bg`; «Jami» ustuni `surface-2`), «Xodimlar va nazorat · bugun»
+  (filial doirasi 1–4 rangli, raqamlar `Pill`), o'ngda «Tasdiq kutmoqda», «E'tibor talab qiladi», «Foyda va prognoz»
+  (filial chizig'i, zarar `danger`).
+- **Rahbar kassasi**: chapda bosh kassa kartasi («Bosh kassa» `warning` toj belgisi, to'lov turlari chizig'i, 6 amal
+  3×2 tugma), «Dividend va sarmoya · yil», «Filial kassalari» (kun / yo'lda / topshirilgan belgisi). O'ngda «Amallar»
+  jadvali — chek tugmasi birinchi ustunda, tur katagi (kirim `success`, chiqim `danger`, ko'chirma `info`,
+  almashtirish `violet`, dividend `warning`), segment tablar, sahifalash; pastda `brand-bg` qoida izohi.
+- **Oynalar**: Almashtirish (qayerdan ⇄ qayerga, sabab segmenti, oldin → keyin jadvali, «o'zgarmaydi» `success`),
+  Filialga pul berish (filial radio-kartalari, summa + to'lov turi, maqsad, 3 qadamli izoh), Dividend / Sarmoya
+  (segment, tur, davr foydasi jadvali — «qoladi» `success`/`danger`, `warning-bg` izoh).
+- **Ko'chirmalar**: 4 ko'rsatkich (yo'lda `info`, filial kassalarida, 2+ kun `warning`, oyda qabul), «Kutilayotgan va
+  topshiriladigan» qatorlari (yo'lda — «Sanab qabul qilish» `brand` + Qaytarish; topshirmagan — Eslatish + Qabul
+  qilish), o'ngda «Rahbar kassasidan filialga» va «Qoidalar», pastda oy tarixi (Farq bilan `warning`). Qabul oynasi —
+  32-qismdagi (kupyuralar, plastik tekshiruvi, farq izohi).
+- **Tasdiqlar**: tab segmenti, guruhlangan ro'yxat (sarlavha qatori `surface-2`), tanlangani `brand-bg` + chap chiziq;
+  o'ng panel: avans — «So'ralgan avans» `warning-bg`, «Oylik holati» jadvali, ko'p bo'lsa `danger-bg` ogohlantirish va
+  «X qilib tasdiqlash», kassa qatori; narx — tafsilot jadvali. Telefonda panel ro'yxat tepasida.
+- **Avans so'rovi** (qabul admin / menejer bosh sahifasi → «Avans so'rovi»): xodim, 3 katak (hisoblangan, jarima,
+  olishi mumkin), summa, ko'p bo'lsa `warning-bg`, izoh; tepada tasdiqlanganlar — «Berdim».
+- Kodda: `components/v2/owner/*`, server `lib/ownerPanel.ts`, `lib/advanceRequests.ts`, `/api/owner`. Farqlar —
+  `SAVOLLAR.md` 571–580.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

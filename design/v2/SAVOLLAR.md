@@ -3074,6 +3074,54 @@ Oklad (filial biriktiruvlaridagi ish haqi) × o'tgan ish kunlari / oydagi ish ku
 chiqarilgan avans va oylik. Bonus, jarima, soliq kirmaydi — aniq hisob Moliya → Oylikda. «Bajardim»dan keyin rasm
 qo'shish — Topshiriqlar sahifasida.
 
+**571. Rahbar paneli — kim ko'radi** — taxmin
+Rasmdagi «Rahbar» roli = tizimdagi admin (`users.role = admin`). Panel faqat adminga; filial so'ralmasdan ochilishi
+(kirgach to'g'ridan-to'g'ri panel) hozircha yo'q — admin kirgach odatdagidek Bosh sahifa ochiladi, panel menyuda
+birinchi. Kirganda darhol panel ochilsinmi?
+
+**572. Moliya menyusidan ko'chirish** — QAROR KERAK
+Rasmda Oylik chiqarish, Moliyaviy reja, Bonus, Jarima, Moliya analitikasi va Rahbar kassasi Moliya menyusidan
+«Rahbar paneli»ga ko'chgan. Hozir ular ikkala joyda: Moliya menyusidan olib tashlansa, ularga ruxsati bor boshqa
+rollar (menejer — Hisobotlar orqali) yo'qotadi. Moliya → Kassalarda Rahbar kassasi kartasi hali turibdi. 49-qismda
+birga hal qilaylikmi?
+
+**573. Filiallar taqqoslash raqamlari** — taxmin
+Tushum va reja — Moliyaviy reja → Tushum (filial bo'yicha); qarzdorlar — aktiv o'quvchilardan; foyda prognozi — oy
+boshidan foyda ÷ o'tgan kunlar × oy kunlari (sodda chiziqli); lid → birinchi to'lov — shu oy lidlaridan guruhga
+qo'shilganlar; guruh to'liqligi — guruhdagi o'quvchilar ÷ sig'im; ustozlar bahosi — shu oy darsdan keyingi baholar.
+«Aktivdan ketganlar» qatori yo'q — o'quvchi arxivga qachon o'tgani saqlanmaydi. Filial ustuni bosilsa kunlik bosh
+sahifa ochilishi hali yo'q.
+
+**574. Kassa filialga bog'lanishi** — QAROR KERAK
+Kassalarda `branchId` ko'p hollarda yo'q (eski kassalar). Panel kassani filialga o'quvchi filiali yoki kassa egasi
+orqali bog'laydi. Sozlamalar → Kassalarda har kassaga filial tanlash majburiy bo'lsinmi?
+
+**575. Almashtirish va kvitansiya** — taxmin
+Almashtirish — mavjud «turdan turga ko'chirish» (jami o'zgarmaydi). Sabab (bankka / kartaga / boshqa) va kvitansiya
+rasmi hozir saqlanmaydi — mavjud amal izoh va fayl qabul qilmaydi.
+
+**576. Filialga pul berish — «Oldim»** — taxmin
+Mavjud kassalararo ko'chirma: Rahbar kassasidan jo'natiladi, filial kassasi egasi Kassalarda ✓ bosguncha «yo'lda»
+(pul Rahbar kassasida turadi). Kupyuralar va «Olib boruvchi» tanlash yo'q; maqsad izohga yoziladi.
+
+**577. Dividend davri** — taxmin
+Dividend — mavjud «Divident» chiqimi; qaysi oy foydasidan olingani izohga `[YYYY-MM]` bo'lib yoziladi va oynada
+«oldin olingan» shu belgidan hisoblanadi. Sarmoya — mavjud «Sarmoya» kirimi.
+
+**578. Avans so'rovi va oylik chegarasi** — QAROR KERAK
+Admin so'rov yozadi → Rahbar tasdiqlaydi → admin pulni beradi va «Berdim» bosadi (shunda kassa chiqimi yoziladi).
+Rasmda «farq oy oxiridagi oylikdan ushlanadi» — lekin kassa hozir hisoblangan oylikdan ortiq avans chiqimini rad
+etadi. Ortig'iga ruxsat beraylikmi (oylik minusga ketadi) yoki «X qilib tasdiqlash» yetarlimi? Bot xabarlari
+(Rahbarga yangi so'rov, adminga «tasdiqlandi») hali yuborilmaydi.
+
+**579. Jarimani bekor qilish so'rovi** — QAROR KERAK
+Rasmdagi «menejer jarimani bekor qilishni so'raydi» tizimda yo'q (jarimani admin o'zi bekor qiladi). Tasdiqlar
+ro'yxatida hozir faqat avans va narx/chegirma. Qo'shaylikmi?
+
+**580. Rahbar telefoni — pastki menyu** — taxmin
+Rasmdagi «Panel · Kassa · Tasdiqlar · Filiallar · Menyu» pastki menyusi qilinmadi — telefonda sahifalar odatdagi
+yon menyu orqali ochiladi. Ko'chirmani telefonda sanab qabul qilish — o'sha oyna (moslashgan).
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)
