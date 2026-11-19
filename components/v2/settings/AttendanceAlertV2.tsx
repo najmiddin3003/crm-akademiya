@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleAlert, Loader2 } from "lucide-react";
+import { CircleAlert, Loader2, Lock } from "lucide-react";
 import EmployeeToggle from "@/components/employees/EmployeeToggle";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
@@ -50,7 +50,7 @@ function Note({ children }: { children: string }) {
   );
 }
 
-export default function AttendanceAlertV2() {
+export default function AttendanceAlertV2({ readOnly = false }: { readOnly?: boolean } = {}) {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<AlertView | null>(null);
@@ -126,6 +126,16 @@ export default function AttendanceAlertV2() {
         <p className="mt-0.5 text-v2-small text-v2-text-2">{t("Rahbarga avtomatik xabarlar.")}</p>
       </div>
 
+      {readOnly ? (
+        <div className="flex max-w-[44rem] items-start gap-3 rounded-v2-md bg-v2-info-bg px-4 py-3">
+          <Lock className="mt-0.5 size-4 shrink-0 text-v2-info" strokeWidth={1.75} aria-hidden />
+          <div className="min-w-0 flex-1 text-v2-small">
+            <div className="font-semibold text-v2-text">{t("Siz bu bo'limni faqat ko'rasiz")}</div>
+            <div className="text-v2-text-2">{t("Menejer — Sozlamalar: ko'rish. Qoidalarni rahbar o'zgartiradi, har o'zgarish Amallar jurnaliga yoziladi. Siz bu qoidalar bo'yicha Nazoratda ishlaysiz.")}</div>
+          </div>
+          <span className="shrink-0 rounded-v2-full bg-v2-surface px-2 py-0.5 text-v2-caption text-v2-text-2">{t("Faqat ko'rish")}</span>
+        </div>
+      ) : null}
       {problem && <p className="text-v2-small text-v2-text-2">{t(problem === "denied" ? "Faqat administrator uchun" : "Yuklanmadi")}</p>}
       {!data && !problem && <Loader2 className="size-5 animate-spin text-v2-text-2" aria-label={t("Yuklanmoqda...")} />}
 
@@ -141,7 +151,7 @@ export default function AttendanceAlertV2() {
                 <div className="shrink-0">
                   <EmployeeToggle
                     checked={data[r.key]}
-                    disabled={saving}
+                    disabled={saving || readOnly}
                     title={r.title}
                     onChange={(on) => void save({ [r.key]: on }, t(on ? "Xabar yoqildi" : "Xabar o'chirildi"))}
                   />
@@ -177,7 +187,7 @@ export default function AttendanceAlertV2() {
                     <label className="flex cursor-pointer items-center gap-3 py-2.5">
                       <V2Checkbox
                         checked={data.selected.includes(c.chatId)}
-                        disabled={saving}
+                        disabled={saving || readOnly}
                         label={c.name}
                         onChange={(on) => toggle(data, c.chatId, on)}
                       />

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { Db } from "mongodb";
 import { requireAdmin } from "@/lib/adminOnly";
+import { getCurrentUser } from "@/lib/auth";
+import { resolveDesk } from "@/lib/staffDesk";
 import {
   alertCandidates,
   FACE_FAIL_GRACE_MIN,
@@ -54,8 +56,11 @@ async function view(db: Db, settings: AttendanceAlertSettings) {
 }
 
 export async function GET() {
+  // 47-qism: menejer qoidalarni FAQAT KO'RADI (o'zgartirish — PUT, faqat admin).
   if (!(await requireAdmin())) {
-    return NextResponse.json({ ok: false, error: "Faqat administrator uchun" }, { status: 403 });
+    const me = await getCurrentUser();
+    const desk = me ? await resolveDesk(await ensureIndexes(), me) : null;
+    if (desk?.mode !== "manager") return NextResponse.json({ ok: false, error: "Faqat administrator uchun" }, { status: 403 });
   }
   const db = await ensureIndexes();
   return NextResponse.json(await view(db, await loadAttendanceAlert(db)), { headers: NO_STORE });

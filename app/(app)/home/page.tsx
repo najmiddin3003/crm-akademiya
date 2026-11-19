@@ -38,6 +38,9 @@ import { getServerT } from "@/lib/serverT";
 import TeacherHomeV2 from "@/components/v2/teacher/TeacherHomeV2";
 import { resolveTeacher } from "@/lib/teacherDesk";
 import { resolveFront } from "@/lib/frontDesk";
+import { resolveDesk } from "@/lib/staffDesk";
+import ManagerHomeV2 from "@/components/v2/staffdesk/ManagerHomeV2";
+import WorkerHomeV2 from "@/components/v2/staffdesk/WorkerHomeV2";
 import FrontHomeV2 from "@/components/v2/front/FrontHomeV2";
 import CallQueueV2 from "@/components/v2/front/CallQueueV2";
 import { currentUiVersion } from "@/lib/uiVersionServer";
@@ -75,10 +78,10 @@ async function positionHome(user: CurrentUser): Promise<string | null> {
   return isPathAllowed(target, user.permissions) ? target : null;
 }
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ teacher?: string; front?: string; mode?: string }> }) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ teacher?: string; front?: string; desk?: string; mode?: string }> }) {
   const user = await getCurrentUser();
   const { t } = await getServerT();
-  const { teacher, front, mode } = await searchParams;
+  const { teacher, front, desk, mode } = await searchParams;
 
   // 45-qism: O'QITUVCHI — o'z ish stoli (components/v2/teacher/TeacherHomeV2.tsx). Rahbar `?teacher=ISM` bilan
   // istalgan o'qituvchi bosh sahifasini ko'radi. Faqat yangi versiyada; eski versiyada — avvalgi jadval.
@@ -86,6 +89,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     const asAdmin = user.role === "admin" && typeof teacher === "string" && teacher.trim();
     if (asAdmin) return <TeacherHomeV2 teacher={teacher!.trim()} />;
     if (user.role !== "admin" && (await resolveTeacher(await ensureIndexes(), user))) return <TeacherHomeV2 />;
+    // 47-qism: MENEJER / IT / XIZMAT XODIMI — rol nomi bo'yicha (lib/staffDesk.ts). Rahbar — `?desk=ISM&mode=manager|it|service`.
+    if (user.role === "admin" && typeof desk === "string" && desk.trim())
+      return mode === "it" || mode === "service" ? <WorkerHomeV2 as={desk.trim()} mode={mode} /> : <ManagerHomeV2 as={desk.trim()} />;
+    if (user.role !== "admin") {
+      const dw = await resolveDesk(await ensureIndexes(), user);
+      if (dw) return dw.mode === "manager" ? <ManagerHomeV2 /> : <WorkerHomeV2 />;
+    }
     // 46-qism: QABUL ADMIN / MODERATOR — rol nomi «Moderator» bo'lsa qo'ng'iroq navbati, aks holda qabul admin bosh
     // sahifasi. Rahbar — `?front=ISM&mode=admin|moderator`.
     if (user.role === "admin" && typeof front === "string" && front.trim()) return mode === "moderator" ? <CallQueueV2 as={front.trim()} /> : <FrontHomeV2 as={front.trim()} />;
