@@ -111,4 +111,6 @@ export const V2_ITEM_HREFS: Record<string, string> = {
   "/reports-admins-perf": "/reports/adminlar-samaradorligi",
   "/reports-rooms": "/reports/xonalar",
   "/reports-discounts": "/reports/chegirmalar",
+  // 20.11.2026: Qarzdorlar — o'sha /api/reports/debtors va o'sha ruxsat (/reports-unpaid).
+  "/reports-unpaid": "/reports/qarzdorlar",
 };

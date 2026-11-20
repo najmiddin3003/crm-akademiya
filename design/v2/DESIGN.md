@@ -1579,6 +1579,48 @@ tegmaydi). Koddagi o'zgarishlar:
 - Atamalar (16–21) yangi versiyada avvalgi qismlarda kiritilgan: Tanga, Birinchi dars, Sarhisob, Qabul admin.
   Eski versiya matnlari o'zgarmadi. Farqlar — `SAVOLLAR.md` 581–584.
 
+## Moliya — eski sahifalar yangi dizaynda: Kirim chiqim, Moliya hisobotlari, P&L, Pul oqimi, Tranzaksiyalar, Kirim-chiqim toifalari, Rejalashtirilgan xarajatlar, Bonus, Jarima (50-qism, rasmsiz, 20.11.2026)
+
+Rasm yo'q — mavjud Moliya va Hisobotlar sahifalari qolipida. Versiya `page.tsx` da serverda tanlanadi
+(`currentUiVersion()`); eski komponentlar, API va raqamlar o'zgarmagan.
+
+- **Hisobot turidagi to'rttasi** — `components/v2/finance/FinanceCashflowV2.tsx`, `FinanceReportsV2.tsx`,
+  `PnlReportsV2.tsx`, `CashFlowStatementV2.tsx`; umumiy: `finReportsCalc.ts` (hisob — eski sahifalardan aynan nusxa,
+  eskisi bilan birga o'zgartiriladi), `finReportsKit.tsx` (yil tanlagich «‹ 2026 ›», oy tanlovi, o'zgarish belgisi,
+  ulush qatorlari, `FIN_TH` jadval kataklari), `finReportsDailyChart.tsx`.
+  - **Kirim chiqim** (`/finance-cashflow`): «Yuklab olish» (Excel/CSV, eskisicha); filtrlar — davr `V2DateRange`, Kassa,
+    To'lov turi; 4 bosiladigan KPI katak (Kirim, Chiqim, Bonus, Jarima — tanlangani brend fon); ostida «{X} turlari
+    bo'yicha» jadvali (Tur · Ulushi chizig'i — telefonda yashirin · Summa · Jami).
+  - **Moliya hisobotlari** (`/finance-reports`): KpiStrip Kirim/Chiqim/Qoldiq + oldingi teng davrga o'zgarish va kichik
+    chiziq; kunma-kun ustunli grafik (`series-1` kirim, `series-2` chiqim) «Grafik | Jadval»; Kirim va Chiqim taqsimoti
+    «Tranzaksiya turi | To'lov usuli». Donutlar o'rniga ulush chiziqlari (kategoriya palitrasi yo'q).
+  - **P&L** (`/finance-pnl`): yil, «Oy: Butun yil», Excel; KPI Jami daromad, Jami xarajat, Sof foyda, Eng yaxshi oy;
+    jadval — chap ustun qotgan, DAROMAD/XARAJATLAR qatorlari, Sof foyda brend fonda, Foyda ulushi; kelgusi oylar «—».
+  - **Pul oqimi** (`/finance-flow`): KPI Boshlang'ich balans, Kirim, Chiqim, Yakuniy balans; jadval — Operatsion
+    faoliyat ichida yig'iladigan Kirim/Chiqim guruhlari («· N ta tur»), Sof; Investitsion/Moliyaviy — «—».
+- **Ro'yxat turidagi beshtasi** — O'quvchilar ro'yxati qolipi (`PageShell`, `PageHead`, `SummaryLine` —
+  `components/v2/students/lists/listKit.tsx`), jadval kartada ichidan aylanadi.
+  - **Tranzaksiyalar** (`/finance-transactions`, `TransactionEntriesV2.tsx`): faqat ko'rish; filtr chiplari Kassa, Turi
+    (Kirim / Chiqim / Ko'chirish), Holati, O'quvchi + `V2DateRange`; serverda sahifalash. 11 ustun (eski 15 tasi
+    birlashtirilgan), summa +/− yashil/qizil, bekor qilingani chizilgan. Sana MAHALLIY kun bilan yuboriladi (eskisida
+    `toISOString` — bir kun oldin, SAVOLLAR 599).
+  - **Kirim-chiqim toifalari** (`/finance-tx-types`, Sozlamalar ramkasi `SettingsFrameV2` ichida —
+    `components/v2/settings/TransactionTypesV2.tsx` + `TransactionTypeDialogV2.tsx`): bo'lim tabletkalari (Kirim /
+    Chiqim / Vaucher / Jarima, soni bilan) + qidiruv; jadval Nomi, Mijoz teglari, Miqdor chegarasi, Kategoriyasi.
+    Qo'shish/tahrirlash — oyna (eski /add va /[id]/edit yo'llari o'z holicha).
+  - **Rejalashtirilgan xarajatlar** (`/finance-planned`, `PlannedExpensesV2.tsx`): «Hammasi / Faol / Nofaol» + qidiruv;
+    oynada turi ostida Moliyaviy rejaga qanday tushishi (×kunlar, ÷7, ÷12); «Moliyaviy reja» tugmasi — ruxsat bo'lsa.
+  - **Bonus** (`/finance-bonus`, `BonusesV2.tsx`): «Yuklab olish» (Excel/CSV — eski fayl bilan aynan bir xil), «Bonus
+    yaratish»; filtrlar Bonus turi, Kimga, sana; «Ustunlar» oynasi (`v2:finance-bonus:columns:1`); o'chirish —
+    `V2Confirm` (xodim bonusida «oylikdan ham chiqadi»).
+  - **Jarima** (`/finance-penalty`, `PenaltiesV2.tsx`): «Hammasi / Amalda / Bekor qilingan» + ism qidiruvi; «Amalda»
+    sariq, bekor qilingani kulrang va chizilgan; qatorda faqat «Bekor qilish» (sabab ixtiyoriy, o'sha PATCH).
+  - **Bonus/Jarima yaratish oynasi** (`finAwardDialogV2.tsx`, umumiy): turi segment, Xodim (`V2Picker`) yoki O'quvchi
+    (qidiruvli `V2Select`), Qiymat + Kassa, Izoh; jarimada rasm (saqlashda avval yuklanadi); xatolar maydon ostida.
+- **Menyu**: «Hisobotlar → Qarzdor o'quvchilar» yangi versiyada /reports/qarzdorlar ga (`V2_ITEM_HREFS`, o'sha ruxsat).
+- **Telefon (375 px)**: filtr va amallar o'raladi, KPI 2 ustun, jadval va grafik o'z qutisida aylanadi, oynalarda
+  ikki ustunli qatorlar bitta ustunga tushadi. Rasmdan (yo'qligidan) farqlar — `SAVOLLAR.md` 585–613.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

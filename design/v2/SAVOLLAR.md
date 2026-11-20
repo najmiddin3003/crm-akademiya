@@ -3139,6 +3139,120 @@ yashirilgan, havolalar ishlaydi), «Vaqtinchalik tugma» → «Vaqtinchalik bo'l
 Rasmdagi Rahbar telefoni pastki menyusi (12-band) va Rollar jadvalidagi Rahbar qatorlari (13-band) qilinmadi:
 Rahbar paneli `adminOnly`, rollarga berilmaydi. Moliya menyusidagi bandlar ikki joyda qoldi (572).
 
+### 50-qism — Moliya: eski sahifalar yangi dizaynda — Kirim chiqim, Moliya hisobotlari, P&L, Pul oqimi, Tranzaksiyalar, Kirim-chiqim toifalari, Rejalashtirilgan xarajatlar, Bonus, Jarima (20.11.2026)
+
+**585. Rasmsiz qurildi** — taxmin
+Bu to'qqiz sahifaga dizayn rasmi yo'q edi — tayyor yangi Moliya va Hisobotlar sahifalari uslubida qurildi (qolip,
+ranglar, jadval, oynalar o'sha). Eski versiya, ma'lumot va API o'zgarmadi. Rasm kelsa — o'sha sahifa rasmga moslanadi.
+
+**586. Kirim chiqim: ro'yxatda yo'q turdagi pul summaga kirmaydi** — QAROR KERAK
+Eski sahifa Kirim/Chiqim yorlig'ida faqat «Tranzaksiya turi» ro'yxatidagi turlarni jamlaydi — o'chirilgan yoki nomi
+o'zgargan turdagi pul hech qayerda ko'rinmaydi. Yangi versiyada raqamlar eskisi bilan bir xil, pastda «Faqat
+ro'yxatdagi turlar ko'rsatiladi» izohi bor. «Moliya hisobotlari»dagidek «Boshqa (ro'yxatda yo'q)» qatori qo'shilsinmi?
+
+**587. P&L: «Dars bo'yicha daromad» doim 0** — QAROR KERAK
+Hisob `O'quvchi to'ladi` kategoriyasini qidiradi, lekin hisobot API'si bunday kategoriya qaytarmaydi — qator har oy 0,
+butun tushum «Boshqa daromad»da. Ikkala versiyada shunday (raqamlar o'zgarmasin). Qaysi kategoriyalar «dars bo'yicha
+daromad» ekanini aytsangiz — ikkalasida birga tuzatiladi.
+
+**588. Donut diagrammalar → ulush chiziqlari** — taxmin
+Yangi tokenlarda kategoriyalar uchun rang palitrasi yo'q — «Moliya hisobotlari» va «Kirim chiqim»dagi donutlar o'rniga
+har qatorda nom, summa, foiz va ingichka chiziq. Raqam va foizlar eskisi bilan bir xil.
+
+**589. «Tranzaksiya bo'yicha» paneli alohida chiqmadi** — taxmin
+U Kirim/Chiqim taqsimotini takrorlardi; yangi versiyada Kirim va Chiqim panellarida «Tranzaksiya turi | To'lov usuli»
+almashtirgichi bor — ma'lumot yo'qolmadi.
+
+**590. Kunma-kun grafik: «Grafik | Jadval»** — taxmin
+Maydon (area) grafigi olib tashlandi: ustunli grafik (kirim va chiqim yonma-yon) va shu kunlar jadvali (Kirim, Chiqim,
+Farq, Jami).
+
+**591. Taqsimot katta summadan kichigiga** — taxmin
+Eskisida ro'yxat tartibida edi; yangisida eng kattasi tepada. Excel/CSV tartibi eskisicha.
+
+**592. O'zgarish belgisi ranglari** — taxmin
+Kirim va Qoldiq o'sishi yashil, Chiqim o'sishi qizil (Moliya analitikasidagidek); foiz bitta kasr bilan, oldingi davr 0
+bo'lsa — eski qoida.
+
+**593. Hisob — eski sahifadan aynan nusxa** — taxmin
+Eski komponentlarga tegmaslik uchun hisob funksiyalari `components/v2/finance/finReportsCalc.ts` ga ko'chirildi (ichida
+«eskisi bilan birga o'zgartiring» izohi). Eski versiya o'chirilganda yagona manba bo'ladi.
+
+**594. P&L: kelgusi oylar «—»** — taxmin
+Hali boshlanmagan oylar 0 o'rniga xira «—»; joriy oy ostida «hozircha». Jami — eskisicha barcha oylar yig'indisi.
+
+**595. P&L: «Foyda ulushi» va «Eng yaxshi oy»** — taxmin
+Mavjud raqamlardan hisoblanadi (yangi ma'lumot emas). Qatorlar tartibi eksportdagidek.
+
+**596. Filtr o'zgarganda** — taxmin
+Kirim chiqim, P&L va Pul oqimida eski raqamlar xiralashib turadi, yangisi kelgach almashadi; Moliya hisobotlarida —
+skelet. Yuklash xatosida qizil xabar va «Qayta urinish», filtrlar joyida qoladi.
+
+**597. Sarlavha «Pul oqimi»** — taxmin
+Eski sahifada «Pul oqimi hisoboti» edi — yangisida menyu nomi bilan bir xil. Investitsion va Moliyaviy faoliyat — «—»
+(tizimda bunday belgi yo'q, eskisicha).
+
+**598. Sof foyda rangi** — taxmin
+Eskisida manfiy rang o'zbekcha matnga qarab tanlanardi (inglizchada adashardi); yangisida raqam ishorasiga qarab.
+
+**599. Tranzaksiyalar: eski sahifa sana filtrini bir kun oldinga suradi** — QAROR KERAK
+Eski /finance-transactions sanani `toISOString()` bilan yuboradi — Toshkentda (UTC+5) tanlangan oraliqdan BIR KUN
+OLDINGI kunlar ketadi, ro'yxat va «Umumiy soni» boshqa kunni ko'rsatadi. Yangi versiya mahalliy sanani yuboradi
+(Kassalardagidek). Eski sahifani ham tuzatamizmi? (Topshiriq bo'yicha eskisiga tegilmadi.)
+
+**600. Tranzaksiyalar: «Turi» yozuvlari** — taxmin
+«Kirim (payIn)» o'rniga «Kirim / Chiqim / Ko'chirish» (Kassalardagidek); serverga o'sha qiymat ketadi.
+
+**601. Tranzaksiyalar: 15 ustun → 11** — taxmin
+Hech biri tushmadi, yonmalari birlashdi: Summa + To'lov turi, Tranzaksiya turi + nomi, Guruh + Dars sanasi, Sabab +
+Izoh. Faqat ko'rish jurnali. Eski «guruhsiz o'quvchilar» banneri (u yerda o'chiq) ko'chirilmadi.
+
+**602. Kirim-chiqim toifalari: qo'shish va tahrirlash — oynada** — taxmin
+Sozlamalar ramkasi ichida. Alohida /finance-tx-types/add va /[id]/edit sahifalari o'rniga oyna (so'rov va tekshiruv
+o'sha); ikki eski yo'l o'zgarmadi — havola bilan kirilsa eski forma ochiladi.
+
+**603. Kirim-chiqim toifalari: «Mijoz» va miqdor chegarasi ustunlari** — taxmin
+Eski ro'yxatda faqat nom va kategoriya bor edi; turda saqlangan «Mijoz» belgilari va min/max ham ko'rsatildi (0 —
+chegarasiz).
+
+**604. Rejalashtirilgan xarajatlar: yangi yozuvda «Holati» bo'sh** — ochiq
+Eskisicha sukut bo'sh (so'rov o'zgarmasin). Moliyaviy reja bo'sh holatni «Faol» deb hisoblaydi, lekin «Faol N» uni
+sanamaydi. Sukutni «Faol» qilsakmi?
+
+**605. Rejalashtirilgan xarajatlar: tabletkalar** — taxmin
+Eski «Umumiy soni» faqat faollarni sanardi — endi «Hammasi / Faol / Nofaol» tabletkalari. Oynada turi tanlanganda
+Moliyaviy reja uni oyga qanday keltirishi yoziladi (lib/financialPlan.ts qoidasi).
+
+**606. Bonus: doim bo'sh ustunlar sukutda yashirin** — taxmin
+«Sababi», «Holat», «To'lov tranzaksiyasi» bonus formasida to'ldirilmaydi — «Ustunlar» oynasida bor, sukutda o'chiq.
+
+**607. Bonus: CSV BOM'siz** — ochiq
+CSV eskisi bilan aynan bir xil — UTF-8 BOM'siz (Excel'da o'zbekcha harflar buzilishi mumkin); Excel fayli to'g'ri.
+CSV'ga BOM qo'shamizmi?
+
+**608. Bonus/Jarima: tekshiruv xatolari maydon ostida** — taxmin
+Matnlar o'sha («Xodimni tanlang», «Qiymatni to'g'ri kiriting», «Tranzaksiya turini tanlang»), toast o'rniga maydon
+ostida qizil.
+
+**609. Bonus/Jarima: o'quvchi tanlovi** — taxmin
+Eskisicha ismlar ro'yxati (faqat «O'quvchi» turi tanlanganda yuklanadi); ismdoshlar bitta qator — baribir faqat ism
+saqlanadi.
+
+**610. Jarima: holat yozuvlari** — taxmin
+Eskisi xom yozardi («cancelled» yoki «—»). Endi: «Amalda» (sariq), «Bekor qilingan» (kulrang, summa ustidan chizilgan).
+
+**611. Jarima: «Amaldagi jarimalar» yig'indisi** — QAROR KERAK
+Yangi raqam: joriy filtrdagi bekor qilinmagan jarimalar yig'indisi — xodim va o'quvchi jarimalari ARALASH (Bonusdagi
+«Umumiy bonuslar» kabi). Faqat xodim jarimalari (oylikdan ushlanadigani) bo'lsinmi yoki umuman olib tashlansinmi?
+
+**612. Jarima: filtrlar va bekor qilish oynasi** — taxmin
+Eskisida filtr yo'q edi — «Hammasi / Amalda / Bekor qilingan» va ism qidiruvi qo'shildi. Bekor qilishda server xato
+qaytarsa oyna ochiq qoladi (eskisida yopilardi).
+
+**613. Qarzdor o'quvchilar → yangi «Qarzdorlar» hisoboti** — qilindi
+Yangi versiya menyusida «Hisobotlar → Qarzdor o'quvchilar» endi /reports/qarzdorlar ni ochadi (`V2_ITEM_HREFS`): o'sha
+/api/reports/debtors va o'sha ruxsat (/reports-unpaid). Eski versiya menyusi o'zgarmadi.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)
