@@ -3529,6 +3529,101 @@ shundayligicha saqlardi. Sana yonida tozalash (×) tugmasi bor. Yuboriladigan ma
 Eski blok test oynasi har ochilganda turlar va xodimlarni qayta so'rardi; yangisi sahifa yuklagan ro'yxatlardan
 foydalanadi. Shu sababli oyna ochiqligida boshqa joyda qo'shilgan tur sahifa yangilanmaguncha ko'rinmaydi.
 
+### 55-qism — Sozlamalar va Vaqtinchalik: oxirgi eski sahifalar — Boshqaruv, Ilova sozlamalari, Vaqtinchalik tugma (20.11.2026)
+
+**673. Boshqaruv → «Lavozim va stavkalar»** — taxmin
+Eski Sozlamalar → «Boshqaruv» (Menejer va O'qituvchilar grading tizimi) yangi versiyada alohida qurilmadi: o'sha ikki
+ro'yxat (degrees-manager, degrees-teacher) 40-qismdagi «Lavozim va stavkalar» sahifasida allaqachon bor. Yangi
+versiyada /settings-management o'zi /settings-positions ga yo'naltiradi, menyuda band nomi «Lavozim va stavkalar».
+Eski versiya o'zgarmadi.
+
+**674. Ilova sozlamalari → «Ilovalar» sahifalari** — taxmin
+Yangi versiyada /settings-app tab bo'yicha yo'naltiradi: «AI yordamchi» → MohirAI, «O'quvchi super ilovasi» va
+«Kontent» → O'quvchi ilovasi, qolgani → Xodim ilovasi (38-qism sahifalari). Robot panelidagi «AI sozlamalari» havolasi
+(/settings-app?tab=ai) ham MohirAI'ga tushadi. Menyudagi «Ilova sozlamalari» bandi Xodim ilovasini ochadi.
+
+**675. Eski ilova sozlamalarini hech narsa o'qimaydi** — ochiq
+Eski «Kontent», «Xodim super ilovasi», «O'quvchi super ilovasi» tablaridagi sozlamalar (masalan «Mobil Face ID orqali
+davomat», «Arxivlangan talabalar ilovaga kirishi mumkin») saqlanadi, lekin ularni hech qaysi kod o'qimaydi — eski
+sahifaning o'zi «ilova ulanmagan» deydi. Yangi versiyada ular ko'rsatilmaydi, o'rnida ishlaydigan sozlamalar bor. Eski
+versiyadan ham olib tashlaymizmi?
+
+**676. Cheklangan rollar uchun yangi Sozlamalar sahifalari** — QAROR KERAK
+«Lavozim va stavkalar», Xodim/O'quvchi ilovasi va MohirAI rollar oynasida alohida belgilanmaydi — ularni faqat to'liq
+huquqli foydalanuvchi (direktor) ochadi. Eski «Boshqaruv» yoki «Ilova sozlamalari» ruxsati berilgan cheklangan rol
+yangi versiyada shu bandni bosganda bosh sahifaga qaytadi. Shunday qolsinmi yoki eski ruxsat yangi sahifalarga ham
+o'tsinmi?
+
+**677. Rasmsiz qurildi** — taxmin
+Bu sahifaga dizayn rasmi yo'q. Bonus va Blok testlar ro'yxatlari qolipida qurildi. Eski sahifa, API, yuboriladigan
+ma'lumot va admin qo'riqchisi o'zgarmadi; rasm kelsa, sahifa unga moslanadi.
+
+**678. Sarlavha «Vaqtinchalik bo'lim»** — taxmin
+Yangi menyuda band shu nom bilan turibdi (SAVOLLAR 583), shuning uchun sahifa sarlavhasi ham shunday. Eski versiyada
+«Vaqtinchalik tugma» qoldi. Eski sariq izohdagi «Vaqtinchalik bo'lim.» so'zi sarlavhaga o'tdi, izohda faqat «O'chirish
+butunlay» ogohlantirishi qoldi.
+
+**679. Holat filtri — tabletkalar** — taxmin
+Eskisidagi «Barcha holatlar» tanlovi o'rniga «Hammasi / Aktiv / Arxivda» tabletkalari, har birida soni bor (qidiruv,
+filial va hisob filtrlari hisobga olinadi). Filial va Hisob — chip-tanlov, «Tozalash» hammasini tozalaydi.
+
+**680. Telefon ism ostida** — taxmin
+Alohida «Telefon» ustuni yo'q: raqam ism ostida kulrang qatorda, boshqa yangi ro'yxatlardagidek. Telefon bo'yicha
+qidiruv eskisidagidek ishlaydi.
+
+**681. Arxiv sababi ko'rinib turadi** — taxmin
+Eskisida sabab va sana faqat sichqoncha ostida chiqardi. Endi «Arxivda» belgisi ostida kichik qatorda ham yozilgan
+(telefonda sichqoncha yo'q).
+
+**682. Xulosa qatoriga ikki son qo'shildi** — taxmin
+«Topildi: N / M» dan tashqari «Hisob yo'q: N» (qizil) va bor bo'lsa «Tasdiq kutmoqda: N» — ko'rinib turgan qatorlar
+bo'yicha. 25 tadan ko'p belgilansa, chegara ogohlantirishi ham shu qatorda.
+
+**683. Tahrirlash: telefon +998 bilan** — taxmin
+Telefon maydoni yangi formalardagidek: chapda «+998», o'ngda 9 raqam. Maydonga tegilmasa, server eskisidagidek
+bazadagi raqamni oladi. Chala raqam (9 tadan kam) maydon ostida «Telefon raqami noto'g'ri» deb to'xtatadi. «Ismni
+kiriting» va arxiv sanasi xatosi ham toast emas, maydon ostida chiqadi. Server xatolari eskisidagidek toast bo'lib
+chiqadi.
+
+**684. Ish vaqti oynasi: yopishda so'raydi** — taxmin
+Saqlanmagan o'zgarish bo'lsa ×, «Bekor qilish» yoki Esc «Saqlanmagan o'zgarishlar bor» deb so'raydi (eskisida Esc
+yopmasdi, × esa so'ramay yopardi). Enter bu oynada saqlamaydi. «Faqat kiritilmaganlar» tugmachasi o'rniga chip.
+
+**685. O'chirish tasdig'i** — taxmin
+Yangi tasdiq oynasi: nima o'chishi ro'yxat bilan (xodim yozuvi, hisob, sessiyalar, SMS kodlari) va «Amal
+qaytarilmaydi»; tugma nomi «Butunlay o'chirish» (eskisida «Ha, o'chirilsin»). O'chirilgan xodim belgilanganlardan ham
+chiqadi — eskisida «Tanlanganlarga SMS (N)» soni o'chirilgan xodimni ham sanab qolardi.
+
+**686. SMS oynasida chegara ogohlantirishi** — taxmin
+Belgilanganlar 25 tadan (server chegarasi) ko'p bo'lsa, SMS oynasida ham qizil ogohlantirish chiqadi. «Yuborish»
+tugmasi eskisidagidek ochiq: server rad etadi va sababini toastda aytadi.
+
+**687. SMS natijasi — ikonka bilan** — taxmin
+✅/❌ belgilari o'rniga yashil va qizil ikonka, sabab matni tarjima qilinadi. Blok eskisidagidek «Yopish» bosilguncha
+turadi.
+
+**688. Sahifalash yo'q** — taxmin
+Eskisidagidek hamma xodim bitta jadvalda (60–100 qator), jadval kartaning ichida aylanadi. Sarlavhadagi katakcha
+ko'rinib turgan (filtrlangan) HAMMA qatorni belgilaydi — ko'rinmayotgan xodimga SMS ketmaydi.
+
+**689. Ketish sabablari tarjimasi yo'q** — ochiq
+«Shaxsiy» va «Ish o'zgarishi» (constants/employees) inglizcha lug'atda yo'q, EN rejimida o'zbekcha chiqadi (eskisida
+ham shunday). Bazaga qiymat o'zbekcha yoziladi, faqat yorliq tarjima qilinishi kerak — lug'atga qo'shilsa bo'ldi.
+
+**690. Qo'lda qo'shilgan rol nomi** — ochiq
+Vazifa ustuni eskisidagidek ROLE_LABELS dan: qo'lda qo'shilgan rol (centerRoleId) «Xodim» deb ko'rinadi, Rollar'dagi
+aniq nomi emas. Tahrir oynasida ham faqat to'rtta vazifa tanlanadi.
+
+**691. Bu sahifa qachon olib tashlanadi?** — QAROR KERAK
+Sahifa «vaqtinchalik» deb qurilgan (SMS oqimini bitta raqam bilan qayta-qayta sinash uchun), xodimni izlari bilan
+butunlay o'chirish faqat shu yerda bor. Yangi dizaynga ham ko'chirildi. Qoladimi (masalan, keyin Boshqaruv → Xodimlar
+ichiga «butunlay o'chirish» bo'lib o'tadimi) yoki sinovlar tugagach olib tashlanadimi?
+
+**692. Telefon (375 px)** — taxmin
+Sarlavha tugmalari, filtrlar va tabletkalar o'raladi; jadval o'z kartasi ichida yonga suriladi, sahifada gorizontal
+surish yo'q. Oynalar pastdan chiqadi. Ish vaqti oynasida qatorlar ikki qavat (ism tepada, vaqt maydonlari pastda),
+filtr va «hammasiga qo'yish» qatori tepada qotib turadi.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)

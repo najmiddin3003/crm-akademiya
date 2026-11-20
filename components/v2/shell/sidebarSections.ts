@@ -91,6 +91,9 @@ export const V2_ITEM_LABELS: Record<string, string> = {
   // 7-qism rasmlari (20.10.2026): «Sozlamalar → O'quv → Kurslar», Boshqaruv → «Rollar va huquqlar».
   "/offline-courses": "Kurslar",
   "/management-rollar": "Rollar va huquqlar",
+  // 55-qism (20.11.2026): eski «Boshqaruv» (Menejer / O'qituvchilar grading tizimi) — o'sha ro'yxatlar
+  // yangi versiyada «Lavozim va stavkalar» sahifasida (V2_ITEM_HREFS pastda).
+  "/settings-management": "Lavozim va stavkalar",
 };
 
 /**
@@ -113,4 +116,8 @@ export const V2_ITEM_HREFS: Record<string, string> = {
   "/reports-discounts": "/reports/chegirmalar",
   // 20.11.2026: Qarzdorlar — o'sha /api/reports/debtors va o'sha ruxsat (/reports-unpaid).
   "/reports-unpaid": "/reports/qarzdorlar",
+  // 55-qism (20.11.2026): Sozlamalar → «Boshqaruv» va «Ilova sozlamalari» yangi versiyada tayyor sahifalarga
+  // (manzilning o'zi ham yo'naltiradi — app/(app)/settings-management, settings-app page.tsx).
+  "/settings-management": "/settings-positions",
+  "/settings-app": "/settings-staff-app",
 };

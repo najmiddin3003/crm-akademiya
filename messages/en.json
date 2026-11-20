@@ -11013,5 +11013,13 @@
   "Turni o'chirasizmi?": "Delete this type?",
   "UzBMB testlari natijalari — Imtihon → UzBMB bo'limida. Bu sahifa — blok testlar jadvali (natijasiz).": "UzBMB test results are in Exam → UzBMB. This page is the block test schedule (without results).",
   "UzBMB testlarining fanlari va ball tuzilishi — Sozlamalar → O'quv → Imtihon fanlari. Bu sahifa — alohida blok test turlari.": "UzBMB test subjects and scoring are in Settings → Academics → Exam subjects. This page holds separate block test types.",
-  "Vaqtni to'g'ri kiriting (masalan 09:30)": "Enter a valid time (e.g. 09:30)"
+  "Vaqtni to'g'ri kiriting (masalan 09:30)": "Enter a valid time (e.g. 09:30)",
+  "Bir marta {maxBatch} tagacha — belgilanganini kamaytiring": "Up to {maxBatch} at a time — select fewer",
+  "Birga o'chadi:": "Also deleted:",
+  "bu yerdagi «O'chirish» xodimni butunlay o'chiradi — hisobi, sessiyalari va SMS kodlari bilan birga, ya'ni telefon raqami qayta ishlatishga bo'shaydi. Amal qaytarilmaydi.": "«Delete» here removes the employee permanently — together with their account, sessions and SMS codes, so the phone number becomes free to reuse. This cannot be undone.",
+  "SMS natijasi — yuborildi: {sent}, yuborilmadi: {failed}": "SMS result — sent: {sent}, not sent: {failed}",
+  "Tanlanganlarga SMS": "SMS to selected",
+  "To'rtala filial xodimlari bir ro'yxatda: faollashtirish SMS'i, kirish tasdig'i, tahrir, arxiv, ish vaqti va butunlay o'chirish": "Staff of all four branches in one list: activation SMS, sign-in approval, editing, archive, working hours and permanent deletion",
+  "Xodimni butunlay o'chirasizmi?": "Delete this employee permanently?",
+  "Yana {n} ta tanlangan xodim ro'yxatga kirmadi — hisobi allaqachon faollashgan yoki telefon raqami yo'q.": "{n, plural, one {# more selected employee is not in the list} other {# more selected employees are not in the list}} — the account is already activated or there is no phone number."
 }

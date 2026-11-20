@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/adminOnly";
 import TempStaffPage from "@/components/temp/TempStaffPage";
+import TempStaffV2 from "@/components/v2/temp/TempStaffV2";
+import { currentUiVersion } from "@/lib/uiVersionServer";
 
 // "Vaqtinchalik tugma" — VAQTINCHA turadigan admin vositasi.
 //
@@ -18,7 +20,12 @@ import TempStaffPage from "@/components/temp/TempStaffPage";
 // Cheklovsiz rol uchun yagona to'siq — mana shu tekshiruv. Sahifa
 // komponenti navigatsiyada HAR SAFAR qayta ishga tushadi (layoutdan
 // farqli), ya'ni klient tomondagi <Link> ham buni chetlab o'ta olmaydi.
+//
+// Yangi versiyada (lib/uiVersion.ts, cookie `tizimli_ui`) — yangi dizayndagi sahifa
+// (components/v2/temp/TempStaffV2.tsx, 55-qism, 20.11.2026). Eski versiyada — TempStaffPage
+// o'zgarmadi. API (/api/temp-staff) va admin qo'riqchisi ikkalasida bitta; versiya qo'riqchidan
+// KEYIN, serverda tanlanadi — miltillashsiz.
 export default async function Page() {
   if (!(await requireAdmin())) redirect("/home");
-  return <TempStaffPage />;
+  return (await currentUiVersion()) === "v2" ? <TempStaffV2 /> : <TempStaffPage />;
 }

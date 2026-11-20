@@ -1723,6 +1723,47 @@ tanlanadi (`currentUiVersion()`); eski komponentlar, API, yuboriladigan ma'lumot
   olish» menyusi (Excel / CSV — eski `excelHtml`, `HEADERS`, `csvCell` dan), bo'sh/skelet qatorlar, UzBMB izohi,
   qo'shilgan sana. Eski `BlockTestTypesPage.tsx` / `BlockTestExamsPage.tsx` dan faqat yordamchilar eksport qilindi.
 
+## Oxirgi eski sahifalar: Boshqaruv, Ilova sozlamalari, Vaqtinchalik tugma (55-qism, rasmsiz, 20.11.2026)
+
+**Sozlamalar → Boshqaruv va Ilova sozlamalari** — alohida qurilmadi, yangi versiyada tayyor sahifalarga yo'naltiriladi
+(serverda, `currentUiVersion()`; eski versiya o'zgarmadi). `/settings-management` → «Lavozim va stavkalar»
+(`/settings-positions`, 40-qism — Menejer / O'qituvchilar grading ro'yxatlari o'sha yerda). `/settings-app` — `tab`
+bo'yicha: `ai` → MohirAI, `student` va `content` → O'quvchi ilovasi, qolgani → Xodim ilovasi (38-qism). Yangi menyuda
+(`components/v2/shell/sidebarSections.ts`) — `V2_ITEM_LABELS` «Lavozim va stavkalar», `V2_ITEM_HREFS` ikkala bandni
+to'g'ridan-to'g'ri yangi manzilga olib boradi.
+
+**Vaqtinchalik tugma**
+
+Rasm yo'q — 50–54-qism ro'yxat qolipida (`PageShell`, `PageHead`, `SummaryLine`, `SearchBox`, `SegmentPills` —
+`components/v2/students/lists/listKit.tsx`). `app/(app)/vaqtinchalik/page.tsx` avval `requireAdmin()` (admin
+bo'lmasa — /home), keyin serverda `currentUiVersion()` bo'yicha yangi yoki eski komponentni beradi; eski
+`components/temp/*`, /api/temp-staff, yuboriladigan maydonlar va tekshiruvlar o'zgarmagan.
+
+- **Sahifa** (`components/v2/temp/TempStaffV2.tsx`): sarlavha «Vaqtinchalik bo'lim» (yangi menyu nomi) + «Ish
+  vaqtini belgilash» (ikkinchi darajali) va «Tanlanganlarga SMS (N)» (asosiy, belgilanmasa o'chiq); `warning-bg`
+  qatori — «O'chirish» butunlay, raqam bo'shaydi; oxirgi SMS natijasi kartasi (yashil/qizil ikonka + sabab, «Yopish»).
+- **Filtrlar** — qidiruv (ism, telefon raqamlari, vazifa, pochta, filial), «Hammasi / Aktiv / Arxivda» tabletkalari
+  soni bilan, Filial chipi (hovuz 1+2 — bitta) va Hisob chipi (Hisob yo'q / SMS ketgan / Tasdiq kutmoqda / Rad
+  etilgan / Faollashgan), «Tozalash»; SummaryLine — Topildi N / M, Hisob yo'q (`danger`), Tasdiq kutmoqda, belgilangan
+  soni, 25 tadan oshsa `danger` ogohlantirish.
+- **Jadval** — katakcha (sarlavhada filtrlangan hammasi, `indeterminate`) · № · Xodim (avatar, ism, ostida telefon) ·
+  Vazifasi · Filiallar · Ish vaqti («Kiritilmagan» `text-3`) · Hisob (Badge: yo'q `danger`, taklif `warning`,
+  faollashgan `success`; ikki bosqich — kutmoqda `info`, rad `danger`, tasdiqlangan `success` + ✓/✗ mini tugmalar) ·
+  Holat (Aktiv `success` / Arxivda neutral + sabab · sana) · 4 ikonka (SMS, Tahrirlash, Arxiv, O'chirish `danger`).
+  Tanlangan qator `ROW_TINT.brand`; sarlavha qotadi, karta ichida aylanadi; sahifalash yo'q (eskisidagidek).
+- **Oynalar** (`TempStaffDialogsV2.tsx`) — Tahrirlash (V2Dialog 480: ism, `PhoneField` +998, vazifa V2Select, pochta,
+  `surface-2` izoh «filial, oylik, ruxsatlar — Xodimlar sahifasida»); Arxivlash (440: sabab V2Select + `IsoDateField`;
+  qaytarishda joriy sabab · sana); Faollashtirish SMS'i (480: kimlarga ro'yxati `surface-2` qutida, o'tkazib
+  yuborilganlar `warning-bg`, chegara `danger-bg`, «Ikki bosqichli tasdiqlash» Switch + izoh, pastda «N ta raqam»).
+- **Ish vaqti** (`WorkTimeDialogV2.tsx`, V2Dialog 760): tepada qotgan qator — qidiruv, Filial chipi, «Faqat
+  kiritilmaganlar» chipi; `surface-2` panelda ikki `V2TimeField` + «Ko'rinib turgan N xodimga qo'yish» / «Guruh vaqti
+  bo'yicha»; qatorlar — ism + vazifa, ikki vaqt maydoni (xatoda qizil); pastda o'zgarishlar soni yoki xato, saqlanmagan
+  o'zgarishda yopish so'raladi.
+- **O'chirish** — `V2Confirm` (danger): ism — telefon, «Birga o'chadi:» ro'yxati (xodim yozuvi, hisob, sessiyalar, SMS
+  kodlari), «Amal qaytarilmaydi», tugma «Butunlay o'chirish».
+- **Telefon (375 px)** — tugmalar, filtrlar va tabletkalar o'raladi, jadval o'z kartasida suriladi, sahifada gorizontal
+  surish yo'q; oynalar pastdan chiqadi. Rasmdan (yo'qligidan) farqlar — savollar ro'yxatida.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).
