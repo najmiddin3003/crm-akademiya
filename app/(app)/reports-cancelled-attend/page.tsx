@@ -1,27 +1,18 @@
-"use client";
+import { CancelledAttendPageV1 } from "@/components/reports/reportTableLegacy";
+import { CancelledAttendV2 } from "@/components/v2/reports/reportTablePages";
+import { shortPersonName } from "@/components/v2/reports/reportFormat";
+import { getCurrentUser } from "@/lib/auth";
+import { currentUiVersion } from "@/lib/uiVersionServer";
 
-import ReportTablePage from "@/components/reports/ReportTablePage";
-import type { CancelledAttendance } from "@/lib/studentReports";
-import { useT } from "@/components/shared/Language";
-
-// Hisobotlar → Davomati bekor qilinganlar analitikasi
-// (href /reports-cancelled-attend).
-const fmtUZS = (n: number) => n.toLocaleString("ru-RU") + " UZS";
-
-export default function Page() {
-  const { t } = useT();
-  return (
-    <ReportTablePage<CancelledAttendance>
-      kind="cancelled-attendance"
-      minWidth={1000}
-      columns={[
-        { key: "name", label: t("O'quvchi"), render: (r) => <span className="font-medium">{r.studentName}</span> },
-        { key: "amount", label: t("Miqdori"), align: "right", render: (r) => fmtUZS(r.amount) },
-        { key: "group", label: t("Guruh"), render: (r) => r.group },
-        { key: "course", label: t("Kurs"), render: (r) => r.course },
-        { key: "by", label: t("Kim bekor qildi?"), render: (r) => r.cancelledBy },
-        { key: "date", label: t("Sana"), render: (r) => <span className="text-muted-foreground tabular-nums">{r.date}</span> },
-      ]}
-    />
+// Hisobotlar → Davomati bekor qilinganlar analitikasi (href /reports-cancelled-attend).
+// Yangi versiyada (cookie `tizimli_ui`) — yangi dizaynda (components/v2/reports/reportTablePages.tsx,
+// 51-qism, 20.11.2026): o'sha /api/student-reports?kind=cancelled-attendance, qidiruv/Kurs/«Kim bekor
+// qildi?» (+ kim bo'yicha qator), Excel/PDF. Eski versiyada — o'zgarishsiz (kod
+// components/reports/reportTableLegacy.tsx ga aynan ko'chdi). Versiya serverda tanlanadi.
+export default async function Page() {
+  return (await currentUiVersion()) === "v2" ? (
+    <CancelledAttendV2 author={shortPersonName((await getCurrentUser())?.fullName || "")} />
+  ) : (
+    <CancelledAttendPageV1 />
   );
 }

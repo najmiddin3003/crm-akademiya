@@ -3253,6 +3253,132 @@ qaytarsa oyna ochiq qoladi (eskisida yopilardi).
 Yangi versiya menyusida «Hisobotlar → Qarzdor o'quvchilar» endi /reports/qarzdorlar ni ochadi (`V2_ITEM_HREFS`): o'sha
 /api/reports/debtors va o'sha ruxsat (/reports-unpaid). Eski versiya menyusi o'zgarmadi.
 
+### 51-qism — Hisobotlar: eski sahifalar yangi dizaynda — Kurs narxidan farqli to'lovlar, Bekor qilingan to'lovlar, Davomati bekor qilinganlar, O'quv markazga ishlab berilgan (20.11.2026)
+
+**614. Yangi pul raqamlari: ustun yig'indilari, «Farq» va «Ulushi»** — QAROR KERAK
+Eski sahifalarda faqat «Umumiy soni» bor edi. Yangisida ko'rsatkichlar kartasi jadvaldagi ustunlarning yig'indisini
+ko'rsatadi: «To'lanmagan darslar soni» va «Jami to'lanmagan summa» (Bekor qilingan to'lovlar), «Miqdori» (Davomati
+bekor qilinganlar); farqli to'lovlarda har qatorga «Farq» = O'quvchi narxi − Kurs narxi; /reports-served da «Ulushi» =
+o'qituvchi summasi ÷ barcha o'qituvchilar jami (o'qituvchi tanlansa ham butun jamidan). Yangi formula yo'q, faqat
+ko'rsatilgan sonlar qo'shilgan/ayirilgan; bazada takror yozuv bo'lsa yig'indi oshib ketadi — qoldirilsinmi yoki faqat
+sonlar ko'rsatilsinmi?
+
+**615. Eski kod qayerda turadi** — taxmin
+Uchta jadvalli sahifaning eski kodi aynan `components/reports/reportTableLegacy.tsx` ga ko'chdi: page.tsx endi server
+komponent, ustunlardagi `render` funksiyalari esa serverdan mijozga o'tolmaydi. `components/reports/` ga bu ishda
+faqat ServedReportPage.tsx yaratishga ruxsat bor edi; xohlansa uchala eski komponentni `components/reports/` ga
+ko'chirish mumkin (ko'rinish o'zgarmaydi).
+
+**616. Excel va PDF qo'shildi** — taxmin
+Eski sahifalarda eksport yo'q edi. Yangilari qo'shni /reports/<slug> hisobotlaridek Excel va PDF beradi — joriy
+filtrdagi BARCHA qatorlar (faqat ko'rinayotgan sahifa emas), so'rovsiz, brauzerda.
+
+**617. Sarlavhalar** — taxmin
+«Kurs narxidan farqli to'lovlar» (menyuda «…tranzaksiyalari»), «Davomati bekor qilinganlar» (menyuda «…analitikasi»),
+«O'quv markazga ishlab berilgan» (eski sahifa sarlavhasi «O'qituvchilar oylik to'lov analitikasi» edi) — qo'shni
+hisobotlardagidek qisqa nom; eski versiya matnlari o'zgarmadi.
+
+**618. Yo'ldagi guruh** — taxmin
+Farqli va bekor qilingan to'lovlar — «Moliya»; davomati bekor qilinganlar — «O'quv sifati» (eski menyudagi «O'quv»);
+ishlab berilgan — «Xodimlar va oylik» («Ustozlar tushumi» bilan bir guruh; eski menyuda «O'quv» edi).
+
+**619. Katalog va yangi menyu** — ochiq
+To'rttala sahifa /reports katalogida ko'rinmaydi va yangi menyuda eski manzillariga olib boradi (`V2_ITEM_HREFS` va
+`lib/reportsCatalog.ts` ga bu ishda tegilmadi). Katalogga havola kerak bo'lsa — `REPORT_LINKS` ga qo'shish mumkin.
+
+**620. Filial yorlig'i** — taxmin
+/api/student-reports va served-summary filial bo'yicha kesmaydi, filial tanlovi qo'shilmadi; Excel/PDF sarlavhasida
+«Barcha filiallar».
+
+**621. «Ustozlar tushumi →» havolasi** — taxmin
+/reports-served filtrlar qatorining o'ngida. /reports-served ruxsati bor xodim «Ustozlar tushumi» ni ham ochadi
+(katalogdagi ruxsatlar ro'yxatida bor). Raqamlari boshqa hisob (oylik ulushi bilan) — sahifaga aralashtirilmadi.
+
+**622. Kirimsiz oraliq (/reports-served)** — taxmin
+Oraliqda kirim umuman bo'lmasa «o'qituvchi ko'rsatilmagan» ogohlantirishi chiqmaydi (eskisida chiqardi —
+chalg'ituvchi), ko'rsatkich ostida «Bu davrda kirim yo'q»; summa baribir «—» — eskisidagidek.
+
+**623. Xato holati** — taxmin
+So'rov yiqilsa — xato qatori va «Qayta urinish», ko'rsatkichlar chizilmaydi. Eskisida xato yutilib, bo'sh jadval yoki
+«—» qolardi.
+
+**624. O'quvchilar yig'indisi berilmadi** — taxmin
+/reports-served ko'rsatkichlarida faqat o'qituvchilar va guruhlar soni; o'quvchilar yig'indisi chiqarilmadi — bir
+o'quvchi ikki ustoz guruhida bo'lsa ikki marta sanalardi. Jadvaldagi har ustoz qatoridagi son — eskisidagidek.
+
+**625. Qo'shimcha filtrlar** — taxmin
+Qidiruv, Turi segmenti, O'qituvchi / Guruh / Kurs / «Kim bekor qildi?» tanlovlari va «Kim bekor qildi?» qatori — faqat
+brauzerda, API'ga yangi parametr yuborilmaydi; variantlar yuklangan ma'lumotning o'zidan.
+
+
+### 52-qism — Nazorat: eski sahifalar yangi dizaynda — Davomat analitikasi, Davomat qilinmagan guruhlar, Turniket analitikasi, Turniket kirish-chiqish (20.11.2026)
+
+**626. Rasmsiz qurildi** — taxmin
+Bu to'rt sahifaga dizayn rasmi yo'q — tayyor 34-qism Nazorat (Davomat nazorati, Xodimlar davomati) va 35-qism
+Hisobotlar uslubida qurildi. Eski versiya, API va raqamlar o'zgarmadi; versiya `page.tsx` da serverda tanlanadi
+(Moliya 50-qism kabi, `?classic=1` yo'q).
+
+**627. Davomat analitikasi: «Davomat qilinmagan» va «Muzlatilgan» kataklari olib tashlandi** — taxmin
+Eskisida ikki katak doim «—» bilan turardi (kunlik son bazada yo'q). Yangisida ular kataklar qatoridan olindi, sababi
+izoh kartasida yozilgan va «Davomat qilinmagan guruhlar» sahifasiga tugma bor.
+
+**628. Davomat analitikasi: holat ranglari va nomlari** — taxmin
+Eski hex ranglar o'rniga yangi tokenlar — Keldi yashil, Kechikdi sariq, Birinchi dars ko'k, Sababli kulrang, Sababsiz
+qizil («Davomat nazorati»dagidek); yorliqlar qisqa («Keldi», «Sababsiz»). CSV fayl eskisi bilan aynan bir xil (o'sha
+nom va o'zbekcha ustun nomlari).
+
+**629. Davomat analitikasi: yig'iladigan filtr paneli o'rniga filtr qatori** — taxmin
+Chapdagi «Filtr» paneli (yig'ish tugmasi bilan) o'rniga sarlavha ostida bir qator: sana oralig'i, Kurs, Guruh,
+O'qituvchi, Holati chiplari + «Tozalash». Guruh filtri eskisidagidek guruh NOMI bo'yicha; ro'yxatda nom yonida kurs ·
+daraja izohi.
+
+**630. Davomat analitikasi: ulush foizi va «Grafik | Jadval»** — taxmin
+Har holat katagida «N% belgilar» (holat soni ÷ jami belgilar) — yangi hisob emas, ko'rinish. «Jadval» — CSV dagi
+sonlarning o'zi (kunlar, besh holat, Jami).
+
+**631. Davomat qilinmagan guruhlar: «Jami summa —»** — QAROR KERAK
+Eskisidagidek chiziqcha: guruhda dars narxi maydoni yo'q, yo'qotilgan tushum hisoblanmaydi. Kurs narxi ÷ oydagi
+darslar bo'yicha hisoblaymizmi yoki bu ko'rsatkichni ikkala versiyadan olib tashlaymizmi?
+
+**632. Uch joyda «belgilanmagan dars» soni har xil chiqishi mumkin** — QAROR KERAK
+Bu sahifa boshlanish sanasi yo'q guruhlarni umuman sanamaydi; «Hisobotlar → Davomat» ularni a'zolik tarixi boshlangan
+kundan sanaydi; «Davomat nazorati → Belgilanmagan darslar» o'z API'sidan. Qaysi qoida asosiy bo'lsin — bittasiga
+birlashtiramizmi?
+
+**633. Davomat qilinmagan guruhlar: boshlanish sanasi yo'q guruhlar** — taxmin
+Eski kulrang izoh o'rniga sariq ogohlantirish; guruh nomlari guruh sahifasiga havola (birinchi 8 tasi + «va yana N
+ta»), shunda sanani darhol to'ldirish mumkin.
+
+**634. Davomat qilinmagan guruhlar: qatorda kurs · daraja** — taxmin
+Guruh nomi ko'pincha raqam — qatorda sarlavha «kurs · daraja» (fan nuqtasi bilan), ostida nomi va dars vaqti, sana
+ostida hafta kuni; sarlavha guruh jurnaliga olib boradi. Hisob o'zgarmagan.
+
+**635. «Davomat nazorati» tugmasi va ruxsat** — ochiq
+«Davomat qilinmagan guruhlar» sarlavhasida «Davomat nazorati →» (eslatma va jarima o'sha yerda). Shu sahifaga ruxsati
+yo'q xodim bossa — ruxsat yo'q sahifasi. Tugmani ruxsatga qarab yashiraymi?
+
+**636. Turniket analitikasi: ma'lumot manbasi yo'q** — QAROR KERAK
+Turniket ulanmagan (SAVOLLAR 447), sahifa hech qanday API o'qimaydi. Yangisida bo'sh holat kartasi, «Turniket
+kirish-chiqish analitikasi» va «Xodimlar davomati» havolalari va «qurilma ulanganda ustunlar» ro'yxati. Menyu bandini
+yangi versiyada yashiramizmi?
+
+**637. Turniket kirish-chiqish: donut o'rniga bosiladigan holat kataklari** — taxmin
+Jami (segmentli chiziq) · Kelgan · Kechikkan · Kelmagan — bosilsa jadval o'sha holatga filtrlanadi («Holati» tanlovi
+o'rniga). Sonlar eskisidagidek holat filtridan mustaqil. Eski «Bugungi statistika» sarlavhasi boshqa kun tanlanganda
+ham «bugungi» derdi — endi tanlangan davr yoziladi.
+
+**638. Turniket kirish-chiqish: sana, sahifalash, xato holati** — taxmin
+Bir necha kunlik oraliqda eskisida qator qaysi kunniki ekani ko'rinmasdi — ism ostida sana; 50/100/200 qatordan
+sahifalash; yuklanmasa «Qayta urinish». Ism (xodim bo'lsa) profilga havola.
+
+**639. Turniket kirish-chiqish: chiqish joylashuvi ko'rsatilmaydi** — ochiq
+Yozuvda ketgan paytdagi joylashuv (`exitLocation`) ham bor, eskisida faqat kelgan joylashuv chiqadi — yangisida ham
+shunday. Ikkalasini ko'rsataymi? Xarita oynasi eskisi bilan bir xil (o'sha vidjet va «Yandex xaritada ochish»).
+
+**640. «Turniket» nomi, lekin yozuvlar botdan** — ochiq
+Yozuvlar xodimlar botidagi «Ishga keldim»dan — sahifa tepasida shu haqda izoh qatori qo'yildi. Menyu nomini
+o'zgartirish (masalan «Kirish-chiqish jurnali») kerakmi?
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)

@@ -1621,6 +1621,46 @@ Rasm yo'q — mavjud Moliya va Hisobotlar sahifalari qolipida. Versiya `page.tsx
 - **Telefon (375 px)**: filtr va amallar o'raladi, KPI 2 ustun, jadval va grafik o'z qutisida aylanadi, oynalarda
   ikki ustunli qatorlar bitta ustunga tushadi. Rasmdan (yo'qligidan) farqlar — `SAVOLLAR.md` 585–613.
 
+## Hisobotlar — eski sahifalar yangi dizaynda: Farqli to'lovlar, Bekor qilingan to'lovlar, Davomati bekor qilinganlar, O'quv markazga ishlab berilgan (51-qism, rasmsiz, 20.11.2026)
+
+Rasm yo'q — /reports/<slug> hisobotlari qolipida. Versiya `page.tsx` da serverda tanlanadi (`currentUiVersion()`);
+eski komponentlar, API va raqamlar o'zgarmagan.
+
+- **Qolip** — `components/v2/reports/reportTableKit.tsx`: `ReportTableShell` (ReportShell bilan aynan bir xil — yo'l
+  «Hisobotlar › guruh › nomi», sarlavha, «guruh · izoh», Excel / PDF, filtrlar qatori; katalog yozuvisiz, chunki bu
+  sahifalar katalogda yo'q), `ReportTableTabs` (segment), `ReportTablePill`, `ReportTableGrid` (birinchi ustun «№»,
+  qotgan sarlavha, quti ichida aylanadi — `max-h-[70vh]`, pastda `V2Pagination`).
+- **Jadvalli uchtasi** — umumiy `ReportTableV2.tsx` (eski `ReportTablePage` juftligi: o'sha
+  /api/student-reports?kind=…, o'sha tartib), sahifalar `reportTablePages.tsx`, eski versiya aynan
+  `components/reports/reportTableLegacy.tsx` da. Qidiruv, segment, ustun qiymatidan tanlovlar va KpiStrip — brauzerda, so'rovsiz.
+  - **Kurs narxidan farqli to'lovlar** (`/reports-diff-payments`, Moliya): qidiruv, Guruh, o'ngda «Hammasi | Chegirma |
+    Qo'shimcha»; KPI Yozuvlar · Chegirma · Qo'shimcha; Turi tabletkasi (Chegirma `violet`, Qo'shimcha `info`),
+    «Farq» (manfiy `violet`, musbat `info`).
+  - **Bekor qilingan to'lovlar** (`/reports-cancelled`, Moliya): qidiruv, O'qituvchi, Guruh; KPI Yozuvlar · To'lanmagan
+    darslar · Jami to'lanmagan summa (`danger`); Izoh 2 qatorgacha.
+  - **Davomati bekor qilinganlar** (`/reports-cancelled-attend`, O'quv sifati): qidiruv, Kurs, «Kim bekor qildi?»;
+    KPI Yozuvlar · Miqdori · Bekor qilganlar; «Kim bekor qildi?» gorizontal qatori (son, summa, `warning` chiziq —
+    bosilsa filtr); Kurs katagida fan nuqtasi.
+- **O'quv markazga ishlab berilgan** (`/reports-served`, Xodimlar va oylik) — `ServedReportV2.tsx`, hisob
+  `servedReportCalc.ts` (eski `components/reports/ServedReportPage.tsx` dagi bilan aynan bir xil, birga o'zgartiriladi):
+  `V2DateRange` (sukut — joriy oy, «Barcha sanalar» bor), O'qituvchi; o'ngda «Ustozlar tushumi →»; KPI Jami ishlab
+  berilgan · O'qituvchilar (+ guruhlar) · O'qituvchisi ko'rsatilmagan kirim; o'qituvchi bog'lanmagan bo'lsa `warning`
+  Callout; jadval O'qituvchi · Guruhlar · O'quvchilar · Ishlab berilgan summa · Ulushi (brend chiziq + %).
+- **Excel / PDF** — har to'rttasida (eskisida yo'q edi): joriy filtrdagi barcha qatorlar, «Barcha filiallar».
+- **Telefon (375 px)**: qidiruv butun qatorga, tanlovlar va segment o'raladi, KPI bitta ustun, «kim bo'yicha» qatori
+  va jadval o'z qutisida aylanadi. Rasmdan (yo'qligidan) farqlar — `SAVOLLAR.md`.
+
+## Nazorat — eski sahifalar yangi dizaynda: Davomat analitikasi, Davomat qilinmagan guruhlar, Turniket analitikasi, Turniket kirish-chiqish (52-qism, rasmsiz, 20.11.2026)
+
+- **Tanlash** — `app/(app)/nazorat-davomat-analytics|nazorat-missed-groups|nazorat-turnstile|nazorat-turnstile-io/page.tsx` serverda `currentUiVersion()` bo'yicha yangi yoki eski komponentni beradi; eski komponentlar, API va raqamlar o'zgarmagan. Qolip — 34-qism Nazorat va 35-qism Hisobotlar (`PageShell`, `PageHead`, `Panel`, `Callout`, `NoteLine`).
+- **Umumiy hisob** — `components/v2/nazorat/nazoratAttCalc.ts`: kunma-kun belgilar va «davomat qilinmagan» darslar — eski sahifalardan aynan nusxa (manba o'sha `useNazoratAttendance`: /api/groups + /api/attendance); eskisi o'zgarsa birga o'zgartiriladi.
+- **Davomat analitikasi** (`/nazorat-davomat-analytics`, `NazoratDavomatAnalyticsV2.tsx`): sarlavha + «CSV» (eski fayl bilan aynan bir xil); filtr qatori — `V2DateRange` (sukut oy boshidan bugungacha), Kurs / Guruh / O'qituvchi / Holati chiplari + «Tozalash»; 6 katak (Jami belgilar + segmentli chiziq, besh holat — son va «N% belgilar»); «Kunlar bo'yicha» paneli «Grafik | Jadval» — ustunlar holatlar ustma-ust (`success` / `warning` / `info` / `text-3` / `danger`), Y o'qi 1-2-5 qadam, ko'p kunda o'z qutisida suriladi; `info-bg` izoh kartasi («Davomat qilinmagan» va «Muzlatilgan» sanalmaydi) + «Davomat qilinmagan guruhlar →»; pastda «Hisobotlar → Davomat» havolasi.
+- **Davomat qilinmagan guruhlar** (`/nazorat-missed-groups`, `NazoratMissedGroupsV2.tsx`): ro'yxat qolipi (≥1024 px jadval kartada ichidan aylanadi); sarlavhada «Davomat nazorati →»; sana oralig'i; xulosa qatori — Qoldirilgan darslar (`danger`; muddati ma'lum guruh yo'q bo'lsa «—»), Guruhlar, «Jami summa —»; boshlanish sanasi yo'q guruhlar — `warning-bg` ogohlantirish, nomlari guruh sahifasiga havola; jadval №, Guruh (fan nuqtasi, kurs · daraja → jurnal, ostida nomi · vaqti), Sana (+ hafta kuni), O'qituvchi (`StaffName`); `V2Pagination`; bo'sh holat — `success` belgi «Bu davrda davomat qilinmagan dars yo'q».
+- **Turniket analitikasi** (`/nazorat-turnstile`, `NazoratTurnstileV2.tsx`): manba yo'q (turniket ulanmagan, SAVOLLAR 447) — bo'sh holat kartasi (Unplug ikonka, sabab, «Turniket kirish-chiqish analitikasi →» asosiy va «Xodimlar davomati →» tugmalari) va «Qurilma ulanganda jadval ustunlari» — raqamli tabletkalar.
+- **Turniket kirish-chiqish analitikasi** (`/nazorat-turnstile-io`, `NazoratTurnstileIoV2.tsx`): o'sha /api/turnstile-io; `info-bg` qatori «turniket ulanmagan — yozuvlar botdagi «Ishga keldim»dan» + «Xodimlar davomati →»; filtrlar — sana oralig'i (sukut bugun, «Barcha sanalar» bor), Foydalanuvchi turi (Xodim / O'quvchi), odam chipi; 4 bosiladigan katak (Jami + segmentli chiziq, Kelgan, Kechikkan, Kelmagan — tanlangani `brand-bg` + pastki chiziq, sonlar holat filtridan mustaqil); jadval: avatar + ism (xodim — profilga) + sana, Kirgan, Chiqqan, Joylashuv, Holat (`Badge`); sahifalash.
+- **Joylashuv** — `nazoratTurnstileLocation.tsx`: katak (radius ichida — `success-bg` + masofa, aks holda kulrang) va `V2Dialog` (faqat ko'rish): manzil, koordinata + «© OpenStreetMap», masofa / aniqlik / «filial koordinatasi kiritilmagan» (`warning-bg`), xarita (eski vidjet), «Yandex xaritada ochish».
+- **Telefon (375 px)** — filtrlar o'raladi, kataklar 2 ustun, grafik va jadvallar o'z qutisida suriladi, sahifada gorizontal surish yo'q. Rasmdan (yo'qligidan) farqlar — savollar ro'yxatida.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).
