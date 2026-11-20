@@ -270,6 +270,71 @@ export function Segmented({
   );
 }
 
+/**
+ * TO'LOV TURI TANLOVI. 3 tagacha tur — `Segmented` (bir qatorga bemalol sig'adi).
+ * Ko'p bo'lsa (prod'da 8 ta: «Korporativ karta», «Yagona QR», «Hisob raqam»…)
+ * Segmented'da har tur ~50 px ga siqilib, nomi kesilardi — 20.11.2026 egasi:
+ * «to'lov turi ancha siqilib qolgan, ko'zga ko'rinadigan qil». Shunda radio-chiplar:
+ * nom to'liq, sig'maganini keyingi qatorga o'tkazadi. Klaviatura — Segmented kabi strelkalar.
+ */
+export function MethodPicker({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: SegmentOption[];
+  label: string;
+}) {
+  const name = useId();
+  if (options.length <= 3) return <Segmented value={value} onChange={onChange} options={options} label={label} />;
+  const enabled = options.filter((x) => !x.disabled);
+  const focusable = enabled.some((x) => x.value === value) ? value : enabled[0]?.value;
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      {options.map((o, i) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value || name + i}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            disabled={o.disabled}
+            title={o.title}
+            tabIndex={o.value === focusable ? 0 : -1}
+            onClick={() => onChange(o.value)}
+            onKeyDown={(e) => {
+              const fwd = e.key === "ArrowRight" || e.key === "ArrowDown";
+              if (!fwd && e.key !== "ArrowLeft" && e.key !== "ArrowUp") return;
+              e.preventDefault();
+              const idx = enabled.findIndex((x) => x.value === o.value);
+              const next = enabled[(idx + (fwd ? 1 : enabled.length - 1)) % enabled.length];
+              if (!next) return;
+              onChange(next.value);
+              const group = e.currentTarget.parentElement;
+              requestAnimationFrame(() => group?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus());
+            }}
+            className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-v2-md border px-3 text-v2-small transition-colors focus-visible:shadow-v2-focus focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+              on ? "border-v2-brand bg-v2-brand-bg font-semibold text-v2-brand-text" : "border-v2-border-strong bg-v2-surface text-v2-text hover:bg-v2-surface-2"
+            }`}
+          >
+            {on ? (
+              <Check className="size-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+            ) : (
+              o.dot && <span className={`size-2 shrink-0 rounded-full ${o.dot}`} aria-hidden />
+            )}
+            {o.icon}
+            <span className="whitespace-nowrap">{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Chip — oy, kategoriya: tanlangani brend fon + chegara + ✓. */
 export function Chip({
   on,

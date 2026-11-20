@@ -19,7 +19,7 @@ import V2Picker, { type PickerOption } from "@/components/v2/form/V2Picker";
 import V2SuggestInput from "@/components/v2/form/V2SuggestInput";
 import MonthChips, { MonthField, monthKeyOf, shiftMonth } from "@/components/v2/form/MonthChips";
 import StudentSearchField, { studentPhoneLabel } from "@/components/v2/form/StudentSearchField";
-import { Field, FieldError, FieldHint, FieldLabel, MoneyField, Segmented, TextInput, methodDot } from "@/components/v2/form/fields";
+import { Field, FieldError, FieldHint, FieldLabel, MethodPicker, MoneyField, Segmented, TextInput, methodDot } from "@/components/v2/form/fields";
 import { ROLE_LABELS } from "@/constants/employees";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { payrollCashLeg, payrollPayout } from "@/lib/salary";
@@ -596,7 +596,7 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
             disabled={k.saving}
           />
         ) : (
-          <Segmented value={k.method} onChange={k.setMethod} options={methodOptions} label={t("To'lov turi")} />
+          <MethodPicker value={k.method} onChange={k.setMethod} options={methodOptions} label={t("To'lov turi")} />
         )}
         {submitted && errMethod && <FieldError>{errMethod}</FieldError>}
         {submitted && k.splitMode && errAmount && <FieldError>{errAmount}</FieldError>}
@@ -898,7 +898,7 @@ function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabPro
         ) : methodOptions.length === 0 ? (
           <p className="text-v2-small text-v2-text-3">{t("Kassada mablag' yo'q")}</p>
         ) : (
-          <Segmented value={methodOk ? c.method : ""} onChange={c.setMethod} options={methodOptions} label={t("To'lov turi")} />
+          <MethodPicker value={methodOk ? c.method : ""} onChange={c.setMethod} options={methodOptions} label={t("To'lov turi")} />
         )}
         {submitted && errMethod ? <FieldError>{errMethod}</FieldError> : methodOptions.length > 0 && <FieldHint>{t("Kassada mablag'i bor turlar")}</FieldHint>}
       </div>
@@ -1023,7 +1023,7 @@ function KochirishTab({ cashbox, register, report, onDone }: TabProps) {
         ) : methodOptions.length === 0 ? (
           <p className="text-v2-small text-v2-text-3">{t("Kassada mablag' yo'q")}</p>
         ) : (
-          <Segmented value={methodOk ? tr.method : ""} onChange={tr.setMethod} options={methodOptions} label={t("To'lov turi")} />
+          <MethodPicker value={methodOk ? tr.method : ""} onChange={tr.setMethod} options={methodOptions} label={t("To'lov turi")} />
         )}
         {submitted && errMethod ? (
           <FieldError>{errMethod}</FieldError>

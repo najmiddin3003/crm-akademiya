@@ -66,10 +66,11 @@ export default function PaymentSplitField({
           const value = amounts[m.key] ?? "";
           const empty = !(Number(value) > 0);
           return (
-            <div key={m.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] items-center gap-3 px-3 py-2">
+            <div key={m.key} className="grid grid-cols-[minmax(0,1fr)_minmax(8.5rem,1fr)] items-center gap-3 px-3 py-2">
               <div className="flex min-w-0 items-center gap-2">
                 <span className={`size-2 shrink-0 rounded-full ${methodDot(m.key)}`} aria-hidden />
-                <span className="truncate text-v2-small font-medium text-v2-text">{t(m.name)}</span>
+                {/* Nom kesilmaydi («Korporativ karta» tor ekranda ikki qatorga o'tadi) — 20.11.2026 egasi: «ko'zga ko'rinadigan qil». */}
+                <span className="min-w-0 break-words text-v2-small font-medium leading-tight text-v2-text">{t(m.name)}</span>
                 {/* Qolgan summani shu turga — bitta bosishda (yozilmagan qatorda). */}
                 {empty && remaining > 0 && !disabled && (
                   <button

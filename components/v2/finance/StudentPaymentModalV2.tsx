@@ -14,7 +14,7 @@ import V2DateField from "@/components/v2/form/V2DateField";
 import V2Picker, { type PickerOption } from "@/components/v2/form/V2Picker";
 import MonthChips, { monthKeyOf, shiftMonth } from "@/components/v2/form/MonthChips";
 import StudentSearchField, { studentPhoneLabel } from "@/components/v2/form/StudentSearchField";
-import { Field, FieldError, FieldLabel, MoneyField, Segmented, TextInput, methodDot } from "@/components/v2/form/fields";
+import { Field, FieldError, FieldLabel, MethodPicker, MoneyField, TextInput, methodDot } from "@/components/v2/form/fields";
 import type { Cashbox } from "@/lib/cashboxes";
 import type { Group } from "@/lib/groups";
 import type { StudentRow } from "@/lib/studentsData";
@@ -466,7 +466,7 @@ function PaymentForm({
               disabled={k.saving}
             />
           ) : (
-            <Segmented value={k.method} onChange={k.setMethod} options={methodOptions} label={t("To'lov turi")} />
+            <MethodPicker value={k.method} onChange={k.setMethod} options={methodOptions} label={t("To'lov turi")} />
           )}
           {submitted && errMethod && <FieldError>{errMethod}</FieldError>}
           {submitted && k.splitMode && errAmount && <FieldError>{errAmount}</FieldError>}
