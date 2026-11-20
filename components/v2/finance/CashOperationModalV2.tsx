@@ -30,6 +30,7 @@ import { dropCashboxes, loadCashboxes, peekCashboxes } from "./cashboxesCache";
 import { useHiddenBalances } from "./hiddenBalances";
 import { preferStudentType } from "./kirimPrefs";
 import { openReceipt } from "./ReceiptHost";
+import PaymentSplitField, { SplitToggle } from "./PaymentSplitField";
 
 // YANGI VERSIYA — «KASSA AMALI» (rasm «Kassa amali · Chiqim», yorug'/qorong'i,
 // 19.10.2026): sarlavha + «… kassasi»; tablar ↙ Kirim / ↗ Chiqim / ⇄ Ko'chirish;
@@ -360,28 +361,31 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
   };
   const dateKey = k.date ? monthKeyOf(k.date) : "";
 
-  const amountNum = k.showRows ? k.total : Number(k.amount);
+  // Aralash to'lovda (PaymentSplitField) summa — bo'laklar yig'indisi, tur — bo'laklardan.
+  const amountNum = k.splitMode ? k.splitTotal : k.showRows ? k.total : Number(k.amount);
   const errType = k.categoryId === null ? t("Toifani tanlang") : "";
   const errTeacher = k.showTeacher && !k.showStudent && !k.teacherName.trim() ? t("O'qituvchini tanlang") : "";
   const errStudent = k.showStudent && !k.studentKey ? t("O'quvchini tanlang") : "";
-  const errAmount = !(amountNum > 0) ? t("Summani kiriting") : "";
-  const errMethod = !k.method ? t("To'lov turini tanlang") : "";
+  const errAmount = !(amountNum > 0) ? t(k.splitMode ? "Kamida bitta to'lov turiga summa yozing" : "Summani kiriting") : "";
+  const errMethod = !k.splitMode && !k.method ? t("To'lov turini tanlang") : "";
   const showAmountErr = (submitted || amountTouched) && errAmount ? errAmount : "";
 
   function submit() {
     if (k.saving || k.categoriesLoading) return;
-    const first = errType ? typeRef : errTeacher ? teacherRef : errStudent ? studentRef : errAmount ? amountRef : errMethod ? methodRef : null;
+    const first = errType ? typeRef : errTeacher ? teacherRef : errStudent ? studentRef : errAmount ? (k.splitMode ? methodRef : amountRef) : errMethod ? methodRef : null;
     if (first || k.noteMismatch) {
       setSubmitted(true);
       first?.current?.querySelector<HTMLElement>("input, [role=radio], button")?.focus();
       return;
     }
     const who = [k.category, chosen?.name || k.teacherName].filter(Boolean).join(" · ");
-    last.current = [who, `${fmtNum(amountNum)} ${t("so'm")} · ${t(k.paymentMethods.find((x) => x.key === k.method)?.name ?? k.method)} · ${cashbox.name}`].filter(Boolean);
+    const methodName = (key: string) => t(k.paymentMethods.find((x) => x.key === key)?.name ?? key);
+    const how = k.splitMode ? k.splitLegs.map((l) => `${methodName(l.method)} ${fmtNum(l.amount)}`).join(" + ") : methodName(k.method);
+    last.current = [who, `${fmtNum(amountNum)} ${t("so'm")} · ${how} · ${cashbox.name}`].filter(Boolean);
     void k.save();
   }
 
-  const dirty = !!k.amount || k.rows.some((r) => !!r.amount) || !!k.note.trim() || !!k.method || (!presetStudent && !!chosen);
+  const dirty = !!k.amount || k.splitTotal > 0 || k.rows.some((r) => !!r.amount) || !!k.note.trim() || !!k.method || (!presetStudent && !!chosen);
   const blocked = k.noteMismatch || k.categoriesLoading;
   useEffect(() => {
     register("kirim", { submit });
@@ -517,9 +521,16 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
         <>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
             <div ref={amountRef}>
-              <Field label={t("Summa")} error={showAmountErr}>
-                <MoneyField value={k.amount} onChange={k.setAmount} onBlur={() => setAmountTouched(true)} state={showAmountErr ? "error" : "default"} />
-              </Field>
+              {k.splitMode ? (
+                // Aralash to'lov — Summa = to'lov turlari yig'indisi (pastda), o'zi tahrirlanmaydi.
+                <Field label={t("Summa")} hint={t("To'lov turlari yig'indisi")}>
+                  <MoneyField value={k.splitTotal > 0 ? String(k.splitTotal) : ""} onChange={() => {}} readOnly />
+                </Field>
+              ) : (
+                <Field label={t("Summa")} error={showAmountErr}>
+                  <MoneyField value={k.amount} onChange={k.setAmount} onBlur={() => setAmountTouched(true)} state={showAmountErr ? "error" : "default"} />
+                </Field>
+              )}
             </div>
             <Field label={t("Sana va vaqt")}>
               <div className="[&>button]:h-12">
@@ -565,15 +576,30 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
       )}
 
       <div ref={methodRef}>
-        <FieldLabel>{t("To'lov turi")}</FieldLabel>
+        {/* «Bir nechta to'lov turi» — aralash to'lov (karta + naqd), faqat bitta Summa maydonli turda. */}
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <FieldLabel className="mb-0!">{t("To'lov turi")}</FieldLabel>
+          {!k.showRows && !k.methodsLoading && methodOptions.length > 1 && <SplitToggle on={k.splitMode} onChange={k.setSplitMode} disabled={k.saving} />}
+        </div>
         {k.methodsLoading ? (
           <div className="h-11 animate-pulse rounded-v2-md bg-v2-skeleton" aria-hidden />
         ) : methodOptions.length === 0 ? (
           <p className="text-v2-small text-v2-text-3">{t("Faol to'lov turi yo'q — Sozlamalar → Moliya → To'lov turlari")}</p>
+        ) : k.splitMode ? (
+          <PaymentSplitField
+            methods={k.paymentMethods}
+            amounts={k.splitAmounts}
+            onChange={k.setSplitAmount}
+            target={k.splitTarget}
+            total={k.splitTotal}
+            invalid={submitted && !!errAmount}
+            disabled={k.saving}
+          />
         ) : (
           <Segmented value={k.method} onChange={k.setMethod} options={methodOptions} label={t("To'lov turi")} />
         )}
         {submitted && errMethod && <FieldError>{errMethod}</FieldError>}
+        {submitted && k.splitMode && errAmount && <FieldError>{errAmount}</FieldError>}
       </div>
 
       <Field label={t("Izoh")} optional>

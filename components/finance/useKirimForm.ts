@@ -153,6 +153,14 @@ export function useKirimForm({
   // turlarda ishlatilmaydi — u yerda yuqoridagi bitta `amount` qoladi.
   const [rows, setRows] = useState<Row[]>(() => [{ id: 1, amount: "", periodMonth: monthOf(null) }]);
   const [nextRowId, setNextRowId] = useState(2);
+  // ARALASH TO'LOV (20.11.2026) — bitta to'lov bir nechta to'lov turida (karta 100 000 +
+  // naqd 100 000). Yoqilganda «To'lov turi» o'rnida har tur uchun summa maydoni; Summa =
+  // ularning yig'indisi. Faqat yangi versiya oynalari yoqadi; eski oyna tegmaydi.
+  // `splitTarget` — yoqilgan paytdagi Summa («To'lanishi kerak»): «Qolgani» tugmasi
+  // va «qoldi / ortiqcha» yozuvi shundan; majburiy emas (qisman to'lov ham bo'ladi).
+  const [splitMode, setSplitModeRaw] = useState(false);
+  const [splitAmounts, setSplitAmounts] = useState<Record<string, string>>({});
+  const [splitTarget, setSplitTarget] = useState(0);
   const [note, setNote] = useState("");
   // Shu kassada ILGARI yozilgan izohlar — "Izoh" maydonidagi tavsiyalar
   // (tez-tez ishlatilgani birinchi, server shunday saralaydi).
@@ -242,6 +250,49 @@ export function useKirimForm({
   const showRows = audience.thirdParty;
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
+  // Aralash to'lov — faqat bitta «Summa» maydonli turda («Uchinchi shaxs» qatorlarida
+  // summa oylar bo'yicha bo'linadi, ikki xil bo'linish bir oynada chalkashtiradi).
+  const splitOn = splitMode && !showRows;
+  // Bo'laklar — sozlamadagi tartibda, summasi bor turlar.
+  const splitLegs = useMemo(
+    () =>
+      paymentMethods
+        .map((m) => ({ method: m.key, amount: Math.round(Number(splitAmounts[m.key]) || 0) }))
+        .filter((l) => l.amount > 0),
+    [paymentMethods, splitAmounts],
+  );
+  const splitTotal = splitLegs.reduce((s, l) => s + l.amount, 0);
+
+  /**
+   * Aralash to'lovni yoqish/o'chirish. Yoqilganda yozilgan Summa yo'qolmaydi: tanlangan
+   * to'lov turi bo'lsa — o'sha turga o'tadi, Summa esa «To'lanishi kerak» bo'lib qoladi.
+   * O'chirilganda bitta tur to'ldirilgan bo'lsa — o'sha tur va summa oddiy maydonlarga
+   * qaytadi; bir nechtasi bo'lsa — yig'indi Summaga, tur qayta tanlanadi.
+   */
+  function setSplitMode(on: boolean): void {
+    if (on === splitMode) return;
+    if (on) {
+      const amt = Math.round(Number(amount) || 0);
+      setSplitTarget(amt);
+      setSplitAmounts(method && amt > 0 ? { [method]: String(amt) } : {});
+    } else {
+      if (splitLegs.length === 1) {
+        setMethod(splitLegs[0].method);
+        setAmount(String(splitLegs[0].amount));
+      } else if (splitLegs.length > 1) {
+        setMethod("");
+        setAmount(String(splitTotal));
+      }
+      setSplitAmounts({});
+    }
+    setSplitModeRaw(on);
+  }
+  function setSplitAmount(key: string, value: string): void {
+    setSplitAmounts((prev) => ({ ...prev, [key]: value }));
+  }
+  // Aralash rejimda Summa maydoni `splitTotal` ni ko'rsatadi (o'zi tahrirlanmaydi);
+  // `amount` holati tegilmaydi — o'chirilganda bo'lak bo'lmasa avvalgi summa qaytadi.
+
   // IZOHDAGI OY ≠ TANLANGAN OY (lib/noteMonth.ts izohi): kassir oyni izohga
   // yozib, «Qaysi oy uchun» ni o'zgartirmasa — ustoz ulushi boshqa oyga
   // tushadi. Faqat oy maydoni va o'qituvchi chiqadigan turda tekshiriladi
@@ -277,6 +328,9 @@ export function useKirimForm({
     setNextRowId(2);
     setPeriodMonth(monthOf(date));
     setPeriodTouched(false);
+    setSplitModeRaw(false);
+    setSplitAmounts({});
+    setSplitTarget(0);
   }
 
   function addRow() {
@@ -347,12 +401,16 @@ export function useKirimForm({
     }
     // "Uchinchi shaxs" turida summa QATORLARDAN yig'iladi, boshqa
     // turlarda — bitta maydondan.
-    const amountNum = showRows ? total : Number(amount);
+    // Aralash to'lovda summa va tur BO'LAKLARDAN. Bitta tur to'ldirilgan bo'lsa — oddiy
+    // kirim bo'lib ketadi (bo'linadigan narsa yo'q).
+    const legs = splitOn ? splitLegs : [];
+    const amountNum = splitOn ? splitTotal : showRows ? total : Number(amount);
     if (!amountNum || amountNum <= 0) {
-      showError(t("Qiymatni to'g'ri kiriting"));
+      showError(t(splitOn ? "Kamida bitta to'lov turiga summa yozing" : "Qiymatni to'g'ri kiriting"));
       return;
     }
-    if (!method) {
+    const sendMethod = splitOn ? (legs[0]?.method ?? "") : method;
+    if (!sendMethod) {
       showError(t("To'lov turini tanlang"));
       return;
     }
@@ -388,8 +446,11 @@ export function useKirimForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: "kirim",
-          method,
+          method: sendMethod,
           amount: amountNum,
+          // Ikki va undan ko'p tur — har biri alohida yozuv, umumiy kalit bilan
+          // (lib/cashboxAdjust.ts → applyCashboxKirimSplit). Server bunda method/amount'ni o'qimaydi.
+          ...(legs.length > 1 ? { splits: legs } : {}),
           category,
           // EKRANDA KO'RINMAGAN QIYMAT YUBORILMAYDI. Tur almashtirilganda
           // `pickType()` maydonlarni tozalaydi, lekin bu ikkinchi qorovul
@@ -495,6 +556,13 @@ export function useKirimForm({
     noteMismatch,
     noteTarget,
     monthName,
+    splitMode: splitOn,
+    setSplitMode,
+    splitAmounts,
+    setSplitAmount,
+    splitLegs,
+    splitTotal,
+    splitTarget,
     pickType,
     addRow,
     removeRow,

@@ -68,6 +68,17 @@ export async function GET(req: Request) {
     filter.id = id;
   }
 
+  // ?splitId=… — ARALASH TO'LOVNING hamma bo'lagi (20.11.2026, lib/cashboxAdjust.ts →
+  // applyCashboxKirimSplit): chek bo'laklarni birga ko'rsatadi. Kesim (`cashboxId` yoki
+  // `pupilId`) bilan birga so'raladi — egalik tekshiruvi odatdagidek.
+  const splitId = sp.get("splitId");
+  if (splitId !== null) {
+    if (!/^[0-9a-f-]{8,64}$/i.test(splitId)) {
+      return NextResponse.json({ ok: false, error: "Noto'g'ri splitId" }, { status: 400 });
+    }
+    filter.splitId = splitId;
+  }
+
   // ?pupilId=… — BITTA O'QUVCHINING yozuvlari, ID bo'yicha.
   //
   // `?studentName=` NING O'RNIGA: ism yagona emas (bazada 545 ta ism
@@ -353,6 +364,8 @@ export async function GET(req: Request) {
       // Tanga evaziga chegirma (gamifikatsiya) — o'quvchi kartasidagi
       // balans uni ham qo'shib sanaydi (lib/transactionEntries.ts).
       discountSom: 1, discountPercent: 1,
+      // Aralash to'lov bo'lagi — chek bo'laklarni birga ko'rsatadi.
+      splitId: 1, cashboxId: 1,
     });
   }
 

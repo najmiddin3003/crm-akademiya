@@ -582,12 +582,13 @@ export default function CashboxesV2() {
           entry={receiptEntry}
           cashboxName={cashboxes.find((c) => c.id === receiptEntry.cashboxId)?.name || ""}
           onClose={() => setReceiptEntry(null)}
-          onPrint={() => {
+          onPrint={(legs) => {
             const e = receiptEntry;
             const name = cashboxes.find((c) => c.id === e.cashboxId)?.name || "";
             setReceiptEntry(null);
             // Modal yopilgach bosma oynasi ochilsin (ba'zi brauzerlarda modal ostida qolardi).
-            setTimeout(() => printReceipt(e, name), 0);
+            // `legs` — aralash to'lov bo'laklari (bitta chekda).
+            setTimeout(() => printReceipt(e, name, undefined, legs), 0);
           }}
         />
       )}

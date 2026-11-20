@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Db } from "mongodb";
 import { normalizeCashbox, type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { loadPaymentMethods, PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
@@ -82,6 +83,12 @@ export interface AdjustInput {
   studentId?: number;
   /** Yozuv qayerdan kiritilgani — web'da yozilmaydi, botda "telegram". */
   origin?: EntryOrigin;
+  /**
+   * ARALASH TO'LOVNING BO'LAGI (20.11.2026) — faqat `applyCashboxKirimSplit` beradi.
+   * Yozuvga `splitId` bo'lib tushadi; SMS va o'quvchi botiga xabar bo'lak sayin
+   * EMAS, o'ram tomonidan bir marta (umumiy summa bilan) yuboriladi.
+   */
+  splitId?: string;
 }
 
 export interface AdjustDeps {
@@ -116,6 +123,8 @@ export type AdjustOutcome =
         /** Qo'llangan tanga evaziga chegirma (so'm) — tasdiq xabarida ko'rsatiladi. */
         discountSom?: number;
         discountPercent?: number;
+        /** Yozuvning o'quvchisi (aniqlangan bo'lsa) — aralash to'lov o'rami xabar uchun oladi. */
+        pupilId?: number;
       };
     }
   | { ok: false; error: string; status: 400 | 404 };
@@ -488,6 +497,8 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     ...(input.origin ? { origin: input.origin } : {}),
     // Qo'llangan chegirma (yuqoridagi izoh) — faqat bo'lsa yoziladi.
     ...(discount ? { discountId: discount.id, discountSom: discount.amountSom, discountPercent: discount.percent } : {}),
+    // Aralash to'lovning bo'lagi — bitta to'lovning boshqa to'lov turidagi qismlari bilan umumiy kalit.
+    ...(input.splitId ? { splitId: input.splitId } : {}),
   });
   } catch (e) {
     // Yozuv saqlanmadi — egallangan chegirma yana faol bo'lsin.
@@ -512,61 +523,21 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   // va Telegram sekin javob bersa ham kassa oynasi kutib turmaydi.
   deps.defer(() => flushSoon(db));
 
-  // TO'LOV SMS I — o'quvchiga "to'lovingiz qabul qilindi" xabari.
-  //
-  // Shartlar: faqat KIRIM, faqat o'quvchi tanlangan bo'lsa (Kitob sotuvi
-  // kabi "Uchinchi shaxs" turlarida o'quvchi yo'q) va faqat sozlama
-  // yoqilgan bo'lsa.
-  //
-  // `defer` ichida — SMS to'lovni BLOKLAMAYDI. Eskiz sekin javob bersa
-  // yoki umuman yiqilsa ham pul allaqachon kassaga yozilgan va kassir
-  // javobni olgan bo'ladi. `sendPaymentSms` o'zi ham hech qachon
-  // otmaydi, natijani `sms_messages` jurnaliga yozadi.
-  if (mode === "kirim" && (studentName || "").trim() && paymentSmsEnabled()) {
-    deps.defer(() =>
-      sendPaymentSms(db, {
-        // Yozuv bilan BIR XIL o'quvchi — `pupil` yuqorida id yoki
-        // (id berilmasa) yagona ism bo'yicha aniqlangan. Ilgari bu yerda
-        // xom `studentId` turardi, ya'ni yozuv va SMS boshqa-boshqa
-        // manbaga qarashi mumkin edi.
-        pupilId: pupil ? pupil.id : null,
-        pupilName: (studentName || "").trim(),
-        amount,
-        moderator: current.moderator || "",
-        cashboxId,
-        cashboxName: current.name || "",
-      }),
-    );
-  }
-
-  // O'QUVCHILAR BOTI — "to'lovingiz qabul qilindi" xabari.
-  //
-  // SMS bilan YONMA-YON, uning o'rniga emas: SMS hammaga boradi, bot
-  // xabari esa faqat botga ulanganlarga. Ikkalasini birlashtirish
-  // ulanmagan o'quvchini xabarsiz qoldirardi.
-  //
-  // FAQAT O'QUVCHI ANIQLANGANDA (`pupil`). Ism bo'yicha taxmin
-  // qilinmaydi — bazada 545 ta ism takrorlanadi va begona odamga boshqa
-  // birovning to'lovi haqida xabar ketishi mumkin edi
-  // (lib/studentBot/notify.ts).
-  //
-  // `notifyPayment` o'zi hech qachon otmaydi va sozlama o'chiq bo'lsa
-  // jimgina qaytadi.
-  if (mode === "kirim" && pupil) {
-    deps.defer(() =>
-      notifyPayment(db, {
-        pupilId: pupil.id,
-        amount,
-        ...(discount ? { discount: discount.amountSom } : {}),
-        method: methodLabel,
-        date: entryDate,
-        // Xabarlar jurnali uchun — SMS yozuvidagi bilan bir xil maydonlar.
-        pupilName: (studentName || "").trim(),
-        moderator: current.moderator || "",
-        cashboxId,
-        cashboxName: current.name || "",
-      }),
-    );
+  // O'quvchiga xabarlar (SMS + bot) — `scheduleKirimNotices` izohi. Aralash to'lov
+  // bo'lagida YUBORILMAYDI: o'ram (`applyCashboxKirimSplit`) hamma bo'lak saqlangach
+  // bitta xabarni umumiy summa bilan yuboradi — ota-onaga ikkita SMS bormasin.
+  if (mode === "kirim" && !input.splitId) {
+    scheduleKirimNotices(db, deps, {
+      pupilId: pupil ? pupil.id : null,
+      pupilName: (studentName || "").trim(),
+      amount,
+      discountSom: discount?.amountSom,
+      method: methodLabel,
+      date: entryDate,
+      moderator: current.moderator || "",
+      cashboxId,
+      cashboxName: current.name || "",
+    });
   }
 
   const { _id, ...cashbox } = res;
@@ -583,6 +554,162 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
       teacherName: salaryTarget,
       periodMonth: period,
       ...(discount ? { discountSom: discount.amountSom, discountPercent: discount.percent } : {}),
+      ...(pupil ? { pupilId: pupil.id } : {}),
     },
   };
+}
+
+interface KirimNotice {
+  pupilId: number | null;
+  pupilName: string;
+  /** Kassaga tushgan naqd (aralash to'lovda — hamma bo'lak yig'indisi). */
+  amount: number;
+  discountSom?: number;
+  /** To'lov turining ko'rinadigan nomi; aralash to'lovda — «Naqd + Plastik». */
+  method: string;
+  date: string;
+  moderator: string;
+  cashboxId: number;
+  cashboxName: string;
+}
+
+/**
+ * KIRIMDAN KEYIN O'QUVCHIGA XABARLAR — javob ketgandan keyin (`defer`).
+ *
+ * TO'LOV SMS I — faqat o'quvchi ismi bo'lsa (Kitob sotuvi kabi "Uchinchi shaxs"
+ * turlarida o'quvchi yo'q) va sozlama yoqilgan bo'lsa. SMS to'lovni BLOKLAMAYDI:
+ * Eskiz sekin javob bersa yoki yiqilsa ham pul allaqachon kassada. `sendPaymentSms`
+ * o'zi hech qachon otmaydi, natijani `sms_messages` jurnaliga yozadi. O'quvchi
+ * yozuv bilan BIR XIL — `pupil` id yoki (id berilmasa) yagona ism bo'yicha.
+ *
+ * O'QUVCHILAR BOTI — SMS bilan YONMA-YON (SMS hammaga, bot faqat ulanganlarga).
+ * FAQAT O'QUVCHI ANIQLANGANDA: ism bo'yicha taxmin qilinmaydi — bazada 545 ta ism
+ * takrorlanadi va begona odamga boshqa birovning to'lovi haqida xabar ketardi
+ * (lib/studentBot/notify.ts). `notifyPayment` o'zi otmaydi, sozlama o'chiq bo'lsa
+ * jimgina qaytadi.
+ */
+function scheduleKirimNotices(db: Db, deps: AdjustDeps, n: KirimNotice): void {
+  if (n.pupilName && paymentSmsEnabled()) {
+    deps.defer(() =>
+      sendPaymentSms(db, {
+        pupilId: n.pupilId,
+        pupilName: n.pupilName,
+        amount: n.amount,
+        moderator: n.moderator,
+        cashboxId: n.cashboxId,
+        cashboxName: n.cashboxName,
+      }),
+    );
+  }
+  const pupilId = n.pupilId;
+  if (pupilId !== null) {
+    deps.defer(() =>
+      notifyPayment(db, {
+        pupilId,
+        amount: n.amount,
+        ...(n.discountSom ? { discount: n.discountSom } : {}),
+        method: n.method,
+        date: n.date,
+        // Xabarlar jurnali uchun — SMS yozuvidagi bilan bir xil maydonlar.
+        pupilName: n.pupilName,
+        moderator: n.moderator,
+        cashboxId: n.cashboxId,
+        cashboxName: n.cashboxName,
+      }),
+    );
+  }
+}
+
+/** Aralash to'lovning bitta bo'lagi: to'lov turi kaliti + shu turdagi summa. */
+export interface KirimSplitLeg {
+  method: string;
+  amount: number;
+}
+
+export type SplitOutcome =
+  | { ok: true; cashbox: Cashbox; entryIds: number[]; total: number }
+  | { ok: false; error: string; status: 400 | 404 };
+
+/** Bitta to'lovda nechta to'lov turi bo'lishi mumkin (sozlamadagi turlar soni ham shunchalik emas). */
+const MAX_SPLIT_LEGS = 6;
+
+/**
+ * ARALASH TO'LOV — BITTA KIRIM, BIR NECHTA TO'LOV TURIDA (20.11.2026, foydalanuvchi:
+ * "o'quvchi karta 100 000, naqd 100 000 to'laydi — 2 ta kirim qilishga to'g'ri
+ * kelyapti").
+ *
+ * HAR BO'LAK — ODDIY KIRIM YOZUVI (`applyCashboxAdjust`), umumiy `splitId` bilan.
+ * Ataylab bitta yozuvga yig'ilmaydi: kassaning `methodTotals` i, «Naqd / Plastik»
+ * qatorlari, hisobotlar, Sheets va oylik hisobi yozuvni TO'LOV TURI bo'yicha o'qiydi —
+ * bitta yozuvda ikki tur bo'lsa ularning har biri qayta yozilishi kerak bo'lardi.
+ * Ustoz ulushi yozuvlar yig'indisidan, ya'ni bo'linish unga ta'sir qilmaydi; tanga
+ * chegirmasi birinchi bo'lakka tushadi (ikkinchisida u allaqachon `applied`).
+ *
+ * BIR MARTA bo'ladigan ishlar o'ramda: o'quvchiga SMS va bot xabari umumiy summa va
+ * «Naqd + Plastik» bilan (bo'lak sayin emas). Chek `splitId` bo'yicha bo'laklarni
+ * birga ko'rsatadi (components/finance/cashReceipt.tsx). Telegram guruh va Sheets
+ * har bo'lakni alohida qator qilib oladi — har birida o'z to'lov turi.
+ *
+ * TEKSHIRUV BIRINCHI YOZUVDAN OLDIN: turlar mavjud va takrorlanmaydi, summalar
+ * butun musbat. Qolgan tekshiruvlar (kassa, tur nomi, izohdagi oy) har bo'lakda
+ * bir xil kirish bilan yuradi — birinchi bo'lak o'tsa, keyingilari ham o'tadi
+ * (kirimda kassa qoldig'i chegarasi yo'q).
+ */
+export async function applyCashboxKirimSplit(
+  db: Db,
+  input: Omit<AdjustInput, "method" | "amount" | "splitId" | "mode">,
+  legs: KirimSplitLeg[],
+  deps: AdjustDeps,
+): Promise<SplitOutcome> {
+  if (!Array.isArray(legs) || legs.length < 2) return { ok: false, error: "Kamida ikkita to'lov turi kerak", status: 400 };
+  if (legs.length > MAX_SPLIT_LEGS) return { ok: false, error: "To'lov turlari juda ko'p", status: 400 };
+  const methods = await loadPaymentMethods(db);
+  const seen = new Set<string>();
+  for (const leg of legs) {
+    if (!leg || typeof leg.method !== "string" || !methods.some((m) => m.key === leg.method)) {
+      return { ok: false, error: "To'lov turini tanlang", status: 400 };
+    }
+    if (seen.has(leg.method)) return { ok: false, error: "Bir to'lov turi ikki marta yozilgan", status: 400 };
+    seen.add(leg.method);
+    if (!Number.isSafeInteger(leg.amount) || leg.amount <= 0) return { ok: false, error: "Qiymatni to'g'ri kiriting", status: 400 };
+  }
+
+  const splitId = randomUUID();
+  const entryIds: number[] = [];
+  let last: Extract<AdjustOutcome, { ok: true }> | null = null;
+  let discountSom = 0;
+  let pupilId: number | null = null;
+  for (const leg of legs) {
+    const out = await applyCashboxAdjust(db, { ...input, mode: "kirim", method: leg.method, amount: leg.amount, splitId }, deps);
+    if (!out.ok) {
+      // Birinchi bo'lak rad etilsa — hech narsa yozilmagan, xato o'zicha qaytadi.
+      if (entryIds.length === 0) return out;
+      // Keyingi bo'lak rad etilishi deyarli imkonsiz (kirish bir xil). Bo'lsa —
+      // saqlangan bo'lak YASHIRILMAYDI: kassir qayta kiritib ikki baravar qilmasin.
+      console.error("[cashbox] aralash to'lov bo'lagi saqlanmadi:", splitId, entryIds, out.error);
+      const ids = entryIds.join(", #");
+      return { ok: false, error: `Aralash to'lovning bir qismi saqlanmadi (saqlangani: #${ids}) — Tranzaksiyalarni tekshiring`, status: 400 };
+    }
+    entryIds.push(out.entryId);
+    discountSom += out.entry.discountSom ?? 0;
+    if (out.entry.pupilId !== undefined) pupilId = out.entry.pupilId;
+    last = out;
+  }
+  if (!last) return { ok: false, error: "Saqlanmadi", status: 400 };
+
+  const total = legs.reduce((s, l) => s + l.amount, 0);
+  const label = (key: string) => methods.find((m) => m.key === key)?.name ?? key;
+  scheduleKirimNotices(db, deps, {
+    pupilId,
+    pupilName: (input.studentName || "").trim(),
+    amount: total,
+    ...(discountSom > 0 ? { discountSom } : {}),
+    method: legs.map((l) => label(l.method)).join(" + "),
+    date: last.entry.date,
+    moderator: last.cashbox.moderator || "",
+    cashboxId: input.cashboxId,
+    cashboxName: last.cashbox.name || "",
+  });
+
+  return { ok: true, cashbox: last.cashbox, entryIds, total };
 }

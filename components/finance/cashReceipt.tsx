@@ -2,6 +2,7 @@
 import { CENTER_LOGO } from "@/lib/center";
 import { getReceiptContext, useReceiptContext, type ReceiptContext } from "./receiptContext";
 
+import { useEffect, useState } from "react";
 import { Printer } from "lucide-react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
@@ -65,28 +66,68 @@ export function salaryTargetLabel(e: TransactionEntry): string {
   return e.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi";
 }
 
-export function printReceipt(e: TransactionEntry, cashboxName: string, ctx: ReceiptContext = getReceiptContext()) {
+/**
+ * ARALASH TO'LOV BO'LAKLARI (20.11.2026, lib/cashboxAdjust.ts → applyCashboxKirimSplit):
+ * `splitId` li yozuvning hamma bo'lagi — chek ularni BITTA chekda ko'rsatadi (har tur
+ * o'z summasi bilan, Jami — yig'indi). Bekor qilingan bo'lak tushib qoladi (yozuvning
+ * o'zi bekor qilingan bo'lsa ham u ko'rinadi). Kesim — o'quvchi (bo'lsa) yoki kassa,
+ * egalik tekshiruvi odatdagidek; so'rov yiqilsa — faqat yozuvning o'zi.
+ */
+export async function loadSplitLegs(e: TransactionEntry): Promise<TransactionEntry[]> {
+  if (!e.splitId) return [e];
+  try {
+    const scope = e.pupilId ? `pupilId=${e.pupilId}` : `cashboxId=${e.cashboxId}`;
+    const r = await fetch(`/api/transaction-entries?${scope}&splitId=${encodeURIComponent(e.splitId)}&limit=20`);
+    const d = await r.json();
+    const legs = ((d?.ok ? d.entries : []) as TransactionEntry[]).filter((x) => x.id === e.id || x.status !== "cancelled");
+    if (!legs.some((x) => x.id === e.id)) return [e];
+    return legs.sort((a, b) => a.id - b.id);
+  } catch {
+    return [e];
+  }
+}
+
+/** Chekdagi «Chek №», to'lov turi qatorlari, chegirma va Jami — bitta yoki aralash to'lov. */
+function receiptParts(e: TransactionEntry, legs: TransactionEntry[]) {
+  // Bo'laklar shu yozuvniki bo'lsagina (oyna boshqa yozuvga o'tgan bo'lsa — eskisi emas).
+  const parts = legs.length > 1 && legs.some((x) => x.id === e.id) ? legs : [e];
+  const discountSom = parts.reduce((s, x) => s + (x.discountSom ?? 0), 0);
+  const discountPercent = parts.find((x) => x.discountPercent)?.discountPercent;
+  return {
+    number: parts.map((x) => x.id).join(", "),
+    // Aralash to'lovda: «To'lov turi: Naqd + Plastik», ostida har turning summasi.
+    methodRows: (parts.length > 1
+      ? [["To'lov turi", parts.map((x) => x.paymentType).join(" + ")], ...parts.map((x) => [`— ${x.paymentType}`, fmtSom(Math.abs(x.amount))])]
+      : [["To'lov turi", e.paymentType]]) as [string, string][],
+    discountSom,
+    discountPercent,
+    total: parts.reduce((s, x) => s + Math.abs(x.amount), 0),
+  };
+}
+
+export function printReceipt(e: TransactionEntry, cashboxName: string, ctx: ReceiptContext = getReceiptContext(), legs: TransactionEntry[] = [e]) {
   const logo = receiptLogoUrl(ctx);
   const branchLines = [ctx.branch?.address, ctx.branch?.phone].filter((x): x is string => !!x);
   const title =
     e.txType === "payIn" ? "KIRIM CHEKI" :
     e.txType === "payOut" ? "CHIQIM CHEKI" :
     "KO'CHIRISH CHEKI";
+  const p = receiptParts(e, legs);
   const rows: [string, string][] = [
-    ["Chek №", String(e.id)],
+    ["Chek №", p.number],
     ["Sana", fmtEntryDate(e)],
     ["O'quvchi", e.studentName || e.moderator || "—"],
     ["Kassa", cashboxName || "—"],
     ["Tranzaksiya", e.txName || "—"],
-    ["To'lov turi", e.paymentType],
+    ...p.methodRows,
   ];
   // Yozuv qaysi o'qituvchining oyligiga tegishli ekani.
   if (e.teacherName) rows.push(["Ustoz", e.teacherName]);
   if (e.note) rows.push(["Izoh", e.note]);
   // Tanga evaziga chegirma (gamifikatsiya, TZ 4.16.4) — «Jami» naqd bo'lib qoladi.
-  if (e.discountSom) rows.push(["Chegirma (tanga)", `${fmtSom(e.discountSom)}${e.discountPercent ? ` · ${e.discountPercent}%` : ""}`]);
+  if (p.discountSom) rows.push(["Chegirma (tanga)", `${fmtSom(p.discountSom)}${p.discountPercent ? ` · ${p.discountPercent}%` : ""}`]);
 
-  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
+  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${escHtml(p.number)}</title><style>
     @page{size:58mm auto;margin:3mm}
     /* BOSMA HAR DOIM OQ FONDA — sayt tungi rejimda bo'lsa ham.
        Bu hujjat alohida iframe'da yasaladi, ya'ni ilovaning "dark"
@@ -128,7 +169,7 @@ export function printReceipt(e: TransactionEntry, cashboxName: string, ctx: Rece
       <div class="divider"></div>
       ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
       <div class="divider"></div>
-      <div class="total"><span class="lbl">Jami</span><span class="val">${fmtSom(Math.abs(e.amount))}</span></div>
+      <div class="total"><span class="lbl">Jami</span><span class="val">${fmtSom(p.total)}</span></div>
       <div class="divider"></div>
       ${ctx.receipt.footer ? `<div class="thanks">${escHtml(ctx.receipt.footer)}</div>` : ""}
     </div>
@@ -182,12 +223,26 @@ export function ReceiptPreviewModal({
   entry: TransactionEntry;
   cashboxName: string;
   onClose: () => void;
-  onPrint: () => void;
+  /** «Chop etish» — aralash to'lovda bo'laklar bilan (bosma chek ham ularni ko'rsatsin). */
+  onPrint: (legs: TransactionEntry[]) => void;
 }) {
   const { t } = useT();
   const modal = useModalClose(onClose);
   const ctx = useReceiptContext();
   const logo = ctx.receipt.showLogo && CENTER_LOGO ? CENTER_LOGO : null;
+  // Aralash to'lov — bo'laklar so'raladi (kelguncha yozuvning o'zi ko'rinadi).
+  const [legs, setLegs] = useState<TransactionEntry[]>([entry]);
+  useEffect(() => {
+    if (!entry.splitId) return;
+    let alive = true;
+    loadSplitLegs(entry).then((l) => {
+      if (alive) setLegs(l);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [entry]);
+  const p = receiptParts(entry, legs);
   const title =
     entry.txType === "payIn"
       ? "KIRIM CHEKI"
@@ -199,12 +254,12 @@ export function ReceiptPreviewModal({
     ["O'quvchi", entry.studentName || entry.moderator || "—"],
     ["Kassa", cashboxName || "—"],
     ["Tranzaksiya", entry.txName || "—"],
-    ["To'lov turi", entry.paymentType],
+    ...p.methodRows,
   ];
   if (entry.teacherName) rows.push(["Ustoz", entry.teacherName]);
   if (entry.note) rows.push(["Izoh", entry.note]);
   // Tanga evaziga chegirma — bosma chek bilan bir xil qator.
-  if (entry.discountSom) rows.push([t("Chegirma (tanga)"), `${t(fmtSom(entry.discountSom))}${entry.discountPercent ? ` · ${entry.discountPercent}%` : ""}`]);
+  if (p.discountSom) rows.push([t("Chegirma (tanga)"), `${t(fmtSom(p.discountSom))}${p.discountPercent ? ` · ${p.discountPercent}%` : ""}`]);
 
   return (
     <Modal onClose={onClose} controller={modal} bare size="xs" zIndex={130} panelStyle={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }}>
@@ -228,7 +283,7 @@ export function ReceiptPreviewModal({
           <div className="space-y-1.5 text-[13px]">
             <div className="flex justify-between gap-3">
               <span style={{ color: "#64748b" }}>{t("Chek №")}</span>
-              <span className="font-medium tabular-nums">{entry.id}</span>
+              <span className="font-medium tabular-nums">{p.number}</span>
             </div>
             {rows.map(([k, v]) => (
               <div key={k} className="flex justify-between gap-3">
@@ -243,7 +298,7 @@ export function ReceiptPreviewModal({
               {t("Jami")}
             </span>
             <span className="text-[18px] font-bold tabular-nums">
-              {t(fmtSom(Math.abs(entry.amount)))}
+              {t(fmtSom(p.total))}
             </span>
           </div>
           {ctx.receipt.footer && (
@@ -272,7 +327,7 @@ export function ReceiptPreviewModal({
           {/* "Chop etish" — brend rangida qolaveradi: u ikkala mavzuda
               ham oq matn bilan yetarli kontrast beradi. */}
           <button
-            onClick={onPrint}
+            onClick={() => onPrint(legs)}
             className="h-9 flex-1 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 inline-flex items-center justify-center gap-1.5"
           >
             <Printer className="w-3.5 h-3.5" />

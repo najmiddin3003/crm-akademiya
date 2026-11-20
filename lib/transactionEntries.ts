@@ -277,6 +277,13 @@ export interface TransactionEntry {
   discountId?: number;
   discountSom?: number;
   discountPercent?: number;
+  /**
+   * ARALASH TO'LOV (20.11.2026, lib/cashboxAdjust.ts → applyCashboxKirimSplit): bitta
+   * kirim bir nechta to'lov turida (karta 100 000 + naqd 100 000) — har tur alohida
+   * yozuv, hammasida shu umumiy kalit. Kassa, hisobot va oylik yozuvlarni odatdagidek
+   * alohida o'qiydi; kalitni faqat chek (bo'laklar birga) ishlatadi. Oddiy yozuvda YO'Q.
+   */
+  splitId?: string;
 }
 
 /**

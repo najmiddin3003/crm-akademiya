@@ -60,11 +60,11 @@ export default function ReceiptHost() {
       entry={open.entry}
       cashboxName={open.cashboxName}
       onClose={() => setOpen(null)}
-      onPrint={() => {
+      onPrint={(legs) => {
         const { entry, cashboxName } = open;
         setOpen(null);
-        // Modal yopilgach bosma oynasi ochilsin (CashboxesV2 bilan bir xil).
-        setTimeout(() => printReceipt(entry, cashboxName), 0);
+        // Modal yopilgach bosma oynasi ochilsin (CashboxesV2 bilan bir xil). `legs` — aralash to'lov bo'laklari.
+        setTimeout(() => printReceipt(entry, cashboxName, undefined, legs), 0);
       }}
     />
   );

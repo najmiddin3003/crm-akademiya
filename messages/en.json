@@ -11021,5 +11021,21 @@
   "Tanlanganlarga SMS": "SMS to selected",
   "To'rtala filial xodimlari bir ro'yxatda: faollashtirish SMS'i, kirish tasdig'i, tahrir, arxiv, ish vaqti va butunlay o'chirish": "Staff of all four branches in one list: activation SMS, sign-in approval, editing, archive, working hours and permanent deletion",
   "Xodimni butunlay o'chirasizmi?": "Delete this employee permanently?",
-  "Yana {n} ta tanlangan xodim ro'yxatga kirmadi — hisobi allaqachon faollashgan yoki telefon raqami yo'q.": "{n, plural, one {# more selected employee is not in the list} other {# more selected employees are not in the list}} — the account is already activated or there is no phone number."
+  "Yana {n} ta tanlangan xodim ro'yxatga kirmadi — hisobi allaqachon faollashgan yoki telefon raqami yo'q.": "{n, plural, one {# more selected employee is not in the list} other {# more selected employees are not in the list}} — the account is already activated or there is no phone number.",
+  "Bir nechta to'lov turi": "Several payment methods",
+  "Bitta to'lov turi": "One payment method",
+  "Qolgani": "The rest",
+  "Qolgan {sum} so'mni shu turga yozish": "Put the remaining {sum} UZS on this method",
+  "Har to'lov turi alohida yozuv bo'lib saqlanadi, chek bitta": "Each method is saved as a separate entry, with one receipt",
+  "Har to'lov turiga qancha to'langanini yozing": "Enter how much was paid with each method",
+  "yana {sum} qoldi": "{sum} still left",
+  "{sum} ortiqcha": "{sum} over",
+  "To'lov turlari yig'indisi": "Sum of the payment methods",
+  "Kamida bitta to'lov turiga summa yozing": "Enter an amount for at least one payment method",
+  "Kamida ikkita to'lov turi kerak": "At least two payment methods are required",
+  "To'lov turlari juda ko'p": "Too many payment methods",
+  "Bir to'lov turi ikki marta yozilgan": "A payment method is listed twice",
+  "Bir nechta to'lov turi faqat kirimda": "Several payment methods are only allowed for income",
+  "Noto'g'ri splitId": "Invalid splitId",
+  "Aralash to'lovning bir qismi saqlanmadi (saqlangani: #{ids}) — Tranzaksiyalarni tekshiring": "Part of the mixed payment was not saved (saved: #{ids}) — check Transactions"
 }
