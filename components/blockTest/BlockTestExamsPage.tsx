@@ -18,10 +18,12 @@ import { useT } from "@/components/shared/Language";
 // /api/block-test-exams dan. "Blok test qo'shish"/tahrirlash —
 // BlockTestExamModal, o'chirish — pastdagi oddiy tasdiqlash oynasi (Ha/Yo'q).
 
-const HEADERS = ["№", "Nomi", "Turi", "Holati", "Sana", "Boshlanish vaqti", "Davomiyligi (daqiqa)", "Mas'ul xodim", "Guruhlar", "Qo'shilgan sana"];
+// HEADERS, fmtDate va examStatus yangi versiya bilan UMUMIY (components/v2/blockTest/) — eksport fayli va
+// holat ikkala versiyada bir xil.
+export const HEADERS = ["№", "Nomi", "Turi", "Holati", "Sana", "Boshlanish vaqti", "Davomiyligi (daqiqa)", "Mas'ul xodim", "Guruhlar", "Qo'shilgan sana"];
 
 // "YYYY-MM-DD" → "DD.MM.YYYY"
-function fmtDate(iso: string): string {
+export function fmtDate(iso: string): string {
   const [y, m, d] = (iso || "").split("-");
   if (!y || !m || !d) return iso || "—";
   return `${d}.${m}.${y}`;
@@ -30,7 +32,7 @@ function fmtDate(iso: string): string {
 // Sana asosida holatni hisoblaydi — API'da alohida saqlanmaydi. Ranglar
 // Topshiriqlar sahifasining "O'tib ketgan"/"Bugun"/"Keyinchalik keladigan"
 // ustunlari bilan bir xil (qizil/yashil/ko'k) — bir xil vaqt-holati tushunchasi.
-function examStatus(date: string): { label: string; cls: string } {
+export function examStatus(date: string): { label: string; cls: string } {
   if (!date) return { label: "Noma'lum", cls: "bg-secondary text-muted-foreground" };
   const today = new Date();
   const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;

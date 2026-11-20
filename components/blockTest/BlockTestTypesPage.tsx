@@ -18,17 +18,26 @@ import { useT } from "@/components/shared/Language";
 
 // Referensda jadval ustuni "Kurslar" deyiladi, forma yorlig'i esa "Fanlar" —
 // nomuvofiqlik referensning o'zida, shuning uchun modalga tegilmadi.
-const HEADERS = ["№", "Nomi", "Kodi", "Davomiyligi (daqiqa)", "Kurslar", "Holati", "Qo'shilgan sana"];
+//
+// Eksport qismlari (HEADERS, kindLabel, csvCell, downloadBlob, excelHtml) yangi versiya bilan
+// UMUMIY — components/v2/blockTest/ ham shu fayldan oladi: ikkala versiyada fayl aynan bir xil.
+export const HEADERS = ["№", "Nomi", "Kodi", "Davomiyligi (daqiqa)", "Kurslar", "Holati", "Qo'shilgan sana"];
 
-function kindLabel(kind: string): string {
+export function kindLabel(kind: string): string {
   return BLOCK_TEST_KINDS.find((k) => k.value === kind)?.label || "—";
 }
 
-function csvCell(v: string | number): string {
+export function csvCell(v: string | number): string {
   const s = String(v ?? "");
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
-function downloadBlob(blob: Blob, filename: string) {
+/** Excel (.xls) — HTML jadval; ustun sarlavhalari va kataklar eski ko'rinishda. */
+export function excelHtml(headers: string[], rows: (string | number)[][]): string {
+  const head = "<tr>" + headers.map((h) => `<th style="background:#dbeafe;color:#1e3a8a;font-weight:bold;border:1px solid #94a3b8;padding:8px 10px;text-align:left;">${h}</th>`).join("") + "</tr>";
+  const body = rows.map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${body}</tbody></table></body></html>`;
+}
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -93,9 +102,7 @@ export default function BlockTestTypesPage() {
     setMoreOpen(false);
   }
   function exportExcel() {
-    const head = "<tr>" + HEADERS.map((h) => `<th style="background:#dbeafe;color:#1e3a8a;font-weight:bold;border:1px solid #94a3b8;padding:8px 10px;text-align:left;">${h}</th>`).join("") + "</tr>";
-    const rows = exportRows().map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${rows}</tbody></table></body></html>`;
+    const html = excelHtml(HEADERS, exportRows());
     downloadBlob(new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), "blok-test-turlari.xls");
     showSuccess(t("Excel yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);

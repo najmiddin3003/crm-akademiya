@@ -1689,6 +1689,40 @@ komponentlar, API, yuboriladigan maydonlar va tekshiruvlar o'zgarmagan.
 - **Telefon (375 px)**: amallar, filtrlar va tabletkalar o'raladi, jadvallar o'z qutisida suriladi, oynalar pastdan
   chiqadi. Rasmdan (yo'qligidan) farqlar — savollar ro'yxatida.
 
+## O'quv — eski sahifalar yangi dizaynda: Dars jadvali, Blok test turlari, Blok testlar (54-qism, rasmsiz, 20.11.2026)
+
+Rasm yo'q — Xonalar hisoboti, Ish jadvali va Imtihon/Sozlamalar ro'yxatlari qolipida. Versiya `page.tsx` da serverda
+tanlanadi (`currentUiVersion()`); eski komponentlar, API, yuboriladigan ma'lumot va ruxsatlar o'zgarmagan.
+
+- **Dars jadvali** (`/groups-schedule`) — `components/v2/groups/GroupScheduleV2.tsx`: o'sha /api/groups, o'sha kun,
+  filtr va ustun mantiqi. Tepada Du…Yak kun yorliqlari (dars soni, bugun nuqtasi), «Xona bo'yicha / O'qituvchi
+  bo'yicha» va «Ustunlar / Qatorlar / Ro'yxat» segmentlari, O'qituvchi/Kurs/Xona/Kun turi chip-tanlovlari, SummaryLine
+  (kun · darslar · o'quvchilar · band xonalar · kesishuvlar). Quti ichida aylanadi (`max-h-[70vh]`), pastda jadvalga
+  tushmagan guruhlar izohi.
+- **Ko'rinishlar** — `components/v2/groups/groupScheduleViews.tsx`: `GridView` (ustunlar × soatlar, qotgan sarlavha va
+  soat o'qi, «hozir» chizig'i), `RowView` (qatorlar × gorizontal soatlar), `ListView` (telefon: boshlanish vaqti
+  bo'yicha), `LessonHoverCard` (portal karta, «Guruh sahifasini ochish»). Blok — guruh sahifasiga havola: surface fon,
+  chapda brand chiziq (kesishuvda warning), fan nuqtasi; o'lchami balandlikka qarab xs/sm/md.
+- **Joylashuv** — `employees/scheduleUtils.layoutDay` bilan aniq daqiqa va yo'laklar: kesishgan darslar yonma-yon,
+  soat o'qi kunning birinchi va oxirgi darsiga qarab qisqaradi. Telefonda (640 px dan tor) sukut «Ro'yxat».
+- **To'liq ekran** — portal qatlam (Esc, body scroll qulfi, «Kichik xolatda ko'rish»); CSV «Yuklab olish» eskisi bilan
+  aynan bir xil fayl.
+- **Blok test turlari** (`/blok-test-turlari`) — `components/v2/blockTest/BlockTestTypesV2.tsx`: UzBMB izohi
+  (Sozlamalar → Imtihon fanlari havolasi), PageHead + «Tur qo'shish», qidiruv (nomi/kodi) va «Hammasi / Faol /
+  Nofaol». Jadval: № · Nomi (+turi) · Kodi · Davomiyligi · Fanlar (chiplar, jami savol · ball) · Holati · Qo'shilgan
+  sana · amallar; V2Pagination, V2Confirm.
+- **Tur oynasi** — `BlockTestTypeDialogV2.tsx` (V2Dialog 600): Nomi, Turi (kodi) V2Select, Davomiyligi, fan qatorlari
+  (V2Picker + savollar + ball, qatordagi jami), «Fan qo'shish», Faol Switch; payload eskisi bilan bir xil.
+- **Blok testlar** (`/blok-testlar`) — `BlockTestExamsV2.tsx`: UzBMB izohi (Imtihon → UzBMB), qidiruv (nomi/turi),
+  «Hammasi / Rejalashtirilgan / Bugun / Tugagan». Jadval: № · Nomi (+tur · kod) · Holati (Badge) · Sana va vaqt ·
+  Mas'ul xodim · Guruhlar (3 ta chip + «+N») · Qo'shilgan sana · amallar.
+- **Blok test oynasi** — `BlockTestExamDialogV2.tsx`: Nomi, Tur (V2Picker, kod · davomiyligi), Sana (IsoDateField +
+  tozalash), Boshlanish vaqti (V2TimeField, chala vaqt xatosi), Davomiyligi, Guruhlar (chiplar + FloatingPanel
+  qidiruv va V2Checkbox), Mas'ul xodim, Izoh.
+- **Umumiy bo'laklar** — `components/v2/blockTest/blockTestKit.tsx`: jadval th/td klasslari, qator amallari, «Yuklab
+  olish» menyusi (Excel / CSV — eski `excelHtml`, `HEADERS`, `csvCell` dan), bo'sh/skelet qatorlar, UzBMB izohi,
+  qo'shilgan sana. Eski `BlockTestTypesPage.tsx` / `BlockTestExamsPage.tsx` dan faqat yordamchilar eksport qilindi.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

@@ -3468,6 +3468,67 @@ oynasi matnni shu andozalardan olsinmi?
 Sarlavha amallari, filtrlar va tabletkalar o'raladi, qidiruv butun qatorga tushadi; jadvallar o'z qutisida gorizontal
 suriladi (sahifada surish yo'q); oynalar pastdan chiqadi, SMS shablonidagi «Turi» segmenti to'rt bo'lakda sig'adi.
 
+### 54-qism — O'quv: eski sahifalar yangi dizaynda — Dars jadvali, Blok test turlari, Blok testlar (20.11.2026)
+
+**659. Rasmsiz qurildi** — taxmin
+Uch sahifaga dizayn rasmi yo'q edi. Dars jadvali Xonalar hisoboti va Ish jadvali uslubida, blok test sahifalari esa
+Imtihon va Sozlamalar ro'yxatlari uslubida qurildi. Eski versiya, ma'lumot va API o'zgarmadi; rasm kelsa, sahifa unga
+moslanadi.
+
+**660. Dars jadvali: hafta dushanbadan** — taxmin
+Kun yorliqlari Du…Yak tartibida (eski ro'yxat yakshanbadan boshlanardi). Har yorliqda o'sha kundagi darslar soni,
+bugungi kunda nuqta bor. Sahifa eskisidagidek bugungi kun bilan ochiladi.
+
+**661. Ustma-ust darslar endi ko'rinadi** — taxmin
+Eskisida bitta xona yoki o'qituvchi ustunida vaqti kesishgan ikkinchi dars jim tushib qolardi. Yangisida ikkalasi
+yonma-yon turadi, sariq chiziq va «vaqti kesishadi» izohi bilan; tepadagi qatorda kesishuvlar soni chiqadi.
+
+**662. Soat o'qi qisqa, blok aniq daqiqasida** — taxmin
+Eski setka doim 06:00–22:00, 30 daqiqalik katakchalardan iborat edi. Yangisida soat o'qi kunning eng erta va eng kech
+darsiga qarab qisqaradi, blok aniq daqiqasida turadi (masalan 09:15), «hozir» chizig'i ham bor.
+
+**663. Telefonda «Ro'yxat» ko'rinishi** — taxmin
+640 px dan tor ekranda sukut bo'yicha yangi «Ro'yxat» ko'rinishi ochiladi: darslar boshlanish vaqti bo'yicha
+guruhlangan kartalar. «Ustunlar» va «Qatorlar» ham tanlanadi, ular quti ichida aylanadi, sahifa yonga surilmaydi.
+
+**664. To'liq ekran va filtrlar** — taxmin
+To'liq ekran endi sahifa ustidagi qatlam (Esc yopadi), eski body klassi emas. Alohida filtr paneli o'rniga O'qituvchi,
+Kurs, Xona, Kun turi chip-tanlovlari va «Tozalash» tugmasi bor. CSV fayli eskisi bilan aynan bir xil.
+
+**665. Jadval blokida o'qituvchi havolasi** — taxmin
+Blokni bosish eskisidagidek guruh sahifasini ochadi. Eskisida blok ichidagi o'qituvchi ismi alohida havola edi;
+yangisida u ustiga olib borilganda chiqadigan kartada (o'qituvchi, xona, vaqt, kunlar, daraja, o'quvchilar, davri).
+Kartadagi yorliqlar endi tarjima qilinadi.
+
+**666. Bosh sahifa /home hali eski jadval** — ochiq
+Boshqa bosh sahifasi yo'q va jadvalga huquqi bor foydalanuvchiga /home yangi versiyada ham eski `GroupSchedulePage
+showStats` ni ko'rsatadi. Bu ishda home/page.tsx ga tegilmadi; yangi jadvalni u yerga qo'yish keyingi qismga.
+
+**667. Blok testlar va UzBMB ustma-ust (583)** — QAROR KERAK
+Yangi menyuda bu ikki sahifa yashirin: o'rnini Imtihon → UzBMB va Sozlamalar → Imtihon fanlari egallagan (SAVOLLAR
+583), lekin havola orqali ochiladi va o'z ma'lumoti (/api/block-test-*) bor. Yangi dizaynda tepasida UzBMB bo'limiga
+havolali izoh bilan ochildi. Ikkala tizim qoladimi yoki blok testlar UzBMB ga qo'shilib, bu sahifalar yopiladimi?
+
+**668. «Kurslar» ustuni → «Fanlar»** — taxmin
+Blok test turlari jadvalida eski sarlavha «Kurslar» edi, oynada esa «Fanlar» — yangisida ikkalasi ham «Fanlar». Har
+fan chip ko'rinishida (savol × ball), ostida jami savol va ball.
+
+**669. Qo'shimcha holat tanlovlari** — taxmin
+Turlar sahifasiga «Hammasi / Faol / Nofaol», blok testlarga «Hammasi / Rejalashtirilgan / Bugun / Tugagan» tanlovi
+qo'shildi (brauzerda, so'rovsiz). Eskisida faqat qidiruv bor edi.
+
+**670. Excel va CSV eski fayldan** — taxmin
+Yangi versiyadagi fayllar eskisi bilan aynan bir xil. Excel qolipi eski `BlockTestTypesPage.tsx` ichidan `excelHtml`
+funksiyasiga ajratildi (eskisining natijasi o'zgarmadi), ustunlar ham o'sha `HEADERS`.
+
+**671. Blok test oynasi: vaqt tekshiruvi va sanani tozalash** — taxmin
+Boshlanish vaqti chala kiritilsa (masalan «9:»), endi «Vaqtni to'g'ri kiriting» xatosi chiqadi — eskisi uni
+shundayligicha saqlardi. Sana yonida tozalash (×) tugmasi bor. Yuboriladigan ma'lumot eskisi bilan bir xil.
+
+**672. Oyna ro'yxatlarni sahifadan oladi** — taxmin
+Eski blok test oynasi har ochilganda turlar va xodimlarni qayta so'rardi; yangisi sahifa yuklagan ro'yxatlardan
+foydalanadi. Shu sababli oyna ochiqligida boshqa joyda qo'shilgan tur sahifa yangilanmaguncha ko'rinmaydi.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)
