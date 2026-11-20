@@ -1661,6 +1661,34 @@ eski komponentlar, API va raqamlar o'zgarmagan.
 - **Joylashuv** — `nazoratTurnstileLocation.tsx`: katak (radius ichida — `success-bg` + masofa, aks holda kulrang) va `V2Dialog` (faqat ko'rish): manzil, koordinata + «© OpenStreetMap», masofa / aniqlik / «filial koordinatasi kiritilmagan» (`warning-bg`), xarita (eski vidjet), «Yandex xaritada ochish».
 - **Telefon (375 px)** — filtrlar o'raladi, kataklar 2 ustun, grafik va jadvallar o'z qutisida suriladi, sahifada gorizontal surish yo'q. Rasmdan (yo'qligidan) farqlar — savollar ro'yxatida.
 
+## Sotuv — eski sahifalar yangi dizaynda: Marketing, SMS shablonlari, Xabarlar ro'yhati, Shartnoma (53-qism, rasmsiz, 20.11.2026)
+
+Rasm yo'q — 50-qism ro'yxat qolipida (`PageShell`, `PageHead`, `SummaryLine`, `SearchBox`, `SegmentPills` —
+`components/v2/students/lists/listKit.tsx`). Versiya `page.tsx` da serverda tanlanadi (`currentUiVersion()`); eski
+komponentlar, API, yuboriladigan maydonlar va tekshiruvlar o'zgarmagan.
+
+- **Marketing** (`/sales-marketing`, `components/v2/sales/MarketingSurveysV2.tsx`): «O'quvchilar oqimi» + «So'rovnoma
+  qo'shish»; `info-bg` qatori — havola yasalmaydi, ochiq so'rovnoma kodni o'qimaydi + «Kampaniya havolalari →» (ruxsat
+  bo'lsa); «N ta manba» + qidiruv; jadval № · Manba (32 px rasm yoki kulrang belgi + nom) · Kod (mono, `surface-2`,
+  nusxalash) · Tahrirlash / O'chirish ikonkalari. Oyna (480): Sarlavha, Rasm (URL) + kichik ko'rinish, Kod (mono; yangisida bo'sh — avtomatik).
+- **SMS shablonlari** (`/sales-sms`, `SmsTemplatesV2.tsx`): «SMS shablon qo'shish»; «Turi» tabletkalari soni bilan +
+  qidiruv; jadval № · Sarlavha · Turi (O'quvchi `success`, Ota-ona `info`, Moderator `warning`, O'qituvchi neytral) ·
+  SMS matni (2 qatorgacha) · amallar; `V2Pagination`. Oyna (600): Sarlavha, Turi segmenti, matn, o'zgaruvchi tugmalari
+  (kursor joyiga), «N belgi», «Namuna» pufagi (`renderSmsPreview`, namuna qiymatlar).
+- **Xabarlar ro'yhati** (`/sales-messages`, `SmsMessagesV2.tsx`, faqat ko'rish): «Avtomatik xabarlar →»; tur tablari
+  soni bilan; `V2DateRange`, Moderator / O'quvchi / Holati chiplari + «Tozalash»; «Guruhlangan sms» tabida `info-bg`
+  sabab; xulosa — jami, Qabul qilindi `success`, Yuborilmadi `danger`; jadval ism + telefon, xabar + sababi · kassa,
+  sana | vaqt, Kanal (Telegram bot `info`, SMS neutral), Moderator (`StaffName`), Holat belgisi + operator xatosi.
+- **Shartnoma** (`/contract`, `components/v2/academic/ContractTemplatesV2.tsx`): sarlavha «Shartnoma andozalari» +
+  «Shartnoma yaratish» (eski /contract/add); jadval № · Sarlavha + matn boshlanishi · Shartnoma turi (`info`) ·
+  Maydonlar (N ta) · Yaratilgan sana · Ko'rish / Tahrirlash (eski /contract/[id]/edit) / O'chirish.
+- **Shartnoma ko'rish oynasi** (760, faqat ko'rish): hujjat «qog'oz»da, {{token}} lar `brand-bg` yorliq — maydon nomi;
+  HTML tozalanadi (script, iframe, on*, javascript:, matn rangi — qorong'i temada o'qilsin); «Tahrirlash».
+- **O'chirish** — hammasida `V2Confirm` (amal nomli tugma, oqibati: shablon SMS oynalaridan, andoza «Shartnoma
+  biriktirish»dan yo'qoladi).
+- **Telefon (375 px)**: amallar, filtrlar va tabletkalar o'raladi, jadvallar o'z qutisida suriladi, oynalar pastdan
+  chiqadi. Rasmdan (yo'qligidan) farqlar — savollar ro'yxatida.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

@@ -3379,6 +3379,95 @@ shunday. Ikkalasini ko'rsataymi? Xarita oynasi eskisi bilan bir xil (o'sha vidje
 Yozuvlar xodimlar botidagi «Ishga keldim»dan — sahifa tepasida shu haqda izoh qatori qo'yildi. Menyu nomini
 o'zgartirish (masalan «Kirish-chiqish jurnali») kerakmi?
 
+### 53-qism — Sotuv: eski sahifalar yangi dizaynda — Marketing, SMS shablonlari, Xabarlar ro'yhati, Shartnoma (20.11.2026)
+
+**641. Rasmsiz qurildi** — taxmin
+To'rt sahifaga dizayn rasmi yo'q — 50-qism (Bonus, Rejalashtirilgan xarajatlar) ro'yxat qolipida qurildi: `PageShell`,
+`PageHead`, `SummaryLine`, jadval kartada ichidan aylanadi, oynalar `V2Dialog` / `V2Confirm`. Eski komponentlar, API
+va yuboriladigan ma'lumot o'zgarmadi; versiya `page.tsx` da serverda tanlanadi.
+
+**642. Marketing va «Kampaniya havolalari» bir ishni qiladi** — QAROR KERAK
+/sales-marketing faqat manba kodini saqlaydi (s26 …), bu kodni hech qaysi joy o'qimaydi (`?survey=` o'quvchisi yo'q)
+va yangi Lidlar sahifasida «So'rovnoma» filtri ham yo'q (faqat eski Lidlar ro'yxatida bor). 36-qismdagi
+/sales-campaigns esa haqiqiy qisqa havola, QR va statistika beradi. Ikkalasi qoladimi, Marketing menyudan
+yashiriladimi yoki kodlar kampaniyaga ko'chiriladimi?
+
+**643. Marketing: eski sahifadagi izoh eskirgan** — ochiq
+Eski sahifa «ilovada lid qabul qiladigan ommaviy forma yo'q» deydi — endi /sorovnoma bor. Qoidaga ko'ra eskisi
+o'zgartirilmadi; yangisida rosti yozildi («ochiq so'rovnoma sahifasi bu kodni o'qimaydi») va «Kampaniya havolalari →»
+havolasi qo'yildi. Eski izohni ham tuzatamizmi?
+
+**644. Marketing: «So'rovnoma» so'zi ikki narsani anglatadi** — ochiq
+Sozlamalar → «So'rovnoma sahifasi» (24-qism, `SurveySettingsV2`) /api/lead-settings bilan ishlaydi — ochiq /sorovnoma
+savollari; bu sahifa esa /api/surveys — lid manbalari kodlari. Ma'lumot umumiy emas, faqat ko'rinish qoliplari olindi.
+Tugma va oyna nomlari eskisidek «So'rovnoma qo'shish» qoldi; «Manba qo'shish» deb o'zgartirsak tushunarliroq bo'ladi.
+
+**645. Marketing: havola tugmalari faqat ruxsat bo'lsa** — taxmin
+«O'quvchilar oqimi» (eskisida doim ko'rinardi) va yangi «Kampaniya havolalari →» faqat o'sha sahifaga ruxsati bor
+xodimga ko'rinadi (`useCanOpen`, Rejalashtirilgan xarajatlardagi kabi). Qo'shilgani: manba yoki kod bo'yicha qidiruv,
+«N ta manba · kodsiz N» xulosasi, rasm ochilmasa kulrang belgi.
+
+**646. SMS shablonlari: o'zgaruvchi kursor joyiga qo'yiladi** — taxmin
+Eskisida {name} tugmasi matn OXIRIGA qo'shardi; yangisida maydon fokusda bo'lsa kursor joyiga (Avtomatik xabarlardagi
+kabi), aks holda oxiriga. Yuboriladigan { title, audience, text } va tekshiruv o'sha; xatolar toast o'rniga maydon
+ostida.
+
+**647. SMS shablonlari: {group}, {amount}, {date} hamma oynada to'ldirilmaydi** — ochiq
+Lid / o'quvchi SMS oynasi (`components/orders/SmsModal.tsx`) faqat {name} ni almashtiradi; ommaviy SMS — sahifasiga
+qarab (obunasi tugaydiganlarda name/amount/date, ota-onada name/link). Qolgani matnda shundayligicha qoladi — oynadagi
+«Namuna» ostida shu aytildi. Yuboruvchilar to'rttasini ham to'ldirsinmi?
+
+**648. SMS shablonlari: SMS bo'laklari soni ko'rsatilmadi** — QAROR KERAK
+Oynada faqat «N belgi» bor. «N ta SMS» (narxga ta'sir qiladi) uchun Eskiz qoidasi kerak — odatda lotin 160 / kirill 70
+belgi, uzun xabarda 153 / 67; shu bilan ko'rsataylikmi?
+
+**649. SMS shablonlari: jadval va tabletkalar** — taxmin
+«Turi» tabletkalari (Hammasi, O'quvchi, Ota-ona, Moderator, O'qituvchi — soni bilan) va sarlavha/matn qidiruvi
+qo'shildi (brauzerda). Matn 20 belgi o'rniga 2 qatorgacha ko'rinadi; Turi — rangli belgi (O'quvchi `success`, Ota-ona
+`info`, Moderator `warning`, O'qituvchi neytral).
+
+**650. en.json: «O'rinbosarlar:» → "Deputies:"** — hal qilindi
+Lug'atda xato tarjima (to'g'risi "Placeholders:"); eski sahifa shu kalitni ishlatadi. Yangi oynada boshqa, to'g'ri
+tarjimali kalit olindi («O'zgaruvchi qo'shish — bosing»). Birlashtirishda tuzatildi: endi "Placeholders:" (20.11).
+
+**651. Xabarlar ro'yhati: «Avto sms» tabidagi eski izoh noto'g'ri** — ochiq
+Eski sahifa «avtomatik SMS umuman yaratilmaydi» deydi, lekin to'lov xabari (bot), xodim taklifi va parol tiklash
+`kind: "auto"` bilan yoziladi (lib/smsLog.ts, lib/studentBot/notify.ts). Yangisida bu izoh yo'q; «Guruhlangan sms»
+izohi to'g'ri bo'lgani uchun qoldi. Eskisini ham tuzatamizmi?
+
+**652. Xabarlar ro'yhati: qatorda qo'shimcha ma'lumot** — taxmin
+O'sha /api/sms-messages javobidan: ism ostida telefon, xabar ostida sababi («To'lov qabul qilindi» · kassa),
+«Yuborilmadi» ostida operator xatosi (`providerError`), xulosa qatorida holatlar soni, tablarda son. Filtrlar va
+ularning shartlari eskisidek; yangi so'rov yo'q.
+
+**653. Xabarlar ro'yhati: «Qabul qilindi» ma'nosi** — taxmin
+Jadval ostida izoh: «Qabul qilindi» — operator yoki bot qabul qildi, telefonga yetgani tekshirilmaydi
+(`deliveryStatus` hozircha doim noma'lum); parol/kodli xabar matni jurnalda yashirin. Sarlavhada «Avtomatik xabarlar
+→» (ruxsat bo'lsa).
+
+**654. Shartnoma: yaratish va tahrirlash eski dizaynda** — taxmin
+/contract/add va /contract/[id]/edit (RichTextEditor + birlashtirish maydonlari paneli) o'zgarmadi — yangi ro'yxat
+ularga havola beradi. Muharrirni oynaga ko'chirish katta ish (boy matn muharriri), keyingi qismda alohida qilinishi
+mumkin.
+
+**655. Shartnoma: «Ko'rish» oynasi va HTML tozalash** — taxmin
+Yangi — faqat ko'rish oynasi: andoza hujjat ko'rinishida, {{ism}} kabi joylar maydon nomi bilan belgilangan. Matn
+foydalanuvchi yozgan HTML bo'lgani uchun oynaga qo'yishdan oldin script/iframe, on* atributlar va javascript:
+havolalar olib tashlanadi, matn rangi ham (qorong'i temada qora matn o'qilmasin).
+
+**656. Shartnoma: turi nomi** — taxmin
+Eskisi «Shartnoma turi» ustunida xom qiymatni («student») ko'rsatadi; yangisida constants/contracts.js dagi nom —
+«O'quvchi» belgisi. Qatorga matn boshlanishi va «Maydonlar» (matndagi turli {{token}} soni) qo'shildi.
+
+**657. Shartnoma: Moliya → Shartnomalar bilan bog'lanmagan** — ochiq
+`components/v2/finance/ContractsV2.tsx` (/finance-fin-contract) — imzolanadigan o'quvchi shartnomalari (narx, muddat),
+bu andozalarni ishlatmaydi; andozalar faqat o'quvchi profilidagi «Shartnoma biriktirish» tabida. «Shartnoma tuzish»
+oynasi matnni shu andozalardan olsinmi?
+
+**658. Telefon (375 px)** — taxmin
+Sarlavha amallari, filtrlar va tabletkalar o'raladi, qidiruv butun qatorga tushadi; jadvallar o'z qutisida gorizontal
+suriladi (sahifada surish yo'q); oynalar pastdan chiqadi, SMS shablonidagi «Turi» segmenti to'rt bo'lakda sig'adi.
+
 ## Reja
 
 **Keyinroq — o'quvchi va ota-ona kabinetiga SMS kod bilan kirish** (egasi, 18.11.2026; 42-qism rasmlari)
