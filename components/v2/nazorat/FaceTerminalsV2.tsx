@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, Link2, Loader2, Pencil, Plus, RefreshCw, ScanFace, Settings2, Unlink } from "lucide-react";
+import { BookOpen, Check, Link2, Loader2, Pencil, Plus, RefreshCw, ScanFace, Settings2, Unlink } from "lucide-react";
 import { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
@@ -14,6 +14,7 @@ import { primaryBtn, secondaryBtn, secondaryIcon } from "@/components/v2/ui/butt
 import { useProfileFmt } from "@/components/v2/students/profile/profileBits";
 import { TH } from "@/components/v2/students/lists/listKit";
 import type { HikOverview, PersonRef, TerminalView, UnknownPerson } from "@/lib/hikAdmin";
+import FaceTerminalGuideV2, { type GuideTerminal } from "./FaceTerminalGuideV2";
 
 // YUZ TERMINALLARI (Hikvision, 21.11.2026 — egasi: «HTTP listening yo'lini boshla»). Nazorat → Xodimlar
 // davomati → «Belgilash usuli» ostida, FAQAT ADMIN. Terminal qo'shiladi (nom + filial) → terminal web
@@ -23,7 +24,9 @@ import type { HikOverview, PersonRef, TerminalView, UnknownPerson } from "@/lib/
 
 type Dialog =
   | { kind: "terminal"; terminal: TerminalView | null }
-  | { kind: "setup"; terminal: Pick<TerminalView, "name" | "ip" | "listenPath"> }
+  // Yo'riqnoma: id — qaysi terminal qiymatlari ko'rsatiladi (null — birinchisi); extra — hozirgina qo'shilgan
+  // terminal (ro'yxat qayta yuklanguncha).
+  | { kind: "setup"; id: number | null; extra: GuideTerminal | null }
   | { kind: "link"; employeeNo: string; deviceName: string | null }
   | { kind: "unlink"; employeeNo: string; name: string };
 
@@ -111,6 +114,12 @@ export default function FaceTerminalsV2() {
     reload();
   }
 
+  const termState = (x: Pick<TerminalView, "active" | "lastSeenAt">): GuideTerminal["state"] => (!x.active ? "off" : x.lastSeenAt ? "on" : "wait");
+  const guideTerminals = useMemo<GuideTerminal[]>(
+    () => (d?.terminals ?? []).filter((x) => x.listenPath).map((x) => ({ id: x.id, name: x.name, ip: x.ip, listenPath: x.listenPath, state: termState(x) })),
+    [d],
+  );
+
   const linkedRows = useMemo(() => {
     const q = filter.trim().toLowerCase();
     const rows = d?.linked ?? [];
@@ -131,9 +140,13 @@ export default function FaceTerminalsV2() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button type="button" onClick={reload} className={secondaryIcon} aria-label={t("Yangilash")} title={t("Yangilash")}>
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} strokeWidth={1.75} aria-hidden />
+          </button>
+          <button type="button" onClick={() => setDialog({ kind: "setup", id: null, extra: null })} className={secondaryBtn} disabled={!d}>
+            <BookOpen className="size-4" strokeWidth={1.75} aria-hidden />
+            {t("Ulash yo'riqnomasi")}
           </button>
           <button type="button" onClick={() => setDialog({ kind: "terminal", terminal: null })} className={primaryBtn}>
             <Plus className="size-4" strokeWidth={2} aria-hidden />
@@ -156,7 +169,7 @@ export default function FaceTerminalsV2() {
           ) : (
             <ul className="divide-y divide-v2-border">
               {d.terminals.map((x) => {
-                const state = !x.active ? "off" : x.lastSeenAt ? "on" : "wait";
+                const state = termState(x);
                 return (
                   <li key={x.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
                     <div className="min-w-[14rem] flex-1">
@@ -183,7 +196,7 @@ export default function FaceTerminalsV2() {
                     </div>
                     <div className="flex gap-2">
                       {x.listenPath && (
-                        <button type="button" onClick={() => setDialog({ kind: "setup", terminal: x })} className={secondaryBtn}>
+                        <button type="button" onClick={() => setDialog({ kind: "setup", id: x.id, extra: null })} className={secondaryBtn}>
                           <Settings2 className="size-4" strokeWidth={1.75} aria-hidden />
                           {t("Sozlash yo'riqnomasi")}
                         </button>
@@ -310,11 +323,18 @@ export default function FaceTerminalsV2() {
           onSaved={(msg, created) => {
             showSuccess(msg);
             reload();
-            if (created) setDialog({ kind: "setup", terminal: created });
+            if (created) setDialog({ kind: "setup", id: created.id, extra: created });
           }}
         />
       )}
-      {dialog?.kind === "setup" && <SetupDialog terminal={dialog.terminal} onClose={closeIf("setup")} />}
+      {dialog?.kind === "setup" && (
+        <FaceTerminalGuideV2
+          terminals={dialog.extra && !guideTerminals.some((x) => x.id === dialog.extra?.id) ? [dialog.extra, ...guideTerminals] : guideTerminals}
+          initialId={dialog.id}
+          onAddTerminal={() => setDialog({ kind: "terminal", terminal: null })}
+          onClose={closeIf("setup")}
+        />
+      )}
       {dialog?.kind === "link" && d && (
         <LinkDialog
           employeeNo={dialog.employeeNo}
@@ -350,7 +370,7 @@ function TerminalDialog({
   terminal: TerminalView | null;
   branches: { id: number; name: string }[];
   onClose: () => void;
-  onSaved: (message: string, created: Pick<TerminalView, "name" | "ip" | "listenPath"> | null) => void;
+  onSaved: (message: string, created: GuideTerminal | null) => void;
 }) {
   const { t } = useT();
   const modal = useModalClose(onClose, "center");
@@ -376,8 +396,8 @@ function TerminalDialog({
       const n = Number(res.replayed) || 0;
       onSaved(n > 0 ? t("Saqlandi — kutib turgan {n} ta o'tish davomatga yozildi", { n }) : t("Saqlandi"), null);
     } else {
-      const created = res.terminal as { name: string; listenPath: string | null };
-      onSaved(t("Terminal qo'shildi"), { name: created.name, ip: null, listenPath: created.listenPath });
+      const created = res.terminal as { id: number; name: string; listenPath: string | null };
+      onSaved(t("Terminal qo'shildi"), { id: created.id, name: created.name, ip: null, listenPath: created.listenPath, state: "wait" });
     }
     modal.close();
   }
@@ -431,73 +451,6 @@ function TerminalDialog({
         )}
         {err && <p className="text-v2-small text-v2-danger">{err}</p>}
       </div>
-    </V2Dialog>
-  );
-}
-
-function CopyRow({ label, value }: { label: string; value: string }) {
-  const { t } = useT();
-  const [done, setDone] = useState(false);
-  return (
-    <div className="grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2">
-      <span className="text-v2-small text-v2-text-2">{label}</span>
-      <code className="min-w-0 break-all font-mono text-v2-small text-v2-text">{value}</code>
-      <button
-        type="button"
-        onClick={() => {
-          void navigator.clipboard?.writeText(value).then(() => {
-            setDone(true);
-            window.setTimeout(() => setDone(false), 1500);
-          });
-        }}
-        className="inline-flex size-8 items-center justify-center rounded-v2-md text-v2-text-2 hover:bg-v2-surface-2"
-        aria-label={t("Nusxa olish")}
-        title={t("Nusxa olish")}
-      >
-        {done ? <Check className="size-4 text-v2-success" strokeWidth={2} aria-hidden /> : <Copy className="size-4" strokeWidth={1.75} aria-hidden />}
-      </button>
-    </div>
-  );
-}
-
-function SetupDialog({ terminal, onClose }: { terminal: Pick<TerminalView, "name" | "ip" | "listenPath">; onClose: () => void }) {
-  const { t } = useT();
-  const loc = typeof window !== "undefined" ? window.location : null;
-  const https = loc?.protocol === "https:";
-  const host = loc?.hostname ?? "";
-  const port = loc?.port || (https ? "443" : "80");
-  return (
-    <V2Dialog
-      title={t("«{name}» terminalini sozlash", { name: terminal.name })}
-      subtitle={t("Bir marta qilinadi — terminal bilan bir tarmoqdagi kompyuterdan")}
-      onClose={onClose}
-      width={600}
-      footer={(api) => (
-        <button type="button" onClick={api.close} className={primaryBtn}>
-          {t("Tushunarli")}
-        </button>
-      )}
-    >
-      <ol className="list-decimal space-y-3 pl-5 text-v2-body text-v2-text">
-        <li>
-          {t("Brauzerda terminal manzilini oching")}
-          {terminal.ip ? ` (${terminal.ip})` : ""} {t("va admin parolingiz bilan kiring.")}
-        </li>
-        <li>{t("Configuration → Network → Advanced Settings → HTTP Listening bo'limiga o'ting (proshivkaga qarab nomi biroz farq qilishi mumkin).")}</li>
-        <li>
-          {t("Quyidagilarni yozing va saqlang:")}
-          <div className="mt-2 divide-y divide-v2-border rounded-v2-md border border-v2-border bg-v2-surface-2/40">
-            <CopyRow label={t("Manzil (domen)")} value={host} />
-            <CopyRow label={t("Port")} value={port} />
-            <CopyRow label={t("Protokol")} value={https ? "HTTPS" : "HTTP"} />
-            <CopyRow label="URL" value={terminal.listenPath ?? ""} />
-          </div>
-        </li>
-        <li>{t("Terminal oldida yuzingizni ko'rsating — bu sahifada terminal «Ulangan» bo'lib chiqadi, odam esa «Bog'lanmagan odamlar» ro'yxatiga tushadi.")}</li>
-      </ol>
-      <p className="mt-4 rounded-v2-md bg-v2-warning-bg px-3 py-2 text-v2-small text-v2-text">
-        {t("URL'dagi kalit — terminal paroli kabi: kimdir bilsa, shu terminal nomidan davomat yubora oladi. Boshqalarga bermang.")}
-      </p>
     </V2Dialog>
   );
 }
