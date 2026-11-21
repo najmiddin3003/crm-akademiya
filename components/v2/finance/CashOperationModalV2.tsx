@@ -31,6 +31,7 @@ import { useHiddenBalances } from "./hiddenBalances";
 import { preferStudentType } from "./kirimPrefs";
 import { openReceipt } from "./ReceiptHost";
 import PaymentSplitField, { SplitToggle } from "./PaymentSplitField";
+import MonthSplitField, { MonthModeToggle } from "./MonthSplitField";
 
 // YANGI VERSIYA — «KASSA AMALI» (rasm «Kassa amali · Chiqim», yorug'/qorong'i,
 // 19.10.2026): sarlavha + «… kassasi»; tablar ↙ Kirim / ↗ Chiqim / ⇄ Ko'chirish;
@@ -330,6 +331,7 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
   const studentRef = useRef<HTMLDivElement>(null);
   const amountRef = useRef<HTMLDivElement>(null);
   const methodRef = useRef<HTMLDivElement>(null);
+  const monthRef = useRef<HTMLDivElement>(null);
 
   const k = useKirimForm({
     cashbox,
@@ -361,18 +363,31 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
   };
   const dateKey = k.date ? monthKeyOf(k.date) : "";
 
-  // Aralash to'lovda (PaymentSplitField) summa — bo'laklar yig'indisi, tur — bo'laklardan.
-  const amountNum = k.splitMode ? k.splitTotal : k.showRows ? k.total : Number(k.amount);
+  // Aralash to'lovda (PaymentSplitField) summa — bo'laklar yig'indisi, tur — bo'laklardan;
+  // bir nechta oyda (MonthSplitField) — oylar yig'indisi.
+  const amountNum = k.monthMode ? k.monthTotal : k.splitMode ? k.splitTotal : k.showRows ? k.total : Number(k.amount);
   const errType = k.categoryId === null ? t("Toifani tanlang") : "";
   const errTeacher = k.showTeacher && !k.showStudent && !k.teacherName.trim() ? t("O'qituvchini tanlang") : "";
   const errStudent = k.showStudent && !k.studentKey ? t("O'quvchini tanlang") : "";
-  const errAmount = !(amountNum > 0) ? t(k.splitMode ? "Kamida bitta to'lov turiga summa yozing" : "Summani kiriting") : "";
+  const errAmount = !(amountNum > 0)
+    ? t(k.monthMode ? "Kamida bitta oyga summa yozing" : k.splitMode ? "Kamida bitta to'lov turiga summa yozing" : "Summani kiriting")
+    : "";
   const errMethod = !k.splitMode && !k.method ? t("To'lov turini tanlang") : "";
   const showAmountErr = (submitted || amountTouched) && errAmount ? errAmount : "";
 
   function submit() {
     if (k.saving || k.categoriesLoading) return;
-    const first = errType ? typeRef : errTeacher ? teacherRef : errStudent ? studentRef : errAmount ? (k.splitMode ? methodRef : amountRef) : errMethod ? methodRef : null;
+    const first = errType
+      ? typeRef
+      : errTeacher
+        ? teacherRef
+        : errStudent
+          ? studentRef
+          : errAmount
+            ? (k.monthMode ? monthRef : k.splitMode ? methodRef : amountRef)
+            : errMethod
+              ? methodRef
+              : null;
     if (first || k.noteMismatch) {
       setSubmitted(true);
       first?.current?.querySelector<HTMLElement>("input, [role=radio], button")?.focus();
@@ -380,12 +395,16 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
     }
     const who = [k.category, chosen?.name || k.teacherName].filter(Boolean).join(" · ");
     const methodName = (key: string) => t(k.paymentMethods.find((x) => x.key === key)?.name ?? key);
-    const how = k.splitMode ? k.splitLegs.map((l) => `${methodName(l.method)} ${fmtNum(l.amount)}`).join(" + ") : methodName(k.method);
+    const how = k.splitMode
+      ? k.splitLegs.map((l) => `${methodName(l.method)} ${fmtNum(l.amount)}`).join(" + ")
+      : k.monthMode && k.monthLegs.length > 1
+        ? `${methodName(k.method)} · ${k.monthLegs.map((l) => `${k.monthName(l.periodMonth)} ${fmtNum(l.amount)}`).join(" + ")}`
+        : methodName(k.method);
     last.current = [who, `${fmtNum(amountNum)} ${t("so'm")} · ${how} · ${cashbox.name}`].filter(Boolean);
     void k.save();
   }
 
-  const dirty = !!k.amount || k.splitTotal > 0 || k.rows.some((r) => !!r.amount) || !!k.note.trim() || !!k.method || (!presetStudent && !!chosen);
+  const dirty = !!k.amount || k.splitTotal > 0 || k.monthTotal > 0 || k.rows.some((r) => !!r.amount) || !!k.note.trim() || !!k.method || (!presetStudent && !!chosen);
   const blocked = k.noteMismatch || k.categoriesLoading;
   useEffect(() => {
     register("kirim", { submit });
@@ -521,7 +540,12 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
         <>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
             <div ref={amountRef}>
-              {k.splitMode ? (
+              {k.monthMode ? (
+                // Bir nechta oy — Summa = oylar yig'indisi (pastda), o'zi tahrirlanmaydi.
+                <Field label={t("Summa")} hint={t("Oylar yig'indisi")}>
+                  <MoneyField value={k.monthTotal > 0 ? String(k.monthTotal) : ""} onChange={() => {}} readOnly />
+                </Field>
+              ) : k.splitMode ? (
                 // Aralash to'lov — Summa = to'lov turlari yig'indisi (pastda), o'zi tahrirlanmaydi.
                 <Field label={t("Summa")} hint={t("To'lov turlari yig'indisi")}>
                   <MoneyField value={k.splitTotal > 0 ? String(k.splitTotal) : ""} onChange={() => {}} readOnly />
@@ -546,16 +570,45 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
               </div>
             </Field>
           </div>
-          <div>
-            <FieldLabel>{t("Qaysi oy uchun")}</FieldLabel>
-            <MonthChips value={k.periodMonth} onChange={pickMonth} keys={chipKeys} currentKey={nowKey} />
+          {/* «Bir nechta oy» — bitta to'lov bir necha oy uchun (MonthSplitField). Aralash to'lov
+              yoqilganda tugma yashirin. */}
+          <div ref={monthRef}>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <FieldLabel className="mb-0!">{t("Qaysi oy uchun")}</FieldLabel>
+              {!k.splitMode && <MonthModeToggle on={k.monthMode} onChange={k.setMonthMode} disabled={k.saving} />}
+            </div>
+            {k.monthMode ? (
+              <>
+                <MonthChips value={k.periodMonth} selected={k.monthSel} onChange={k.toggleMonth} keys={chipKeys} currentKey={nowKey} />
+                <div className="mt-2.5">
+                  <MonthSplitField
+                    selected={k.monthSel}
+                    amounts={k.monthAmounts}
+                    onChange={k.setMonthAmount}
+                    onRemove={k.toggleMonth}
+                    target={k.monthTarget}
+                    total={k.monthTotal}
+                    invalid={submitted && !!errAmount}
+                    disabled={k.saving}
+                  />
+                </div>
+                {submitted && errAmount && <FieldError>{errAmount}</FieldError>}
+              </>
+            ) : (
+              <MonthChips value={k.periodMonth} onChange={pickMonth} keys={chipKeys} currentKey={nowKey} />
+            )}
             {k.noteMismatch ? (
               <div className="mt-2">
                 <Note tone="danger">
-                  {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
-                    note: k.noteMonthNums.map((x) => months[x - 1]).join(", "),
-                    month: k.monthName(k.periodMonth),
-                  })}{" "}
+                  {k.monthMode
+                    ? t("Izohda {note} yozilgan, lekin to'lov {month} oylariga yoziladi.", {
+                        note: k.noteMonthNums.map((x) => months[x - 1]).join(", "),
+                        month: k.monthSel.map((x) => k.monthName(x)).join(", "),
+                      })
+                    : t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
+                        note: k.noteMonthNums.map((x) => months[x - 1]).join(", "),
+                        month: k.monthName(k.periodMonth),
+                      })}{" "}
                   {t("Oy yoki izoh to'g'rilanmaguncha saqlanmaydi.")}
                   {k.noteTarget && (
                     <button type="button" onClick={() => pickMonth(k.noteTarget!)} className="ml-1 font-semibold underline underline-offset-2 hover:no-underline">
@@ -564,7 +617,7 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
                   )}
                 </Note>
               </div>
-            ) : k.showTeacher && dateKey && k.periodMonth !== dateKey ? (
+            ) : k.monthMode ? null : k.showTeacher && dateKey && k.periodMonth !== dateKey ? (
               <p className="mt-1.5 text-v2-caption font-normal text-v2-warning">
                 {t("To'lov {month} oyiga yoziladi — o'qituvchining o'sha oydagi oyligiga qo'shiladi.", { month: k.monthName(k.periodMonth) })}
               </p>
@@ -579,7 +632,7 @@ function KirimTab({ cashbox, register, report, onDone, presetStudent }: TabProps
         {/* «Bir nechta to'lov turi» — aralash to'lov (karta + naqd), faqat bitta Summa maydonli turda. */}
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <FieldLabel className="mb-0!">{t("To'lov turi")}</FieldLabel>
-          {!k.showRows && !k.methodsLoading && methodOptions.length > 1 && <SplitToggle on={k.splitMode} onChange={k.setSplitMode} disabled={k.saving} />}
+          {!k.showRows && !k.monthMode && !k.methodsLoading && methodOptions.length > 1 && <SplitToggle on={k.splitMode} onChange={k.setSplitMode} disabled={k.saving} />}
         </div>
         {k.methodsLoading ? (
           <div className="h-11 animate-pulse rounded-v2-md bg-v2-skeleton" aria-hidden />

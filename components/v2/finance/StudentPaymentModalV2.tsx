@@ -22,6 +22,7 @@ import { dropCashboxes, loadCashboxes, peekCashboxes, prefetchCashboxes } from "
 import { preferStudentType } from "./kirimPrefs";
 import { openReceipt } from "./ReceiptHost";
 import PaymentSplitField, { SplitToggle } from "./PaymentSplitField";
+import MonthSplitField, { MonthModeToggle } from "./MonthSplitField";
 
 // YANGI VERSIYA — «TO'LOV QABUL QILISH» (rasm «To'lov qabul qilish», yorug'/qorong'i,
 // 19.10.2026): o'quvchi kartasi (balans bilan), Guruh (→ o'qituvchi), «Qaysi oy
@@ -158,6 +159,7 @@ function PaymentForm({
   const studentRef = useRef<HTMLDivElement>(null);
   const amountRef = useRef<HTMLDivElement>(null);
   const methodRef = useRef<HTMLDivElement>(null);
+  const monthRef = useRef<HTMLDivElement>(null);
   // Saqlash paytidagi qiymatlar — toast matni uchun.
   const lastSubmit = useRef<{ amount: number; method: string; student: string } | null>(null);
 
@@ -209,10 +211,13 @@ function PaymentForm({
   const dateKey = k.date ? monthKeyOf(k.date) : "";
 
   /* ---- Tekshiruv: maydon ostida (server ham tekshiradi — useKirimForm.save) ---- */
-  // Aralash to'lovda (PaymentSplitField) summa — bo'laklar yig'indisi, tur — bo'laklardan.
-  const amountNum = k.splitMode ? k.splitTotal : Number(k.amount);
+  // Aralash to'lovda (PaymentSplitField) summa — bo'laklar yig'indisi, tur — bo'laklardan;
+  // bir nechta oyda (MonthSplitField) — oylar yig'indisi.
+  const amountNum = k.monthMode ? k.monthTotal : k.splitMode ? k.splitTotal : Number(k.amount);
   const errStudent = !k.studentKey ? t("O'quvchini tanlang") : "";
-  const errAmount = !(amountNum > 0) ? t(k.splitMode ? "Kamida bitta to'lov turiga summa yozing" : "Summani kiriting") : "";
+  const errAmount = !(amountNum > 0)
+    ? t(k.monthMode ? "Kamida bitta oyga summa yozing" : k.splitMode ? "Kamida bitta to'lov turiga summa yozing" : "Summani kiriting")
+    : "";
   const errMethod = !k.splitMode && !k.method ? t("To'lov turini tanlang") : "";
   const showAmountErr = (submitted || amountTouched) && errAmount ? errAmount : "";
   const busy = k.saving || k.categoriesLoading;
@@ -221,7 +226,13 @@ function PaymentForm({
     if (busy) return;
     if (errStudent || errAmount || errMethod || k.noteMismatch) {
       setSubmitted(true);
-      const first = errStudent ? studentRef.current : errAmount ? (k.splitMode ? methodRef.current : amountRef.current) : errMethod ? methodRef.current : null;
+      const first = errStudent
+        ? studentRef.current
+        : errAmount
+          ? (k.monthMode ? monthRef.current : k.splitMode ? methodRef.current : amountRef.current)
+          : errMethod
+            ? methodRef.current
+            : null;
       first?.querySelector<HTMLElement>("input, [role=radio], button")?.focus();
       return;
     }
@@ -230,7 +241,9 @@ function PaymentForm({
       amount: amountNum,
       method: k.splitMode
         ? k.splitLegs.map((l) => `${methodName(l.method)} ${fmtNum(l.amount)}`).join(" + ")
-        : methodName(k.method),
+        : k.monthMode && k.monthLegs.length > 1
+          ? `${methodName(k.method)} · ${k.monthLegs.map((l) => `${monthTitle(l.periodMonth)} ${fmtNum(l.amount)}`).join(" + ")}`
+          : methodName(k.method),
       student: chosen?.name ?? "",
     };
     void k.save();
@@ -263,7 +276,7 @@ function PaymentForm({
   const balance = summary && chosen && student && chosen.id === student.id ? summary.balance : chosen ? (k.balances[chosen.id] ?? chosen.balance ?? 0) : 0;
   const shownStatus = summary && chosen && student && chosen.id === student.id ? summary.statusLabel : chosen ? statusLabel(chosen, balance) : "";
   const disc = k.pendingDisc && k.pendingDisc.key === k.discKey ? k.pendingDisc : null;
-  const dirty = (!!k.amount && k.amount !== initialAmountText) || k.splitTotal > 0 || !!k.note.trim() || !!k.method || (!student && !!chosen);
+  const dirty = (!!k.amount && k.amount !== initialAmountText) || k.splitTotal > 0 || k.monthTotal > 0 || !!k.note.trim() || !!k.method || (!student && !!chosen);
 
   return (
     <V2Dialog
@@ -359,17 +372,45 @@ function PaymentForm({
             </Field>
           ))}
 
-        {/* Qaysi oy uchun */}
-        <div>
-          <FieldLabel>{t("Qaysi oy uchun")}</FieldLabel>
-          <MonthChips value={k.periodMonth} onChange={pickMonth} keys={chipKeys} currentKey={nowKey} />
+        {/* Qaysi oy uchun. «Bir nechta oy» — bitta to'lov bir necha oy uchun (MonthSplitField):
+            oylar chiplarda tanlanadi, har biriga summa. Aralash to'lov yoqilganda tugma yashirin. */}
+        <div ref={monthRef}>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <FieldLabel className="mb-0!">{t("Qaysi oy uchun")}</FieldLabel>
+            {!k.splitMode && <MonthModeToggle on={k.monthMode} onChange={k.setMonthMode} disabled={k.saving} />}
+          </div>
+          {k.monthMode ? (
+            <>
+              <MonthChips value={k.periodMonth} selected={k.monthSel} onChange={k.toggleMonth} keys={chipKeys} currentKey={nowKey} />
+              <div className="mt-2.5">
+                <MonthSplitField
+                  selected={k.monthSel}
+                  amounts={k.monthAmounts}
+                  onChange={k.setMonthAmount}
+                  onRemove={k.toggleMonth}
+                  target={k.monthTarget}
+                  total={k.monthTotal}
+                  invalid={submitted && !!errAmount}
+                  disabled={k.saving}
+                />
+              </div>
+              {submitted && errAmount && <FieldError>{errAmount}</FieldError>}
+            </>
+          ) : (
+            <MonthChips value={k.periodMonth} onChange={pickMonth} keys={chipKeys} currentKey={nowKey} />
+          )}
           {/* Izohdagi oy ≠ tanlangan oy — MAJBURIY (eski oynadagi qoida, server ham rad etadi). */}
           {k.noteMismatch ? (
             <div role="alert" className="mt-2 rounded-v2-md bg-v2-danger-bg px-3 py-2 text-v2-caption font-normal text-v2-danger">
-              {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
-                note: k.noteMonthNums.map((m) => months[m - 1]).join(", "),
-                month: k.monthName(k.periodMonth),
-              })}{" "}
+              {k.monthMode
+                ? t("Izohda {note} yozilgan, lekin to'lov {month} oylariga yoziladi.", {
+                    note: k.noteMonthNums.map((m) => months[m - 1]).join(", "),
+                    month: k.monthSel.map((m) => k.monthName(m)).join(", "),
+                  })
+                : t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
+                    note: k.noteMonthNums.map((m) => months[m - 1]).join(", "),
+                    month: k.monthName(k.periodMonth),
+                  })}{" "}
               {t("Oy yoki izoh to'g'rilanmaguncha saqlanmaydi.")}
               {k.noteTarget && (
                 <button type="button" onClick={() => pickMonth(k.noteTarget!)} className="ml-1 font-semibold underline underline-offset-2 hover:no-underline">
@@ -377,7 +418,7 @@ function PaymentForm({
                 </button>
               )}
             </div>
-          ) : k.showTeacher && dateKey && k.periodMonth !== dateKey ? (
+          ) : k.monthMode ? null : k.showTeacher && dateKey && k.periodMonth !== dateKey ? (
             <p className="mt-1.5 text-v2-caption font-normal text-v2-warning">
               {t("To'lov {month} oyiga yoziladi — o'qituvchining o'sha oydagi oyligiga qo'shiladi.", { month: k.monthName(k.periodMonth) })}
             </p>
@@ -418,7 +459,12 @@ function PaymentForm({
         {/* Summa + Sana va vaqt */}
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
           <div ref={amountRef}>
-            {k.splitMode ? (
+            {k.monthMode ? (
+              // Bir nechta oy — Summa = oylar yig'indisi (yuqorida), o'zi tahrirlanmaydi.
+              <Field label={t("Summa")} hint={t("Oylar yig'indisi")}>
+                <MoneyField value={k.monthTotal > 0 ? String(k.monthTotal) : ""} onChange={() => {}} readOnly />
+              </Field>
+            ) : k.splitMode ? (
               // Aralash to'lov — Summa = to'lov turlari yig'indisi (pastda), o'zi tahrirlanmaydi.
               <Field label={t("Summa")} hint={t("To'lov turlari yig'indisi")}>
                 <MoneyField value={k.splitTotal > 0 ? String(k.splitTotal) : ""} onChange={() => {}} readOnly />
@@ -449,7 +495,7 @@ function PaymentForm({
         <div ref={methodRef}>
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <FieldLabel className="mb-0!">{t("To'lov turi")}</FieldLabel>
-            {!k.methodsLoading && methodOptions.length > 1 && <SplitToggle on={k.splitMode} onChange={k.setSplitMode} disabled={k.saving} />}
+            {!k.monthMode && !k.methodsLoading && methodOptions.length > 1 && <SplitToggle on={k.splitMode} onChange={k.setSplitMode} disabled={k.saving} />}
           </div>
           {k.methodsLoading ? (
             <div className="h-11 animate-pulse rounded-v2-md bg-v2-skeleton" aria-hidden />

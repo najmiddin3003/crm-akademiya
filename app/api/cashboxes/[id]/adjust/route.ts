@@ -57,6 +57,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // ARALASH TO'LOV (20.11.2026) — `splits: [{ method, amount }, …]`, faqat kirimda:
   // har to'lov turi alohida yozuv, umumiy kalit bilan (lib/cashboxAdjust.ts →
   // applyCashboxKirimSplit). Bunda `method`/`amount` o'qilmaydi — summa bo'laklardan.
+  // BIR NECHTA OY (21.11.2026) — bo'lakda `periodMonth` ham: `[{ method, amount, periodMonth }, …]`.
   if (body.splits !== undefined) {
     if (input.mode !== "kirim") {
       return NextResponse.json({ ok: false, error: "Bir nechta to'lov turi faqat kirimda" }, { status: 400 });
@@ -65,8 +66,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
     }
     const legs: KirimSplitLeg[] = body.splits.map((x) => {
-      const r = (x ?? {}) as { method?: unknown; amount?: unknown };
-      return { method: String(r.method ?? ""), amount: Number(r.amount) };
+      const r = (x ?? {}) as { method?: unknown; amount?: unknown; periodMonth?: unknown };
+      // Oy — faqat satr bo'lsa (shakli yadroda tekshiriladi); bo'sh — umumiy `periodMonth`.
+      const pm = typeof r.periodMonth === "string" && r.periodMonth.trim() ? r.periodMonth.trim() : undefined;
+      return { method: String(r.method ?? ""), amount: Number(r.amount), ...(pm ? { periodMonth: pm } : {}) };
     });
     const split = await applyCashboxKirimSplit(
       db,

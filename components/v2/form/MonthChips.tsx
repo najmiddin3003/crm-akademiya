@@ -10,6 +10,10 @@ import { Chip, fieldCls, type FieldState } from "./fields";
 // «✓ Oktabr · joriy», «Noyabr», «Dekabr», «Boshqa oy ⌄»). «Boshqa oy» — yil +
 // 12 oy paneli. `MonthField` — o'sha panel oddiy maydon ko'rinishida (kirim
 // qatorlaridagi «Oy»). Qiymat — "YYYY-MM".
+//
+// BIR NECHTA OY (21.11.2026, kirimda «Bir nechta oy»): `selected` berilsa chiplar ko'p
+// tanlovli — bosish `onChange(key)` bilan oyni tanlaydi/olib tashlaydi (holat
+// chaqiruvchida), «Boshqa oy» paneli esa tanlab bo'lgach ham ochiq qoladi.
 
 export function monthKeyOf(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -23,6 +27,7 @@ export function shiftMonth(key: string, delta: number): string {
 function MonthGrid({
   anchorRef,
   value,
+  selected,
   currentKey,
   isDisabled,
   onPick,
@@ -30,6 +35,8 @@ function MonthGrid({
 }: {
   anchorRef: RefObject<HTMLElement | null>;
   value: string;
+  /** Ko'p tanlov — belgilangan oylar (bo'lsa `value` o'rniga). */
+  selected?: string[];
   currentKey: string;
   isDisabled?: (key: string) => boolean;
   onPick: (key: string) => void;
@@ -62,7 +69,7 @@ function MonthGrid({
         <div className="grid grid-cols-3 gap-1">
           {months.map((name, i) => {
             const key = `${year}-${String(i + 1).padStart(2, "0")}`;
-            const on = key === value;
+            const on = selected ? selected.includes(key) : key === value;
             return (
               <button
                 key={key}
@@ -90,11 +97,14 @@ export default function MonthChips({
   keys,
   currentKey,
   isDisabled,
+  selected,
 }: {
   value: string;
   onChange: (key: string) => void;
   /** Chip bo'lib turadigan oylar, tartibi bilan. */
   keys: string[];
+  /** Ko'p tanlov (bir nechta oy) — tanlangan oylar; `onChange` shunda tanlash/olib tashlash. */
+  selected?: string[];
   /** Joriy oy — yonida «· joriy». */
   currentKey: string;
   /** Tanlab bo'lmaydigan oy (masalan kelajak oy oyligi). */
@@ -104,29 +114,36 @@ export default function MonthChips({
   const [open, setOpen] = useState(false);
   const otherRef = useRef<HTMLButtonElement>(null);
   const title = (key: string) => months[Number(key.slice(5, 7)) - 1] ?? key;
-  const otherOn = !keys.includes(value);
+  const isOn = (key: string) => (selected ? selected.includes(key) : value === key);
+  // «Boshqa oy» — chiplarda yo'q oy(lar) tanlangan bo'lsa yonadi va ularni aytadi.
+  const others = selected ? selected.filter((k) => !keys.includes(k)) : keys.includes(value) ? [] : [value];
+  const otherOn = others.length > 0;
+  const otherText = others.length === 1 ? `${title(others[0])} ${others[0].slice(0, 4)}` : t("Boshqa: {n} oy", { n: others.length });
 
   return (
     <div className="flex flex-wrap gap-2">
       {keys.map((key) => (
-        <Chip key={key} on={value === key} onClick={() => onChange(key)} disabled={isDisabled?.(key)}>
+        <Chip key={key} on={isOn(key)} onClick={() => onChange(key)} disabled={isDisabled?.(key)}>
           {title(key)}
           {key === currentKey && <span className="font-normal opacity-80">· {t("joriy")}</span>}
         </Chip>
       ))}
       <Chip ref={otherRef} on={otherOn} onClick={() => setOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={open}>
-        {otherOn ? `${title(value)} ${value.slice(0, 4)}` : t("Boshqa oy")}
+        {otherOn ? otherText : t("Boshqa oy")}
         <ChevronDown className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={1.75} aria-hidden />
       </Chip>
       {open && (
         <MonthGrid
           anchorRef={otherRef}
           value={value}
+          selected={selected}
           currentKey={currentKey}
           isDisabled={isDisabled}
           onClose={() => setOpen(false)}
           onPick={(key) => {
             onChange(key);
+            // Ko'p tanlovda panel ochiq qoladi — yana oy qo'shish mumkin.
+            if (selected) return;
             setOpen(false);
             otherRef.current?.focus();
           }}

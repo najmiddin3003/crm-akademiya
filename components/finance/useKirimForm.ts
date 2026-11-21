@@ -161,6 +161,17 @@ export function useKirimForm({
   const [splitMode, setSplitModeRaw] = useState(false);
   const [splitAmounts, setSplitAmounts] = useState<Record<string, string>>({});
   const [splitTarget, setSplitTarget] = useState(0);
+  // BIR NECHTA OY (21.11.2026; so'rov 04.10: "bir nechta oyni tanlasin, har oyga qancha
+  // kirim bo'lishini yozsin, bu faqat 1 tadan ko'p oy tanlanganda amal qilsin") — bitta
+  // to'lov bir necha oy uchun (Imona 560 000 «sentabr oktabr»). Yoqilganda oylar bir
+  // nechtasi tanlanadi, har biriga summa; har oy alohida yozuv (ustoz ulushi oy bo'yicha),
+  // server — applyCashboxKirimSplit (bo'lakda `periodMonth`). Aralash to'lov bilan BIRGA
+  // emas (oynada biri yoqilganda ikkinchisining tugmasi yashirinadi). `monthSel` —
+  // tanlangan oylar (o'sish tartibida), `monthTarget` — yoqilgan paytdagi Summa.
+  const [monthMode, setMonthModeRaw] = useState(false);
+  const [monthSel, setMonthSel] = useState<string[]>([]);
+  const [monthAmounts, setMonthAmounts] = useState<Record<string, string>>({});
+  const [monthTarget, setMonthTarget] = useState(0);
   const [note, setNote] = useState("");
   // Shu kassada ILGARI yozilgan izohlar — "Izoh" maydonidagi tavsiyalar
   // (tez-tez ishlatilgani birinchi, server shunday saralaydi).
@@ -293,16 +304,74 @@ export function useKirimForm({
   // Aralash rejimda Summa maydoni `splitTotal` ni ko'rsatadi (o'zi tahrirlanmaydi);
   // `amount` holati tegilmaydi — o'chirilganda bo'lak bo'lmasa avvalgi summa qaytadi.
 
+  // Bir nechta oy — faqat bitta «Summa» maydonli turda (qatorlar rejimida oy har qatorda bor).
+  const monthOn = monthMode && !showRows;
+  // Bo'laklar — oy tartibida, summasi bor oylar.
+  const monthLegs = useMemo(
+    () =>
+      monthSel
+        .map((m) => ({ periodMonth: m, amount: Math.round(Number(monthAmounts[m]) || 0) }))
+        .filter((l) => l.amount > 0),
+    [monthSel, monthAmounts],
+  );
+  const monthTotal = monthLegs.reduce((s, l) => s + l.amount, 0);
+
+  /**
+   * Bir nechta oyni yoqish/o'chirish — aralash to'lovdagi qoida: yoqilganda yozilgan Summa
+   * tanlangan oyga o'tadi (va «To'lanishi kerak» bo'lib qoladi). O'chirilganda bitta oy
+   * to'ldirilgan bo'lsa — o'sha oy va summa oddiy maydonlarga; bir nechtasi bo'lsa — yig'indi
+   * Summaga, oy — birinchisi.
+   */
+  function setMonthMode(on: boolean): void {
+    if (on === monthMode) return;
+    if (on) {
+      const amt = Math.round(Number(amount) || 0);
+      setMonthTarget(amt);
+      setMonthSel([periodMonth]);
+      setMonthAmounts(amt > 0 ? { [periodMonth]: String(amt) } : {});
+    } else {
+      if (monthLegs.length > 0) {
+        setPeriodMonth(monthLegs[0].periodMonth);
+        setPeriodTouched(true);
+        setAmount(String(monthLegs.length === 1 ? monthLegs[0].amount : monthTotal));
+      }
+      setMonthSel([]);
+      setMonthAmounts({});
+    }
+    setMonthModeRaw(on);
+  }
+  /** Oyni tanlash / olib tashlash (oxirgi tanlangan oy qoladi). `periodMonth` — eng birinchi oy. */
+  function toggleMonth(key: string): void {
+    const has = monthSel.includes(key);
+    if (has && monthSel.length <= 1) return;
+    const next = has ? monthSel.filter((m) => m !== key) : [...monthSel, key].sort();
+    setMonthSel(next);
+    if (has) {
+      setMonthAmounts((prev) => {
+        const rest = { ...prev };
+        delete rest[key];
+        return rest;
+      });
+    }
+    setPeriodMonth(next[0]);
+    setPeriodTouched(true);
+  }
+  function setMonthAmount(key: string, value: string): void {
+    setMonthAmounts((prev) => ({ ...prev, [key]: value }));
+  }
+
   // IZOHDAGI OY ≠ TANLANGAN OY (lib/noteMonth.ts izohi): kassir oyni izohga
   // yozib, «Qaysi oy uchun» ni o'zgartirmasa — ustoz ulushi boshqa oyga
   // tushadi. Faqat oy maydoni va o'qituvchi chiqadigan turda tekshiriladi
   // (aks holda `periodMonth` hech kimning oyligiga ta'sir qilmaydi).
   // 04.10.2026 dan MAJBURIY: farq bo'lsa «Saqlash» o'chiq (save() izohi).
+  // Bir nechta oyda — izohdagi oylardan BIRI tanlangan oylardan biri bo'lsin (server ham shunday).
   const noteMonthNums = useMemo(() => monthsInNote(note), [note]);
+  const checkMonths = monthOn ? (monthLegs.length > 0 ? monthLegs.map((l) => l.periodMonth) : monthSel) : [periodMonth];
   const noteMismatch = !showRows && showTeacher && noteMonthNums.length > 0
-    && !noteMonthNums.includes(Number(periodMonth.slice(5, 7)));
-  // Izohda BITTA oy bo'lsa — bir bosishda o'shanga o'tkazish taklif qilinadi.
-  const noteTarget = noteMismatch && noteMonthNums.length === 1 ? nearestMonthKey(noteMonthNums[0], periodMonth) : null;
+    && !checkMonths.some((m) => noteMonthNums.includes(Number(m.slice(5, 7))));
+  // Izohda BITTA oy bo'lsa — bir bosishda o'shanga o'tkazish taklif qilinadi (bitta oyli to'lovda).
+  const noteTarget = noteMismatch && !monthOn && noteMonthNums.length === 1 ? nearestMonthKey(noteMonthNums[0], periodMonth) : null;
   const monthName = (key: string) => `${months[Number(key.slice(5, 7)) - 1] ?? key} ${key.slice(0, 4)}`;
 
   /**
@@ -331,6 +400,10 @@ export function useKirimForm({
     setSplitModeRaw(false);
     setSplitAmounts({});
     setSplitTarget(0);
+    setMonthModeRaw(false);
+    setMonthSel([]);
+    setMonthAmounts({});
+    setMonthTarget(0);
   }
 
   function addRow() {
@@ -403,13 +476,19 @@ export function useKirimForm({
     // turlarda — bitta maydondan.
     // Aralash to'lovda summa va tur BO'LAKLARDAN. Bitta tur to'ldirilgan bo'lsa — oddiy
     // kirim bo'lib ketadi (bo'linadigan narsa yo'q).
+    // Bir nechta oyda — summa OYLARDAN, tur bitta (tanlangani); bitta oy to'ldirilgan
+    // bo'lsa — oddiy kirim o'sha oyga (so'rovdagidek: "faqat 1 tadan ko'p oy tanlanganda").
     const legs = splitOn ? splitLegs : [];
-    const amountNum = splitOn ? splitTotal : showRows ? total : Number(amount);
+    const amountNum = monthOn ? monthTotal : splitOn ? splitTotal : showRows ? total : Number(amount);
     if (!amountNum || amountNum <= 0) {
-      showError(t(splitOn ? "Kamida bitta to'lov turiga summa yozing" : "Qiymatni to'g'ri kiriting"));
+      showError(t(monthOn ? "Kamida bitta oyga summa yozing" : splitOn ? "Kamida bitta to'lov turiga summa yozing" : "Qiymatni to'g'ri kiriting"));
       return;
     }
     const sendMethod = splitOn ? (legs[0]?.method ?? "") : method;
+    const sendMonth = monthOn ? (monthLegs[0]?.periodMonth ?? periodMonth) : periodMonth;
+    const monthSplits = monthOn && monthLegs.length > 1
+      ? monthLegs.map((l) => ({ method, amount: l.amount, periodMonth: l.periodMonth }))
+      : [];
     if (!sendMethod) {
       showError(t("To'lov turini tanlang"));
       return;
@@ -420,7 +499,9 @@ export function useKirimForm({
     // izohli kirim shu yo'l bilan oktabrga yozildi. Server ham rad etadi
     // (lib/cashboxAdjust.ts → noteMonthConflict).
     if (noteMismatch) {
-      showError(t("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi — oyni yoki izohni to'g'rilang"));
+      showError(t(monthOn
+        ? "Izohdagi oy tanlangan oylarning hech biriga to'g'ri kelmaydi — oyni yoki izohni to'g'rilang"
+        : "Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi — oyni yoki izohni to'g'rilang"));
       return;
     }
     // BITTA YOZUV, YIG'INDI BILAN — qatorlar alohida jurnal yozuvi
@@ -451,6 +532,8 @@ export function useKirimForm({
           // Ikki va undan ko'p tur — har biri alohida yozuv, umumiy kalit bilan
           // (lib/cashboxAdjust.ts → applyCashboxKirimSplit). Server bunda method/amount'ni o'qimaydi.
           ...(legs.length > 1 ? { splits: legs } : {}),
+          // Bir nechta oy — har oy bo'lak, tur bir xil (applyCashboxKirimSplit, bo'lakda `periodMonth`).
+          ...(monthSplits.length > 1 ? { splits: monthSplits } : {}),
           category,
           // EKRANDA KO'RINMAGAN QIYMAT YUBORILMAYDI. Tur almashtirilganda
           // `pickType()` maydonlarni tozalaydi, lekin bu ikkinchi qorovul
@@ -469,7 +552,7 @@ export function useKirimForm({
           // Qatorlar rejimida oy HAR QATORDA — bitta umumiy `periodMonth`
           // ma'nosiz bo'lardi, ustiga u orqaga sanalgan oylik hisobini
           // (payrollSources → carryOver) bekorga uyg'otishi mumkin edi.
-          ...(showRows ? {} : { periodMonth }),
+          ...(showRows ? {} : { periodMonth: sendMonth }),
           date: date ? toIso(date) : undefined,
           note: finalNote,
         }),
@@ -563,6 +646,15 @@ export function useKirimForm({
     splitLegs,
     splitTotal,
     splitTarget,
+    monthMode: monthOn,
+    setMonthMode,
+    monthSel,
+    toggleMonth,
+    monthAmounts,
+    setMonthAmount,
+    monthLegs,
+    monthTotal,
+    monthTarget,
     pickType,
     addRow,
     removeRow,

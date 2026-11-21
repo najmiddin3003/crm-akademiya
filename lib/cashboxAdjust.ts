@@ -13,7 +13,7 @@ import { resolvePupilRef } from "@/lib/pupilEntries";
 import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
 import { notifyPayment } from "@/lib/studentBot/notify";
 import type { EntryOrigin } from "@/lib/transactionEntries";
-import { noteMonthConflict } from "@/lib/noteMonth";
+import { monthsInNote, noteMonthConflict } from "@/lib/noteMonth";
 import { attachDiscountEntry, claimDiscountForPayment, releaseDiscountClaim, type ClaimedDiscount } from "@/lib/gamification/discounts";
 
 // KASSAGA KIRIM / KASSADAN CHIQIM — yadro.
@@ -89,6 +89,11 @@ export interface AdjustInput {
    * EMAS, o'ram tomonidan bir marta (umumiy summa bilan) yuboriladi.
    */
   splitId?: string;
+  /**
+   * Izohdagi oy qorovuli o'ram tomonidan BUTUN to'lov uchun allaqachon o'tkazilgan
+   * (bir nechta oyli to'lov, `applyCashboxKirimSplit`) — bo'lak sayin qayta tekshirilmaydi.
+   */
+  noteChecked?: boolean;
 }
 
 export interface AdjustDeps {
@@ -219,7 +224,7 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   //
   // Xodimga avans/oylikda TEKSHIRILMAYDI (04.11.2026): oy doim joriy, izohda
   // esa "oktabr oyligi" deb yozilishi tabiiy — pul o'sha qoldiqni yopadi.
-  const noteCheck = !!period && mode === "kirim" && String(teacherName ?? "").trim() !== "";
+  const noteCheck = !input.noteChecked && !!period && mode === "kirim" && String(teacherName ?? "").trim() !== "";
   if (noteCheck && noteMonthConflict(note, period)) {
     return fail("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi — oyni yoki izohni to'g'rilang");
   }
@@ -620,18 +625,27 @@ function scheduleKirimNotices(db: Db, deps: AdjustDeps, n: KirimNotice): void {
   }
 }
 
-/** Aralash to'lovning bitta bo'lagi: to'lov turi kaliti + shu turdagi summa. */
+/**
+ * Bo'lingan kirimning bitta bo'lagi: to'lov turi kaliti + summa, ixtiyoriy — QAYSI OY
+ * uchun ("YYYY-MM"; berilmasa — umumiy `periodMonth`).
+ *
+ * BIR NECHTA OY (21.11.2026, foydalanuvchi 04.10 da so'ragan: "bir nechta oyni
+ * tanlasin, har oyga qancha kirim bo'lishini yozsin") — bir xil to'lov turida har oy
+ * alohida bo'lak. Ustoz ulushi oy bo'yicha (`periodMonth` → monthMatch), shuning
+ * uchun «sentabr + oktabr» to'lovi bitta yozuvga yig'ilmaydi.
+ */
 export interface KirimSplitLeg {
   method: string;
   amount: number;
+  periodMonth?: string;
 }
 
 export type SplitOutcome =
   | { ok: true; cashbox: Cashbox; entryIds: number[]; total: number }
   | { ok: false; error: string; status: 400 | 404 };
 
-/** Bitta to'lovda nechta to'lov turi bo'lishi mumkin (sozlamadagi turlar soni ham shunchalik emas). */
-const MAX_SPLIT_LEGS = 6;
+/** Bitta to'lovda nechta bo'lak bo'lishi mumkin (to'lov turlari yoki oylar — bir yil). */
+const MAX_SPLIT_LEGS = 12;
 
 /**
  * ARALASH TO'LOV — BITTA KIRIM, BIR NECHTA TO'LOV TURIDA (20.11.2026, foydalanuvchi:
@@ -654,6 +668,10 @@ const MAX_SPLIT_LEGS = 6;
  * butun musbat. Qolgan tekshiruvlar (kassa, tur nomi, izohdagi oy) har bo'lakda
  * bir xil kirish bilan yuradi — birinchi bo'lak o'tsa, keyingilari ham o'tadi
  * (kirimda kassa qoldig'i chegarasi yo'q).
+ *
+ * BIR NECHTA OY (21.11.2026) — xuddi shu yo'l: bo'laklar bir turda, har biri o'z
+ * `periodMonth` i bilan (KirimSplitLeg izohi). Farqi — izohdagi oy BUTUN to'lov uchun
+ * oldindan tekshiriladi (pastda), tanga chegirmasi esa har bo'lakda o'z oyi uchun.
  */
 export async function applyCashboxKirimSplit(
   db: Db,
@@ -661,17 +679,40 @@ export async function applyCashboxKirimSplit(
   legs: KirimSplitLeg[],
   deps: AdjustDeps,
 ): Promise<SplitOutcome> {
-  if (!Array.isArray(legs) || legs.length < 2) return { ok: false, error: "Kamida ikkita to'lov turi kerak", status: 400 };
-  if (legs.length > MAX_SPLIT_LEGS) return { ok: false, error: "To'lov turlari juda ko'p", status: 400 };
+  // Oyli bo'laklar (bir nechta oy) — xabarlar shunga qarab aytiladi.
+  const byMonth = Array.isArray(legs) && legs.some((l) => l && typeof l.periodMonth === "string" && l.periodMonth !== "");
+  if (!Array.isArray(legs) || legs.length < 2) {
+    return { ok: false, error: byMonth ? "Kamida ikkita oy kerak" : "Kamida ikkita to'lov turi kerak", status: 400 };
+  }
+  if (legs.length > MAX_SPLIT_LEGS) return { ok: false, error: byMonth ? "Oylar juda ko'p" : "To'lov turlari juda ko'p", status: 400 };
   const methods = await loadPaymentMethods(db);
+  // Bo'lakning kaliti — tur + oy: bir turda ikki oy (bir nechta oy) yoki bir oyda ikki tur
+  // (aralash to'lov) bo'lishi mumkin, bir xil tur + oy esa ikki marta yozilmaydi.
   const seen = new Set<string>();
   for (const leg of legs) {
     if (!leg || typeof leg.method !== "string" || !methods.some((m) => m.key === leg.method)) {
       return { ok: false, error: "To'lov turini tanlang", status: 400 };
     }
-    if (seen.has(leg.method)) return { ok: false, error: "Bir to'lov turi ikki marta yozilgan", status: 400 };
-    seen.add(leg.method);
+    if (leg.periodMonth !== undefined && !isMonthKey(leg.periodMonth)) return { ok: false, error: "Noto'g'ri oy", status: 400 };
+    const legKey = `${leg.method}|${leg.periodMonth ?? ""}`;
+    if (seen.has(legKey)) {
+      return { ok: false, error: byMonth ? "Bir oy ikki marta yozilgan" : "Bir to'lov turi ikki marta yozilgan", status: 400 };
+    }
+    seen.add(legKey);
     if (!Number.isSafeInteger(leg.amount) || leg.amount <= 0) return { ok: false, error: "Qiymatni to'g'ri kiriting", status: 400 };
+  }
+
+  // IZOHDAGI OY — BUTUN TO'LOV UCHUN, BIRINCHI YOZUVDAN OLDIN (bir nechta oyda). Bo'lak
+  // sayin tekshirilsa «sentabr» izohli sentabr + oktabr to'lovining sentabr bo'lagi saqlanib,
+  // oktabr bo'lagi rad etilardi — yarim to'lov qolardi. Qoida o'sha (lib/noteMonth.ts):
+  // izohda oy bo'lsa, ulardan BIRI tanlangan oylardan biri bo'lsin. Faqat ustozli kirimda —
+  // `applyCashboxAdjust` dagi shart bilan bir xil.
+  const legMonths = byMonth ? legs.map((l) => l.periodMonth ?? input.periodMonth ?? "").filter((m) => isMonthKey(m)) : [];
+  if (byMonth && String(input.teacherName ?? "").trim() !== "") {
+    const inNote = monthsInNote(input.note);
+    if (inNote.length > 0 && !legMonths.some((m) => inNote.includes(Number(m.slice(5, 7))))) {
+      return { ok: false, error: "Izohdagi oy tanlangan oylarning hech biriga to'g'ri kelmaydi — oyni yoki izohni to'g'rilang", status: 400 };
+    }
   }
 
   const splitId = randomUUID();
@@ -680,7 +721,19 @@ export async function applyCashboxKirimSplit(
   let discountSom = 0;
   let pupilId: number | null = null;
   for (const leg of legs) {
-    const out = await applyCashboxAdjust(db, { ...input, mode: "kirim", method: leg.method, amount: leg.amount, splitId }, deps);
+    const out = await applyCashboxAdjust(
+      db,
+      {
+        ...input,
+        mode: "kirim",
+        method: leg.method,
+        amount: leg.amount,
+        splitId,
+        ...(leg.periodMonth ? { periodMonth: leg.periodMonth } : {}),
+        ...(byMonth ? { noteChecked: true } : {}),
+      },
+      deps,
+    );
     if (!out.ok) {
       // Birinchi bo'lak rad etilsa — hech narsa yozilmagan, xato o'zicha qaytadi.
       if (entryIds.length === 0) return out;
@@ -688,7 +741,7 @@ export async function applyCashboxKirimSplit(
       // saqlangan bo'lak YASHIRILMAYDI: kassir qayta kiritib ikki baravar qilmasin.
       console.error("[cashbox] aralash to'lov bo'lagi saqlanmadi:", splitId, entryIds, out.error);
       const ids = entryIds.join(", #");
-      return { ok: false, error: `Aralash to'lovning bir qismi saqlanmadi (saqlangani: #${ids}) — Tranzaksiyalarni tekshiring`, status: 400 };
+      return { ok: false, error: `To'lovning bir qismi saqlanmadi (saqlangani: #${ids}) — Tranzaksiyalarni tekshiring`, status: 400 };
     }
     entryIds.push(out.entryId);
     discountSom += out.entry.discountSom ?? 0;
@@ -704,7 +757,8 @@ export async function applyCashboxKirimSplit(
     pupilName: (input.studentName || "").trim(),
     amount: total,
     ...(discountSom > 0 ? { discountSom } : {}),
-    method: legs.map((l) => label(l.method)).join(" + "),
+    // Bir nechta oyda tur bir xil — «Naqd + Naqd» emas, «Naqd».
+    method: [...new Set(legs.map((l) => label(l.method)))].join(" + "),
     date: last.entry.date,
     moderator: last.cashbox.moderator || "",
     cashboxId: input.cashboxId,

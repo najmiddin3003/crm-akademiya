@@ -87,17 +87,35 @@ export async function loadSplitLegs(e: TransactionEntry): Promise<TransactionEnt
   }
 }
 
-/** Chekdagi «Chek №», to'lov turi qatorlari, chegirma va Jami — bitta yoki aralash to'lov. */
+/** Chek o'zbekcha (bosma ham) — oy nomlari shu yerda; "2026-10" → "Oktabr 2026". */
+const UZ_MONTHS = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
+function monthWord(pm: string | undefined): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(pm ?? "");
+  return m ? `${UZ_MONTHS[Number(m[2]) - 1] ?? m[2]} ${m[1]}` : "";
+}
+
+/** Chekdagi «Chek №», to'lov turi qatorlari, chegirma va Jami — bitta, aralash yoki bir necha oyli to'lov. */
 function receiptParts(e: TransactionEntry, legs: TransactionEntry[]) {
   // Bo'laklar shu yozuvniki bo'lsagina (oyna boshqa yozuvga o'tgan bo'lsa — eskisi emas).
   const parts = legs.length > 1 && legs.some((x) => x.id === e.id) ? legs : [e];
   const discountSom = parts.reduce((s, x) => s + (x.discountSom ?? 0), 0);
   const discountPercent = parts.find((x) => x.discountPercent)?.discountPercent;
+  // Bo'lak qatori: aralash to'lovda — tur, bir nechta oyda (tur bitta) — oy, ikkalasi farq
+  // qilsa — «Naqd · Oktabr 2026».
+  const types = [...new Set(parts.map((x) => x.paymentType))];
+  const monthsDiffer = new Set(parts.map((x) => x.periodMonth ?? "")).size > 1;
+  const legLabel = (x: TransactionEntry) =>
+    types.length === 1
+      ? monthWord(x.periodMonth) || x.paymentType
+      : monthsDiffer && monthWord(x.periodMonth)
+        ? `${x.paymentType} · ${monthWord(x.periodMonth)}`
+        : x.paymentType;
   return {
     number: parts.map((x) => x.id).join(", "),
-    // Aralash to'lovda: «To'lov turi: Naqd + Plastik», ostida har turning summasi.
+    // Aralash to'lovda: «To'lov turi: Naqd + Plastik», ostida har turning summasi;
+    // bir nechta oyda: «To'lov turi: Naqd», ostida har oyning summasi.
     methodRows: (parts.length > 1
-      ? [["To'lov turi", parts.map((x) => x.paymentType).join(" + ")], ...parts.map((x) => [`— ${x.paymentType}`, fmtSom(Math.abs(x.amount))])]
+      ? [["To'lov turi", types.join(" + ")], ...parts.map((x) => [`— ${legLabel(x)}`, fmtSom(Math.abs(x.amount))])]
       : [["To'lov turi", e.paymentType]]) as [string, string][],
     discountSom,
     discountPercent,
