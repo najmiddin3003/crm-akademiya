@@ -6,6 +6,7 @@ import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import V2Select from "@/components/v2/ui/V2Select";
+import FaceTerminalsV2 from "@/components/v2/nazorat/FaceTerminalsV2";
 import { secondaryBtn } from "@/components/v2/ui/buttons";
 import { useProfileFmt } from "@/components/v2/students/profile/profileBits";
 import { Avatar, NoticeBar, PageHead, PageShell, TH } from "@/components/v2/students/lists/listKit";
@@ -200,8 +201,8 @@ export default function StaffAttendanceV2() {
                         <td className="px-3 py-3">
                           {r.enter ? (
                             <span className="inline-flex items-center gap-1.5 rounded-v2-sm bg-v2-surface-2 px-2 py-0.5 text-v2-small text-v2-text-2" title={r.location ?? undefined}>
-                              {r.face ? <ScanFace className="size-3.5" strokeWidth={1.75} aria-hidden /> : <MapPin className="size-3.5" strokeWidth={1.75} aria-hidden />}
-                              {r.face ? t("Bot · Face ID") : t("Bot · joylashuv")}
+                              {r.face || r.terminal ? <ScanFace className="size-3.5" strokeWidth={1.75} aria-hidden /> : <MapPin className="size-3.5" strokeWidth={1.75} aria-hidden />}
+                              {r.terminal ? t("Yuz terminali") : r.face ? t("Bot · Face ID") : t("Bot · joylashuv")}
                             </span>
                           ) : (
                             <span className="text-v2-text-3">—</span>
@@ -223,6 +224,7 @@ export default function StaffAttendanceV2() {
       )}
 
       {d && tab === "usul" && (
+        <>
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <section className="rounded-v2-lg border border-v2-border bg-v2-surface p-6 shadow-v2-sm">
             <h2 className="text-[22px] font-semibold text-v2-text">{t("Ishga keldingizmi? Botda belgilang")}</h2>
@@ -285,11 +287,14 @@ export default function StaffAttendanceV2() {
             )}
           </aside>
         </div>
+        {/* Yuz terminallari (Hikvision, 21.11.2026) — faqat admin. */}
+        {d.canConfigure && <FaceTerminalsV2 />}
+        </>
       )}
 
       {d && tab === "voqealar" && (
         <>
-          <NoticeBar>{t("Turniket hali ulanmagan — voqealar xodimlar botidagi belgilashlardan. Turniket Sozlamalar → Integratsiyalar orqali ulanadi (taklif).")}</NoticeBar>
+          <NoticeBar>{t("Voqealar xodimlar botidagi va yuz terminalidagi belgilashlardan. Terminal «Belgilash usuli» bo'limida qo'shiladi.")}</NoticeBar>
           <section className="overflow-hidden rounded-v2-lg border border-v2-border bg-v2-surface shadow-v2-sm">
             {d.events.length === 0 ? (
               <p className="px-5 py-10 text-center text-v2-small text-v2-text-3">{t("Bu kunda voqea yo'q")}</p>
@@ -321,7 +326,7 @@ export default function StaffAttendanceV2() {
                         <td className={`px-3 py-3 font-semibold ${e.kind === "out" ? "text-v2-text-3" : e.lateMinutes > 0 ? "text-v2-warning" : "text-v2-success"}`}>
                           {e.kind === "out" ? "—" : e.lateMinutes > 0 ? t("kechikdi {n} daq.", { n: e.lateMinutes }) : t("vaqtida")}
                         </td>
-                        <td className="py-3 pl-3 pr-5 text-v2-small text-v2-text-2">{e.location ?? "—"}</td>
+                        <td className="py-3 pl-3 pr-5 text-v2-small text-v2-text-2">{e.terminal ? t("Yuz terminali") : (e.location ?? "—")}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -25,6 +25,8 @@ export interface StaffDayRow {
   /** ontime — vaqtida; late — kechikdi; absent — kelmadi; waiting — vaqti hali kelmagan; extra — kutilmagan, lekin keldi. */
   state: "ontime" | "late" | "absent" | "waiting" | "extra";
   face: boolean;
+  /** Yuz terminalidan belgilangan (lib/hikTerminal.ts) — botdan emas. */
+  terminal: boolean;
   location: string | null;
 }
 
@@ -35,6 +37,7 @@ export interface StaffDayEvent {
   kind: "in" | "out";
   expected: string | null;
   lateMinutes: number;
+  terminal: boolean;
   location: string | null;
 }
 
@@ -98,6 +101,7 @@ export async function staffDay(db: Db, opts: { buildingId: number; date: string;
       lateMinutes: Number(r?.lateMinutes) || 0,
       state,
       face: !!r?.faceShotId,
+      terminal: r?.via === "terminal",
       location: r?.location?.text ?? null,
     });
   }
@@ -115,6 +119,7 @@ export async function staffDay(db: Db, opts: { buildingId: number; date: string;
       lateMinutes: Number(r.lateMinutes) || 0,
       state: !r.expected ? "extra" : r.status === "kechikkan" ? "late" : "ontime",
       face: !!r.faceShotId,
+      terminal: r.via === "terminal",
       location: r.location?.text ?? null,
     });
   }
@@ -125,8 +130,8 @@ export async function staffDay(db: Db, opts: { buildingId: number; date: string;
   const events: StaffDayEvent[] = [];
   for (const r of recs) {
     const role = roleOf.get(Number(r.employeeId)) ?? "Xodim";
-    if (r.enterTime) events.push({ time: r.enterTime, name: r.personName, role, kind: "in", expected: r.expected, lateMinutes: Number(r.lateMinutes) || 0, location: r.location?.text ?? null });
-    if (r.exitTime) events.push({ time: r.exitTime, name: r.personName, role, kind: "out", expected: null, lateMinutes: 0, location: r.exitLocation?.text ?? null });
+    if (r.enterTime) events.push({ time: r.enterTime, name: r.personName, role, kind: "in", expected: r.expected, lateMinutes: Number(r.lateMinutes) || 0, terminal: r.via === "terminal", location: r.location?.text ?? null });
+    if (r.exitTime) events.push({ time: r.exitTime, name: r.personName, role, kind: "out", expected: null, lateMinutes: 0, terminal: r.exitVia === "terminal", location: r.exitLocation?.text ?? null });
   }
   events.sort((a, b2) => b2.time.localeCompare(a.time));
 

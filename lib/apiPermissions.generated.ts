@@ -32,6 +32,7 @@ export const PUBLIC_API: readonly string[] = [
   "/api/xodim/yuz",
   "/api/xodim/dars",
   "/api/hik/events",
+  "/api/hik/listen/[token]",
   "/api/health/ping",
   "/api/health/db",
 ];
@@ -190,6 +191,8 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/groups/[id]/tasks": ["/groups"],
   "/api/groups/import": ["/groups"],
   "/api/groups/roster": ["/groups-students"],
+  "/api/hik/persons": ["/nazorat-qr"],
+  "/api/hik/terminals": ["/nazorat-qr"],
   "/api/hr-employees": ["/blok-testlar", "/management-ish-jadvali", "/management-xodimlar"],
   "/api/hr-employees/[id]": ["/management-rollar", "/management-xodimlar"],
   "/api/hr-employees/[id]/face": ["/management-xodimlar"],

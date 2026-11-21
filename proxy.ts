@@ -162,12 +162,14 @@ const LOG_SKIP_EXACT = new Set([
   "/api/ai/alerts",
   "/api/gender-guess",
   "/api/sync/cron",
+  "/api/hik/events",
   // «Pul qaytdi» oynasidagi «Tushunarli» — ko'rildi belgisi (bekor qilishning
   // o'zi transfer-return route'ida yoziladi).
   "/api/transfer-returns",
 ]);
 // Yuz terminali voqealari — har skanerlash; o'z jurnali bor (hik_events, lib/hikTerminal.ts).
-const LOG_SKIP_PREFIX = ["/api/telegram/", "/api/xodim/", "/api/notifications", "/api/student-web/", "/api/me/", "/api/upload/", "/api/hik/"];
+// Terminallarni sozlash (/api/hik/terminals, /api/hik/persons) — jurnalga yoziladi.
+const LOG_SKIP_PREFIX = ["/api/telegram/", "/api/xodim/", "/api/notifications", "/api/student-web/", "/api/me/", "/api/upload/", "/api/hik/listen/"];
 
 function shouldLog(pathname: string, method: string): boolean {
   if (!LOGGED_METHODS.has(method)) return false;

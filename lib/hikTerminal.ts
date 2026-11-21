@@ -8,13 +8,15 @@ import { toUz } from "@/lib/uzTime";
 // YUZ TERMINALI (Hikvision, 21.11.2026 — egasi: «temuriylarga shu kamerani
 // face idni ulashimiz kerak»; xodimlar + o'quvchilar, ISUP orqali).
 //
-// QURILMA: DS-K1T343MX (MinMoe). Terminal internet orqali serverga ISUP 5.0
-// bilan ulanadi (terminal ekrani: Server IP, port 7660, Device ID, ISUP key).
-// ISUP — Hikvision'ning yopiq protokoli: uni serverdagi alohida «ko'prik»
-// xizmati qabul qiladi (Hikvision HCISUPSDK bilan; SDK egasidan keladi) va
-// har bir voqeani shu yerga — POST /api/hik/events — yuboradi
-// (app/api/hik/events/route.ts, `x-hik-secret` kaliti bilan). Ko'prik
-// ISUP'siz «HTTP listening» bilan ham ishlay oladi — voqea shakli bir xil.
+// QURILMA: DS-K1T343MX (MinMoe). Voqea CRM'ga ikki yo'ldan keladi, ikkalasi
+// ham shu modulga tushadi (voqea shakli bir xil):
+//   • HTTP LISTENING (21.11.2026 egasi tanladi — SDK kerak emas): terminal web
+//     sahifasida manzil yoziladi, terminal har voqeani o'zi POST qiladi —
+//     /api/hik/listen/<kalit> (app/api/hik/listen/[token]/route.ts). Terminal
+//     CRM'da qo'shiladi (Xodimlar davomati → Belgilash usuli, lib/hikAdmin.ts).
+//   • ISUP 5.0 (terminal ekrani: port 7660, Device ID, ISUP key) — yopiq
+//     protokol, serverdagi alohida ko'prik (Hikvision HCISUPSDK) kerak; ko'prik
+//     POST /api/hik/events ga `x-hik-secret` bilan yuboradi. Hozircha ko'prik yo'q.
 //
 // VOQEA SHAKLI — Hikvision ISAPI JSON'i (ikkalasini ham qabul qiladi):
 //   • push: { dateTime, eventType: "AccessControllerEvent",
@@ -79,6 +81,14 @@ export interface HikTerminal {
   createdAt: Date;
   lastSeenAt?: Date | null;
   lastEventAt?: Date | null;
+  /**
+   * HTTP LISTENING manzilidagi maxfiy kalit (/api/hik/listen/<kalit>) — terminal
+   * CRM'dan qo'shilganda beriladi (lib/hikAdmin.ts). Terminal sarlavha qo'sha
+   * olmaydi, shu sabab kalit manzilda; u terminalni ham aniqlaydi.
+   */
+  listenToken?: string | null;
+  /** Terminal o'zi aytgan tarmoq manzili (voqeadagi ipAddress/macAddress) — web sahifasini ochish uchun. */
+  info?: { ip: string | null; mac: string | null } | null;
 }
 
 export interface HikPerson {
@@ -193,6 +203,8 @@ export function parseHikEvent(raw: unknown): ParsedHikEvent | null {
   if (!raw || typeof raw !== "object") return null;
   const top = raw as Record<string, unknown>;
   const inner = top.AccessControllerEvent;
+  // Boshqa turdagi xabar (HTTP listening'dagi «heartBeat» va h.k.) — voqea emas.
+  if (typeof top.eventType === "string" && top.eventType !== "AccessControllerEvent" && !inner) return null;
   const e = (inner && typeof inner === "object" ? inner : top) as Record<string, unknown>;
   const major = num(e.majorEventType ?? e.major);
   const minor = num(e.subEventType ?? e.minor);
@@ -217,6 +229,51 @@ export function hikEventKey(ev: ParsedHikEvent, at: Date): string {
   if (ev.serialNo !== null) return `s${ev.serialNo}@${at.toISOString()}`;
   const h = createHash("sha256").update(JSON.stringify([at.toISOString(), ev.employeeNo, ev.major, ev.minor])).digest("hex");
   return `h${h.slice(0, 24)}`;
+}
+
+/**
+ * HTTP LISTENING tanasi → voqea JSON'lari (sof funksiya). Terminal odatda
+ * multipart yuboradi: JSON qism («event_log» / «AccessControllerEvent») +
+ * ixtiyoriy rasm. Rasm qismlari tashlanadi. Hikvision multipart'i har doim ham
+ * qoidaga to'liq mos emas — shu sabab qat'iy `formData()` emas, yumshoq
+ * bo'luvchi. XML (eski «EventNotificationAlert», yurak urishi) — voqea emas.
+ */
+export function parseListenBody(contentType: string, body: Uint8Array): unknown[] {
+  const out: unknown[] = [];
+  const tryJson = (s: string) => {
+    const t = s.trim();
+    if (!t.startsWith("{")) return;
+    try {
+      const v: unknown = JSON.parse(t);
+      if (v && typeof v === "object" && !Array.isArray(v)) out.push(v);
+    } catch {
+      /* JSON emas */
+    }
+  };
+  const text = Buffer.from(body).toString("utf8");
+  const boundary = /boundary="?([^";\s]+)"?/i.exec(contentType)?.[1];
+  if (!/multipart\//i.test(contentType) || !boundary) {
+    tryJson(text);
+    return out;
+  }
+  for (const part of text.split(`--${boundary}`)) {
+    const crlf = part.indexOf("\r\n\r\n");
+    const lf = part.indexOf("\n\n");
+    const at = crlf >= 0 ? crlf + 4 : lf >= 0 ? lf + 2 : -1;
+    if (at < 0) continue;
+    if (/content-type:\s*image\//i.test(part.slice(0, at))) continue;
+    tryJson(part.slice(at));
+  }
+  return out;
+}
+
+/** Voqeadagi terminal tarmoq manzili (push shaklida bor; jurnal qatorida yo'q). */
+export function deviceInfoOf(raw: unknown): { ip: string | null; mac: string | null } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const ip = str(r.ipAddress, 64);
+  const mac = str(r.macAddress, 32);
+  return ip || mac ? { ip, mac } : null;
 }
 
 /** Voqea vaqti: qurilmaniki, agar aql bovar qilsa (kelajakda emas); aks holda qabul vaqti. */
@@ -264,9 +321,15 @@ async function nextId(db: Db, collection: string): Promise<number> {
  * biriktirilmagan (`branchId: null`, `active: false`) bo'lib ro'yxatga tushadi:
  * admin filialga biriktirguncha voqealari faqat jurnalda.
  */
-export async function touchTerminal(db: Db, deviceId: string, now: Date, hadEvents: boolean): Promise<HikTerminal> {
+export async function touchTerminal(
+  db: Db,
+  deviceId: string,
+  now: Date,
+  hadEvents: boolean,
+  info: HikTerminal["info"] = null,
+): Promise<HikTerminal> {
   const col = db.collection<HikTerminal>(HIK_TERMINALS);
-  const set = { lastSeenAt: now, ...(hadEvents ? { lastEventAt: now } : {}) };
+  const set = { lastSeenAt: now, ...(hadEvents ? { lastEventAt: now } : {}), ...(info ? { info } : {}) };
   for (let attempt = 0; attempt < 5; attempt++) {
     const found = await col.findOneAndUpdate({ deviceId }, { $set: set }, { returnDocument: "after", projection: { _id: 0 } });
     if (found) return found as HikTerminal;
@@ -438,10 +501,10 @@ export async function ingestHikEvents(
   db: Db,
   deviceId: string,
   raws: readonly unknown[],
-  opts: { now?: Date; defer?: Defer } = {},
+  opts: { now?: Date; defer?: Defer; info?: HikTerminal["info"] } = {},
 ): Promise<IngestSummary> {
   const receivedAt = opts.now ?? new Date();
-  const terminal = await touchTerminal(db, deviceId, receivedAt, raws.length > 0);
+  const terminal = await touchTerminal(db, deviceId, receivedAt, raws.length > 0, opts.info ?? null);
   const statuses: Record<string, number> = {};
   const bump = (s: string) => (statuses[s] = (statuses[s] ?? 0) + 1);
 
@@ -459,6 +522,12 @@ export async function ingestHikEvents(
 
   const events = db.collection<HikEventRow>(HIK_EVENTS);
   for (const { ev, at } of parsed) {
+    // Odamsiz qurilma voqealari (eshik ochildi/yopildi, notanish yuz) — jurnalga ham yozilmaydi:
+    // har o'tishda bir nechtadan keladi. Odamli, lekin noma'lum kodli o'tish jurnalda `ignored` bo'ladi.
+    if (!ev.pass && !ev.employeeNo) {
+      bump("skipped");
+      continue;
+    }
     const key = hikEventKey(ev, at);
     const row: HikEventRow = {
       deviceId,

@@ -84,6 +84,9 @@ const PUBLIC = [
   // yo'q. HIK_BRIDGE_SECRET sarlavhasi bilan himoyalangan (app/api/hik/events,
   // lib/hikTerminal.ts).
   "/api/hik/events",
+  // HTTP LISTENING — terminalning o'zi yuboradi (sarlavha qo'sha olmaydi): himoya —
+  // manzildagi tasodifiy kalit, u terminalni ham aniqlaydi (lib/hikAdmin.ts).
+  "/api/hik/listen/[token]",
   // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
   // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
   // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).

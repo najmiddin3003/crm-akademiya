@@ -401,6 +401,12 @@ async function createAllIndexes(db: Db): Promise<void> {
   );
   tasks.push(db.collection("hik_terminals").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("hik_terminals").createIndex({ deviceId: 1 }, { unique: true }));
+  tasks.push(
+    db.collection("hik_terminals").createIndex(
+      { listenToken: 1 },
+      { unique: true, partialFilterExpression: { listenToken: { $type: "string" } }, name: "hik_terminals_listen_token" },
+    ),
+  );
   tasks.push(db.collection("hik_persons").createIndex({ employeeNo: 1 }, { unique: true }));
   tasks.push(db.collection("hik_persons").createIndex({ personType: 1, personId: 1 }));
   tasks.push(db.collection("hik_events").createIndex({ deviceId: 1, key: 1 }, { unique: true }));
