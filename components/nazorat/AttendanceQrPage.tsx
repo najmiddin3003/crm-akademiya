@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ScanFace } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -9,6 +10,7 @@ import { LocationChip } from "@/components/shared/AttendanceLocation";
 import type { TurnstileLocation } from "@/lib/turnstileIo";
 import { useBranch } from "@/components/shared/BranchContext";
 import { branchBuildingLabel, branchPool, buildingNo } from "@/lib/branchPools";
+import FaceTerminalsV2 from "@/components/v2/nazorat/FaceTerminalsV2";
 
 /**
  * Ro'yxat QAYSI BINO bo'yicha (10.10.2026): 1+2 «Akademiya Chortoq» navbarda
@@ -30,6 +32,10 @@ const QR_BUILDING_KEY = "crm:qrBuilding";
 // yoziladi, joylashuvi saqlanadi (Boshqaruv → Filiallar).
 // Yozuvlar Nazorat → Turniket sahifasida va xodim profilidagi «Ish soati»
 // tabida ham ko'rinadi.
+//
+// 21.11.2026: Hikvision YUZ TERMINALI ham shu yozuvlarni qo'yadi (via "terminal") — ro'yxatda belgisi
+// bilan; admin uchun pastda «Yuz terminallari» bo'limi (yangi versiyadagi komponentning o'zi,
+// components/v2/nazorat/FaceTerminalsV2.tsx — v2 tokenlari `data-ui="v2"` ichida ishlaydi).
 
 interface Arrival {
   id: number;
@@ -40,6 +46,8 @@ interface Arrival {
   lateMinutes: number;
   expected: string | null;
   location?: TurnstileLocation | null;
+  /** Yuz terminali (Hikvision) orqali kelgan. */
+  via?: "terminal";
 }
 
 interface PageData {
@@ -236,10 +244,18 @@ export default function AttendanceQrPage() {
                     <span className="w-12 shrink-0 text-[14px] font-semibold tabular-nums">{a.enterTime ?? "—"}</span>
                     <span className="min-w-0 flex-1 truncate text-[14px]">{a.personName}</span>
                     {a.exitTime && <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">→ {a.exitTime}</span>}
-                    {a.location && (
-                      <span className="shrink-0">
-                        <LocationChip loc={a.location} person={a.personName} when={`${data.date} · ${a.enterTime ?? ""}`} compact />
+                    {a.via === "terminal" ? (
+                      // Tor ekranda faqat belgi — yozuv ismni siqib qo'ymasin.
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground sm:px-2">
+                        <ScanFace className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                        <span className="sr-only sm:not-sr-only">{t("Yuz terminali")}</span>
                       </span>
+                    ) : (
+                      a.location && (
+                        <span className="shrink-0">
+                          <LocationChip loc={a.location} person={a.personName} when={`${data.date} · ${a.enterTime ?? ""}`} compact />
+                        </span>
+                      )
                     )}
                     {a.status === "kechikkan" ? (
                       <span className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
@@ -264,10 +280,17 @@ export default function AttendanceQrPage() {
               <li>{t("Joylashuvi olinadi: filialdan {m} m ichida bo'lsa, eng yaqin filialga belgilanadi.", { m: data.branch.radiusM })}</li>
               <li>{t("Koordinatasi kiritilmagan filialda masofa tekshirilmaydi — xodim o'z filialiga belgilanadi, joylashuvi yoziladi.")}</li>
               <li>{t("Kechikish dars jadvali yoki filialning ish vaqti bo'yicha o'lchanadi.")}</li>
+              <li>{t("Yuz terminali o'rnatilgan filialda terminal oldidan o'tishning o'zi kifoya — davomat o'zi yoziladi.")}</li>
             </ol>
             <p className="mt-3 text-[12px] text-muted-foreground">{t("QR kod endi kerak emas.")}</p>
           </div>
         </div>
+
+        {data.canConfigure && (
+          <div data-ui="v2" className="font-v2 text-v2-text">
+            <FaceTerminalsV2 />
+          </div>
+        )}
       </div>
     </div>
   );

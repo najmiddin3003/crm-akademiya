@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     .collection<AttendanceRecord>("turnstile_io")
     .find(
       { source: QR_SOURCE, date: today, branchId },
-      { projection: { _id: 0, id: 1, personName: 1, enterTime: 1, exitTime: 1, status: 1, lateMinutes: 1, expected: 1, location: 1 } },
+      { projection: { _id: 0, id: 1, personName: 1, enterTime: 1, exitTime: 1, status: 1, lateMinutes: 1, expected: 1, location: 1, via: 1 } },
     )
     .sort({ enterTime: -1, id: -1 })
     .limit(300)
