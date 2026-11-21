@@ -114,6 +114,14 @@ export default function CashboxKirimDrawer({
     noteMismatch,
     noteTarget,
     monthName,
+    monthMode,
+    setMonthMode,
+    monthSel,
+    toggleMonth,
+    monthAmounts,
+    setMonthAmount,
+    monthTotal,
+    monthTarget,
     pickType,
     addRow,
     removeRow,
@@ -258,15 +266,29 @@ export default function CashboxKirimDrawer({
           </div>
           )}
 
-          {/* ODATDAGI turlar — bitta Qiymat maydoni (bugungidek). */}
+          {/* ODATDAGI turlar — bitta Qiymat maydoni (bugungidek). «Bir nechta oy» yoqilganda
+              — oylar yig'indisi, o'zi tahrirlanmaydi (summalar oy qatorlarida, pastda). */}
           {!showRows && (
             <div>
               <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
-              <MoneyInput
-                value={amount}
-                onChange={setAmount}
-                className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+              {monthMode ? (
+                <>
+                  <input
+                    value={monthTotal > 0 ? groupNumber(monthTotal) : ""}
+                    readOnly
+                    placeholder="0"
+                    type="text"
+                    className="w-full h-10 rounded-lg border border-border bg-secondary/30 px-3 text-sm tabular-nums"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">{t("Oylar yig'indisi")}</p>
+                </>
+              ) : (
+                <MoneyInput
+                  value={amount}
+                  onChange={setAmount}
+                  className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              )}
             </div>
           )}
 
@@ -366,6 +388,7 @@ export default function CashboxKirimDrawer({
             {!showRows && (
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">{t("Qaysi oy uchun")}</label>
+                {/* «Bir nechta oy» katakchasi tanlagich oynasining tepasida (MonthYearPicker → multi). */}
                 <MonthYearPicker
                   className="w-full"
                   value={{ month: Number(periodMonth.slice(5, 7)), year: Number(periodMonth.slice(0, 4)) }}
@@ -373,10 +396,65 @@ export default function CashboxKirimDrawer({
                     setPeriodMonth(`${v.year}-${String(v.month).padStart(2, "0")}`);
                     setPeriodTouched(true);
                   }}
+                  multi={{ on: monthMode, onToggle: setMonthMode, selected: monthSel, onPick: toggleMonth }}
                 />
               </div>
             )}
           </div>
+
+          {/* BIR NECHTA OY (21.11.2026) — tanlangan har oy uchun summa. Har oy alohida yozuv
+              bo'lib saqlanadi (ustoz ulushi o'z oyiga), xabar bitta — useKirimForm.ts → save(). */}
+          {monthMode && (() => {
+            const remaining = monthTarget > 0 ? monthTarget - monthTotal : 0;
+            return (
+              <div className="-mt-1 rounded-lg border border-border bg-secondary/20 p-3 space-y-2">
+                {monthSel.map((m) => {
+                  const value = monthAmounts[m] ?? "";
+                  const empty = !(Number(value) > 0);
+                  return (
+                    <div key={m} className="flex items-center gap-2">
+                      <div className="w-[7.5rem] shrink-0 text-[13px] font-medium leading-tight">{monthName(m)}</div>
+                      <MoneyInput
+                        value={value}
+                        onChange={(v) => setMonthAmount(m, v)}
+                        placeholder="0"
+                        aria-label={monthName(m)}
+                        className="min-w-0 flex-1 h-9 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      {empty && remaining > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setMonthAmount(m, String(remaining))}
+                          title={t("Qolgan {sum} so'mni shu oyga yozish", { sum: groupNumber(remaining) })}
+                          className="shrink-0 text-[12px] font-medium text-primary hover:underline"
+                        >
+                          {t("Qolgani")}
+                        </button>
+                      ) : null}
+                      {monthSel.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleMonth(m)}
+                          title={t("{month} ni olib tashlash", { month: monthName(m) })}
+                          className="h-9 w-9 shrink-0 rounded-lg border border-border text-rose-600 hover:bg-rose-50 inline-flex items-center justify-center"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12px]">
+                  <span className="text-muted-foreground">{t("Oylarni tanlang va har oyga qancha to'langanini yozing")}</span>
+                  <span className="tabular-nums">
+                    {t("Jami")}: <strong>{t(fmtSom(monthTotal))}</strong>
+                    {remaining > 0 && <span className="ml-2 text-amber-600">{t("yana {sum} qoldi", { sum: t(fmtSom(remaining)) })}</span>}
+                    {remaining < 0 && <span className="ml-2 text-amber-600">{t("{sum} ortiqcha", { sum: t(fmtSom(-remaining)) })}</span>}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
           {/* To'lov sanasi va u qoplaydigan oy HAR DOIM bir xil emas:
               sentabrda kelgan pul avgust darslari uchun bo'lishi mumkin.
               O'qituvchining foizli oyligi aynan shu oyga hisoblanadi.
@@ -385,10 +463,15 @@ export default function CashboxKirimDrawer({
               yerda hech kimning oyligi o'zgarmaydi. */}
           {noteMismatch ? (
             <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-400">
-              {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
-                note: noteMonthNums.map((m) => months[m - 1]).join(", "),
-                month: monthName(periodMonth),
-              })}{" "}
+              {monthMode
+                ? t("Izohda {note} yozilgan, lekin to'lov {month} oylariga yoziladi.", {
+                    note: noteMonthNums.map((m) => months[m - 1]).join(", "),
+                    month: monthSel.map((m) => monthName(m)).join(", "),
+                  })
+                : t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
+                    note: noteMonthNums.map((m) => months[m - 1]).join(", "),
+                    month: monthName(periodMonth),
+                  })}{" "}
               {t("Oy yoki izoh to'g'rilanmaguncha saqlanmaydi.")}
               {noteTarget && (
                 <button
@@ -403,7 +486,7 @@ export default function CashboxKirimDrawer({
                 </button>
               )}
             </div>
-          ) : !showRows && showTeacher && periodMonth !== (date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "") && (
+          ) : !showRows && !monthMode && showTeacher && periodMonth !== (date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "") && (
             <p className="-mt-1 text-[11px] text-amber-600">
               {t("To'lov {month} oyiga yoziladi — o'qituvchining o'sha oydagi oyligiga qo'shiladi.", { month: monthName(periodMonth) })}
             </p>
