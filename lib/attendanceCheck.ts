@@ -290,6 +290,11 @@ export interface AttendanceRecord {
   /** Face ID urinishi (`staff_face_shots._id`, lib/staffFace.ts) — yoqilgan bo'lsa. */
   faceShotId?: string | null;
   exitFaceShotId?: string | null;
+  /** Yuz terminalidan (21.11.2026, lib/hikTerminal.ts) — joylashuvsiz, filial terminalniki. */
+  via?: "terminal";
+  deviceId?: string;
+  exitVia?: "terminal" | null;
+  exitDeviceId?: string | null;
 }
 
 /** Filialning davomatga oid maydonlari (Boshqaruv → Filiallar). */
@@ -479,25 +484,41 @@ async function pickUnplaced(
  * Kelish/ketishni yozadi. Xodim kimligini CHAQIRUVCHI aniqlaydi (Mini App
  * `initData`) — bu yerga faqat tekshirilgan `HrEmployee` keladi; filial —
  * qurilma joylashuvidan (`loc`, `locateBranch`).
+ *
+ * `terminal` — YUZ TERMINALI (lib/hikTerminal.ts): filial terminal
+ * biriktirilganiniki, joylashuv yo'q; keldi/ketdini terminal hal qiladi —
+ * «Ishdan ketdim» sozlamasi Mini App tugmasiga tegishli, terminalga emas.
  */
 export async function markAttendance(
   db: Db,
   emp: HrEmployee,
   kind: AttendanceKind,
-  opts: { now?: Date; loc?: ScanLocation | null; faceShotId?: string | null } = {},
+  opts: { now?: Date; loc?: ScanLocation | null; faceShotId?: string | null; terminal?: { branchId: number; deviceId: string } | null } = {},
 ): Promise<AttendanceOutcome> {
   const now = opts.now ?? new Date();
   const faceShotId = opts.faceShotId ?? null;
-  if (kind === "out" && !(await loadAttendanceSettings(db)).checkoutEnabled) {
+  const terminal = opts.terminal ?? null;
+  if (kind === "out" && !terminal && !(await loadAttendanceSettings(db)).checkoutEnabled) {
     return { ok: false, status: 403, error: "«Ishdan ketdim» hozircha o'chirilgan" };
   }
   const branches = (await db
     .collection("branches")
     .find({}, { projection: { _id: 0, id: 1, name: 1, workStart: 1, lateGraceMin: 1, attendanceTopicId: 1, geo: 1, geoRadiusM: 1 } })
     .toArray()) as unknown as AttendanceBranch[];
-  const found = locateBranch(branches, opts.loc ?? null, homeBranchIds(emp));
-  if (!found.ok) return { ok: false, status: found.status, error: found.error, code: found.code, near: found.near };
-  const { loc, hits, unplaced } = found;
+  let loc: ScanLocation | null;
+  let hits: BranchHit<AttendanceBranch>[];
+  let unplaced: BranchHit<AttendanceBranch>[];
+  if (terminal) {
+    const branch = branches.find((b) => b.id === terminal.branchId);
+    if (!branch) return { ok: false, status: 404, error: "Terminal biriktirilgan filial topilmadi" };
+    loc = null;
+    hits = [{ branch, distance: null }];
+    unplaced = [];
+  } else {
+    const found = locateBranch(branches, opts.loc ?? null, homeBranchIds(emp));
+    if (!found.ok) return { ok: false, status: found.status, error: found.error, code: found.code, near: found.near };
+    ({ loc, hits, unplaced } = found);
+  }
 
   const u = toUz(now);
   const date = `${u.getFullYear()}-${p2(u.getMonth() + 1)}-${p2(u.getDate())}`;
@@ -529,18 +550,24 @@ export async function markAttendance(
       return { ok: false, status: 409, error: "Bugun bu filialda kelganingiz belgilanmagan — avval «Ishga keldim»" };
     }
     const { branch, distance, record: existing } = arrivedAt;
-    const exit = await locationRecord(db, loc, distance, branch);
-    const exitLocation = exit.location;
+    const exit = loc ? await locationRecord(db, loc, distance, branch) : null;
+    const exitLocation = exit?.location ?? null;
     // Qayta bosilsa oxirgisi qoladi — chiqib, qaytib kelib, yana ketish mumkin.
     const exitFace = faceShotId ? { exitFaceShotId: faceShotId } : {};
-    await col.updateOne(keyOf(branch.id), { $set: { exitTime: hm, exitedAt: now, exitLocation, ...exitFace } });
+    // Terminal belgisi — terminaldan ketganda; Mini App'dan qayta ketsa tozalanadi.
+    const exitVia = terminal
+      ? { exitVia: "terminal" as const, exitDeviceId: terminal.deviceId }
+      : existing.exitVia
+        ? { exitVia: null, exitDeviceId: null }
+        : {};
+    await col.updateOne(keyOf(branch.id), { $set: { exitTime: hm, exitedAt: now, exitLocation, ...exitFace, ...exitVia } });
     return {
       ok: true,
       kind,
       fresh: true,
-      record: { ...existing, exitTime: hm, exitLocation, ...exitFace },
+      record: { ...existing, exitTime: hm, exitedAt: now, exitLocation, ...exitFace, ...exitVia },
       branch,
-      ...(exit.retry ? { addressPending: "exitLocation" as const } : {}),
+      ...(exit?.retry ? { addressPending: "exitLocation" as const } : {}),
     };
   }
 
@@ -562,8 +589,8 @@ export async function markAttendance(
 
   const { branch, distance } = target;
   const key = keyOf(branch.id);
-  const enter = await locationRecord(db, loc, distance, branch);
-  const location = enter.location;
+  const enter = loc ? await locationRecord(db, loc, distance, branch) : null;
+  const location = enter?.location ?? null;
 
   if (exp === undefined) exp = await expectationFor(db, emp, branch, date, u.getDay());
   const late = lateBy(nowMin, exp);
@@ -583,6 +610,7 @@ export async function markAttendance(
     location,
     enteredAt: now,
     ...(faceShotId ? { faceShotId } : {}),
+    ...(terminal ? { via: "terminal" as const, deviceId: terminal.deviceId } : {}),
   };
 
   // `id` — kolleksiyadagi eng kattasidan keyingisi (loyihadagi naqsh). Bir
@@ -592,7 +620,7 @@ export async function markAttendance(
     const record: AttendanceRecord = { id: (Number(last?.id) || 0) + 1, ...base };
     try {
       await col.insertOne({ ...record });
-      return { ok: true, kind, fresh: true, record, branch, ...(enter.retry ? { addressPending: "location" as const } : {}) };
+      return { ok: true, kind, fresh: true, record, branch, ...(enter?.retry ? { addressPending: "location" as const } : {}) };
     } catch (e) {
       if (!isDuplicateKey(e)) throw e;
       // Shu xodim ikki marta ketma-ket bosgan — birinchisi yozildi.

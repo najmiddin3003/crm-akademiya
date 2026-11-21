@@ -389,6 +389,23 @@ async function createAllIndexes(db: Db): Promise<void> {
       { unique: true, partialFilterExpression: { source: "qr" }, name: "qr_day_employee_branch" },
     ),
   );
+  // YUZ TERMINALI (lib/hikTerminal.ts, 21.11.2026). O'quvchiga kuniga har
+  // filialda BITTA terminal yozuvi; terminal ro'yxati, odam bog'lanishi
+  // (terminaldagi «Employee No.» → xodim/o'quvchi) va voqealar jurnali —
+  // takror yuborilgan voqea ikkinchi marta yozilmaydi, 180 kundan keyin o'chadi.
+  tasks.push(
+    db.collection("turnstile_io").createIndex(
+      { date: 1, studentId: 1, branchId: 1 },
+      { unique: true, partialFilterExpression: { source: "terminal" }, name: "terminal_day_student_branch" },
+    ),
+  );
+  tasks.push(db.collection("hik_terminals").createIndex({ id: 1 }, { unique: true }));
+  tasks.push(db.collection("hik_terminals").createIndex({ deviceId: 1 }, { unique: true }));
+  tasks.push(db.collection("hik_persons").createIndex({ employeeNo: 1 }, { unique: true }));
+  tasks.push(db.collection("hik_persons").createIndex({ personType: 1, personId: 1 }));
+  tasks.push(db.collection("hik_events").createIndex({ deviceId: 1, key: 1 }, { unique: true }));
+  tasks.push(db.collection("hik_events").createIndex({ deviceId: 1, status: 1, at: 1 }));
+  tasks.push(db.collection("hik_events").createIndex({ receivedAt: 1 }, { expireAfterSeconds: 180 * 86_400, name: "hik_events_ttl" }));
   // Urinishlar jurnali (lib/attendanceAttempts.ts, 06.11.2026): 60 kundan keyin o'zi o'chadi.
   tasks.push(db.collection("attendance_attempts").createIndex({ at: 1 }, { expireAfterSeconds: 60 * 86_400 }));
   tasks.push(db.collection("attendance_attempts").createIndex({ employeeId: 1, at: -1 }));

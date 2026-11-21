@@ -80,6 +80,10 @@ const PUBLIC = [
   // O'qituvchi davomati (05.11.2026) — o'sha Mini App'da bugungi darslar va
   // belgilash (app/api/xodim/dars, lib/teacherLessons.ts); xodim initData'dan.
   "/api/xodim/dars",
+  // YUZ TERMINALI (21.11.2026) — chaqiruvchi serverdagi ISUP ko'prigi, sessiyasi
+  // yo'q. HIK_BRIDGE_SECRET sarlavhasi bilan himoyalangan (app/api/hik/events,
+  // lib/hikTerminal.ts).
+  "/api/hik/events",
   // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
   // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
   // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).

@@ -166,7 +166,8 @@ const LOG_SKIP_EXACT = new Set([
   // o'zi transfer-return route'ida yoziladi).
   "/api/transfer-returns",
 ]);
-const LOG_SKIP_PREFIX = ["/api/telegram/", "/api/xodim/", "/api/notifications", "/api/student-web/", "/api/me/", "/api/upload/"];
+// Yuz terminali voqealari — har skanerlash; o'z jurnali bor (hik_events, lib/hikTerminal.ts).
+const LOG_SKIP_PREFIX = ["/api/telegram/", "/api/xodim/", "/api/notifications", "/api/student-web/", "/api/me/", "/api/upload/", "/api/hik/"];
 
 function shouldLog(pathname: string, method: string): boolean {
   if (!LOGGED_METHODS.has(method)) return false;

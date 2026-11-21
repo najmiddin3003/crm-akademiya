@@ -31,6 +31,7 @@ export const PUBLIC_API: readonly string[] = [
   "/api/xodim/davomat",
   "/api/xodim/yuz",
   "/api/xodim/dars",
+  "/api/hik/events",
   "/api/health/ping",
   "/api/health/db",
 ];
