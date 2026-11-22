@@ -123,7 +123,7 @@ export default function OwnerTransfersV2() {
       </section>
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
-        <Card className="!p-0 sm:!p-0">
+        <Card className="@container !p-0 sm:!p-0">
           <div className="flex flex-wrap items-start justify-between gap-2 p-4 sm:p-5">
             <div>
               <h2 className="text-v2-section text-v2-text">{t("Kutilayotgan va topshiriladigan · {n}", { n: cards.length })}</h2>
@@ -139,40 +139,40 @@ export default function OwnerTransfersV2() {
             const lastDays = c.last ? daysSince(c.last.date) : null;
             const idx = d.cards.findIndex((x) => x.cashboxId === c.cashboxId) + 1;
             return (
-              <div key={c.cashboxId} className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-v2-border px-4 py-3.5 sm:px-5 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] md:items-center">
-                <div className="flex min-w-0 items-center gap-3">
+              <div key={c.cashboxId} className="flex flex-col gap-3 border-t border-v2-border px-4 py-3.5 sm:px-5 @3xl:flex-row @3xl:items-center">
+                <div className="flex min-w-0 flex-1 gap-3">
                   <BranchDot n={idx} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-v2-body font-semibold text-v2-text">{c.name}</span>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 truncate text-v2-body font-semibold text-v2-text">{c.name}</span>
                       <b className="shrink-0 tabular-nums text-v2-text">{nf(amount)}</b>
                     </div>
-                    <div className="flex justify-between gap-2 text-v2-caption text-v2-text-3">
-                      <span className="truncate">{c.moderator || "—"}</span>
-                      <span className="shrink-0">{Object.entries(methods).filter(([, v]) => v > 0).map(([mk, v]) => `${(d.methodNames[mk] ?? mk).toLowerCase()} ${nf(v)}`).join(" · ")}</span>
+                    <div className="flex flex-wrap justify-between gap-x-3 text-v2-caption text-v2-text-3">
+                      <span className="min-w-0 truncate">{c.moderator || "—"}</span>
+                      <span className="tabular-nums">{Object.entries(methods).filter(([, v]) => v > 0).map(([mk, v]) => `${(d.methodNames[mk] ?? mk).toLowerCase()} ${nf(v)}`).join(" · ")}</span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-v2-caption text-v2-text-2">
+                      {p ? (
+                        <>
+                          <Pill tone="info">
+                            <Truck className="size-3" aria-hidden />
+                            {t("Yo'lda · {w}", { w: fmtWait(t, minutesSince(p.date, p.time, d.today, d.now)) })}
+                          </Pill>
+                          <span>{t("Topshirdi {t} · olib keluvchi: {who}", { t: p.date === d.today ? p.time : `${fmt.dayMonth(p.date)} ${p.time}`, who: c.moderator || "—" })}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pill tone={lastDays !== null && lastDays < 2 ? "neutral" : "warning"}>
+                            <Clock className="size-3" aria-hidden />
+                            {lastDays === null ? t("Hali topshirmagan") : t("{n} kun topshirilmagan", { n: lastDays })}
+                          </Pill>
+                          {c.last ? <span>{t("Oxirgi topshiruv")}: {fmt.dayMonth(c.last.date)} | {c.last.time}{c.last.diff ? ` · ${t("farq")} ${nf(c.last.diff)}` : ""}</span> : null}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="min-w-0 text-v2-caption text-v2-text-2">
-                  {p ? (
-                    <>
-                      <Pill tone="info">
-                        <Truck className="size-3" aria-hidden />
-                        {t("Yo'lda · {w}", { w: fmtWait(t, minutesSince(p.date, p.time, d.today, d.now)) })}
-                      </Pill>
-                      <span className="mt-1 block">{t("Topshirdi {t} · olib keluvchi: {who}", { t: p.date === d.today ? p.time : `${fmt.dayMonth(p.date)} ${p.time}`, who: c.moderator || "—" })}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Pill tone={lastDays !== null && lastDays < 2 ? "neutral" : "warning"}>
-                        <Clock className="size-3" aria-hidden />
-                        {lastDays === null ? t("Hali topshirmagan") : t("{n} kun topshirilmagan", { n: lastDays })}
-                      </Pill>
-                      {c.last ? <span className="mt-1 block">{t("Oxirgi topshiruv")}: {fmt.dayMonth(c.last.date)} | {c.last.time}{c.last.diff ? ` · ${t("farq")} ${nf(c.last.diff)}` : ""}</span> : null}
-                    </>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 pl-11 @3xl:pl-0">
                   {p ? (
                     <>
                       <button type="button" onClick={() => setAcceptFor(c)} className={primaryBtn}>
