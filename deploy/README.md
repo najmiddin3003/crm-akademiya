@@ -244,6 +244,37 @@ ssh root@SERVER_IP 'sudo -iu crm bash /var/www/crm/shared/deploy.sh'
 Har safar yangi reliz papkasi, ~3 s uzilish. Skript o'zini repodagi
 yangi nusxa bilan almashtirib turadi.
 
+### Avtomatik deploy (GitHub Actions, 23.11.2026)
+
+`.github/workflows/deploy-vps.yml`: `main` ga push bo'lganda (yoki GitHub →
+Actions → «Deploy VPS» → Run workflow) GitHub serverga `crm` sifatida kirib
+`deploy.sh` ni ishga tushiradi, keyin tizimli24.uz javob berishini tekshiradi.
+Kalit serverda **majburiy buyruq** bilan yoziladi — u faqat `deploy.sh` ni
+ishga tushira oladi (shell, boshqa buyruq, port yo'naltirish yo'q).
+
+Bir martalik sozlash (root sifatida, serverda):
+
+```bash
+# 1) Faqat deploy uchun kalit (parolsiz)
+ssh-keygen -t ed25519 -N '' -C github-actions-deploy -f /root/gh-deploy
+# 2) crm ga majburiy buyruq bilan qo'shish
+install -o crm -g crm -m 700 -d /var/www/crm/.ssh
+echo "command=\"bash /var/www/crm/shared/deploy.sh\",restrict $(cat /root/gh-deploy.pub)" >> /var/www/crm/.ssh/authorized_keys
+chown crm:crm /var/www/crm/.ssh/authorized_keys && chmod 600 /var/www/crm/.ssh/authorized_keys
+# 3) GitHub'ga qo'yiladigan qiymatlar
+cat /root/gh-deploy                      # → VPS_SSH_KEY (butun matn)
+echo "SERVER_IP $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"   # → VPS_KNOWN_HOSTS (SERVER_IP o'rniga IP)
+# 4) GitHub'ga qo'yib bo'lgach maxfiy faylni o'chirish
+shred -u /root/gh-deploy
+```
+
+GitHub → repo → Settings → Secrets and variables → Actions → New repository
+secret: `VPS_HOST` (server IP), `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`. Uchalasi
+qo'yilmaguncha workflow hech narsa qilmaydi (faqat eslatma chiqaradi).
+
+O'chirish: `authorized_keys` dan `github-actions-deploy` qatorini olib
+tashlash (kalit darhol kuchsiz bo'ladi) yoki Actions'da workflow'ni Disable.
+
 ## 13. Orqaga qaytish
 
 - **Deploy buzilgan** (build o'tdi, lekin ilova xato): `ls /var/www/crm/releases`

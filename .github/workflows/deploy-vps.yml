@@ -1,0 +1,79 @@
+# tizimli24.uz (Eskiz VPS) ga avtomatik deploy — 23.11.2026.
+#
+# `main` ga yangi commit tushsa (yoki Actions → «Deploy VPS» → Run workflow),
+# GitHub serverga `crm` foydalanuvchisi sifatida SSH orqali kiradi va
+# /var/www/crm/shared/deploy.sh ni ishga tushiradi (yangi reliz papkasi,
+# build, ~3 s uzilish; build xato bersa sayt eskicha qoladi).
+#
+# Kalit serverda «majburiy buyruq» bilan yozilgan (deploy/README.md, 12-band):
+# u faqat deploy.sh ni ishga tushira oladi — boshqa buyruq, shell, port
+# yo'naltirish yo'q. Shuning uchun kalit sizib chiqsa ham server ochilmaydi.
+#
+# Kerakli maxfiy qiymatlar (repo → Settings → Secrets and variables → Actions):
+#   VPS_HOST         — server IP manzili
+#   VPS_SSH_KEY      — deploy kalitining MAXFIY qismi (butun fayl, BEGIN…END bilan)
+#   VPS_KNOWN_HOSTS  — `ssh-keyscan -t ed25519 <IP>` chiqishi (soxta serverga ulanmaslik uchun)
+# Ular qo'yilmagan bo'lsa workflow hech narsa qilmay to'xtaydi (xato bermaydi).
+
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Ikki deploy bir vaqtda yurmasin; yangisi navbat kutadi, eskisi uzilmaydi.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.repository == 'najmiddin3003/crm-akademiya'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Sozlamalar bormi
+        id: check
+        env:
+          HOST: ${{ secrets.VPS_HOST }}
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$KEY" ] || [ -z "$KNOWN" ]; then
+            echo "::notice::VPS_HOST / VPS_SSH_KEY / VPS_KNOWN_HOSTS qo'yilmagan — deploy o'tkazib yuborildi (deploy/README.md, 12-band)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Serverda deploy.sh
+        if: steps.check.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.VPS_HOST }}
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          # Buyruq yuborilmaydi — server kalitga bog'langan deploy.sh ni o'zi ishga tushiradi.
+          ssh -i ~/.ssh/deploy_key \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 \
+              "crm@$HOST"
+
+      - name: Sayt javob beryaptimi
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://www.tizimli24.uz/ || true)"
+            echo "tizimli24.uz → $code"
+            case "$code" in 2*|3*) exit 0;; esac
+            sleep 10
+          done
+          echo "::error::tizimli24.uz javob bermadi — orqaga qaytish: deploy/README.md, 13-band"
+          exit 1
