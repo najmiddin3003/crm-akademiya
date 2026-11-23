@@ -1,0 +1,113 @@
+# Temuriylar markazi (kichik 1 GB VPS) ga avtomatik deploy — 23.11.2026.
+#
+# Kichik serverda `next build` sig'maydi, shuning uchun to'plam shu yerda —
+# GitHub runner'ida — deploy/build-center.sh bilan bir xil tarzda yig'iladi
+# (standalone, faqat NEXT_PUBLIC_* sozlamalar bilan; maxfiylar va baza build'ga
+# tushmaydi), keyin SSH orqali serverga uzatiladi. Server kalitga bog'langan
+# «majburiy buyruq» bilan to'plamni qabul qilib deploy-standalone.sh ni
+# ishga tushiradi (deploy/README.md, 12-band) — kalit boshqa hech narsa qila olmaydi.
+#
+# main ga push bo'lganda yoki Actions → «Deploy Temuriylar» → Run workflow.
+#
+# Maxfiy qiymatlar (repo → Settings → Secrets and variables → Actions):
+#   TEMURIYLAR_HOST         — server IP manzili
+#   TEMURIYLAR_SSH_KEY      — deploy kalitining MAXFIY qismi (butun fayl)
+#   TEMURIYLAR_KNOWN_HOSTS  — «IP ssh-ed25519 AAAA…» qatori
+#   TEMURIYLAR_CENTER_ENV   — serverdagi .env.local ning NEXT_PUBLIC_* qatorlari
+# Biror biri bo'lmasa workflow hech narsa qilmay to'xtaydi (xato bermaydi).
+
+name: Deploy Temuriylar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-temuriylar
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.repository == 'najmiddin3003/crm-akademiya'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Sozlamalar bormi
+        id: check
+        env:
+          HOST: ${{ secrets.TEMURIYLAR_HOST }}
+          KEY: ${{ secrets.TEMURIYLAR_SSH_KEY }}
+          KNOWN: ${{ secrets.TEMURIYLAR_KNOWN_HOSTS }}
+          CENTER: ${{ secrets.TEMURIYLAR_CENTER_ENV }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$KEY" ] || [ -z "$KNOWN" ] || [ -z "$CENTER" ]; then
+            echo "::notice::TEMURIYLAR_* maxfiy qiymatlari to'liq emas — deploy o'tkazib yuborildi (deploy/README.md, 12-band)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Markaz sozlamalari (faqat NEXT_PUBLIC_*)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          CENTER: ${{ secrets.TEMURIYLAR_CENTER_ENV }}
+        run: |
+          printf '%s\n' "$CENTER" | tr -d '\r' | grep -E '^NEXT_PUBLIC_[A-Z0-9_]+=' > .env.production.local || true
+          ID="$(grep -m1 '^NEXT_PUBLIC_CENTER_ID=' .env.production.local | cut -d= -f2- | xargs || true)"
+          if [ -z "$ID" ] || [ "$ID" = "akademiya" ]; then
+            echo "::error::TEMURIYLAR_CENTER_ENV da NEXT_PUBLIC_CENTER_ID yo'q yoki akademiya"; exit 1
+          fi
+          echo "markaz: $ID; sozlamalar: $(cut -d= -f1 .env.production.local | tr '\n' ' ')"
+
+      - name: npm ci
+        if: steps.check.outputs.ready == 'true'
+        run: npm ci --no-audit --no-fund --loglevel=error
+
+      - name: next build (standalone)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          NEXT_OUTPUT: standalone
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npx next build
+
+      - name: To'plam (deploy/build-center.sh bilan bir xil)
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          cp -r public .next/standalone/
+          cp -r .next/static .next/standalone/.next/
+          mkdir -p .next/standalone/scripts
+          cp scripts/seed-admin.js scripts/seed-branch.mjs scripts/new-center-admin.sh .next/standalone/scripts/
+          cp scripts/sync-get-chat-id.mjs scripts/set-telegram-webhook.mjs .next/standalone/scripts/
+          [ -d .next/standalone/node_modules/bcryptjs ] || cp -r node_modules/bcryptjs .next/standalone/node_modules/
+          rm -f .next/standalone/.env*
+          tar -C .next/standalone -czf "$RUNNER_TEMP/center.tar.gz" .
+          echo "to'plam: $(du -h "$RUNNER_TEMP/center.tar.gz" | cut -f1)"
+
+      - name: Serverga uzatish va deploy-standalone.sh
+        if: steps.check.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.TEMURIYLAR_HOST }}
+          KEY: ${{ secrets.TEMURIYLAR_SSH_KEY }}
+          KNOWN: ${{ secrets.TEMURIYLAR_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          # Buyruq yuborilmaydi — server stdin'dagi to'plamni qabul qilib o'zi deploy qiladi.
+          ssh -i ~/.ssh/deploy_key \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 \
+              "crm@$HOST" < "$RUNNER_TEMP/center.tar.gz"

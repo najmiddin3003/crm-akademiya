@@ -275,6 +275,35 @@ qo'yilmaguncha workflow hech narsa qilmaydi (faqat eslatma chiqaradi).
 O'chirish: `authorized_keys` dan `github-actions-deploy` qatorini olib
 tashlash (kalit darhol kuchsiz bo'ladi) yoki Actions'da workflow'ni Disable.
 
+### Temuriylar (kichik markaz serveri) — avtomatik deploy (23.11.2026)
+
+`.github/workflows/deploy-temuriylar.yml`: `main` ga push bo'lganda (yoki
+Actions → «Deploy Temuriylar» → Run workflow) GitHub to'plamni o'zi yig'adi
+(`build-center.sh` bilan bir xil: standalone, faqat `NEXT_PUBLIC_*`), uni SSH
+orqali serverga uzatadi; server kalitga bog'langan majburiy buyruq bilan
+to'plamni qabul qilib `deploy-standalone.sh` ni ishga tushiradi. Asosiy
+serverda endi Temuriylar uchun build qilish shart emas.
+
+Bir martalik sozlash (root sifatida, **Temuriylar serverida**):
+
+```bash
+ls /var/www/crm/shared/deploy-standalone.sh          # bor bo'lishi kerak
+ssh-keygen -t ed25519 -N '' -C github-actions-deploy -f /root/gh-deploy
+install -o crm -g crm -m 700 -d /var/www/crm/.ssh
+printf 'command="f=/var/www/crm/shared/upload.tar.gz; cat > $f && bash /var/www/crm/shared/deploy-standalone.sh $f; rc=$?; rm -f $f; exit $rc",restrict %s\n' "$(cat /root/gh-deploy.pub)" >> /var/www/crm/.ssh/authorized_keys
+chown crm:crm /var/www/crm/.ssh/authorized_keys && chmod 600 /var/www/crm/.ssh/authorized_keys
+cat /root/gh-deploy                                                          # → TEMURIYLAR_SSH_KEY
+echo "SERVER_IP $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"        # → TEMURIYLAR_KNOWN_HOSTS
+grep '^NEXT_PUBLIC_' /var/www/crm/shared/.env.local                          # → TEMURIYLAR_CENTER_ENV
+shred -u /root/gh-deploy                                                     # GitHub'ga qo'ygach
+```
+
+GitHub secrets: `TEMURIYLAR_HOST`, `TEMURIYLAR_SSH_KEY`,
+`TEMURIYLAR_KNOWN_HOSTS`, `TEMURIYLAR_CENTER_ENV`. `NEXT_PUBLIC_*` o'zgarsa
+(markaz nomi, telefoni) — serverdagi `.env.local` bilan birga shu secret ham
+yangilanadi. Cron skriptlari (`cron-lessons.sh` va h.k.) to'plamga kirmaydi —
+avvalgidek qo'lda.
+
 ## 13. Orqaga qaytish
 
 - **Deploy buzilgan** (build o'tdi, lekin ilova xato): `ls /var/www/crm/releases`
