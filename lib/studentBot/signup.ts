@@ -59,7 +59,7 @@ import { addBotLinks } from "@/lib/studentBot/users";
 // 10 daqiqa ichida qayta yuborilsa ikkinchi lid yaratilmaydi («Yuborish» ni
 // ikki marta bosish ham `submitting` bilan to'silgan).
 //
-// O'QUVCHI KARTASI (04.11.2026, Temuriylar; `cfg.signupCreatesPupil`). Foydalanuvchi:
+// O'QUVCHI KARTASI (04.11.2026, ikkinchi markaz; `cfg.signupCreatesPupil`). Foydalanuvchi:
 // «o'quvchi agar botdan ro'yxatdan o'tsa shu botdan o'quvchi kartasi yaratilishi
 // kerak». Lid bilan birga karta ochiladi va suhbat unga bog'lanadi — odam darrov
 // menyuni ko'radi. Kartaning id'si lidda (`orders.pupilId`): «Guruhga qo'shish»

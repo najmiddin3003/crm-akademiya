@@ -222,7 +222,7 @@ export async function flushPending(
       const prepared = await prepare(entry, task.kind, ctx);
 
       // GOOGLE SHEETS — faqat ulangan bo'lsa. Jadvali yo'q markazda bu qadam
-      // O'TKAZIB YUBORILADI va Telegram'ni TO'SMAYDI (02.11.2026, Temuriylar:
+      // O'TKAZIB YUBORILADI va Telegram'ni TO'SMAYDI (02.11.2026, ikkinchi markaz:
       // ilgari shu yerda xato otilardi va to'lov guruhga umuman chiqmasdi).
       // Yo'qotish yo'q: jadval keyinroq ulansa, solishtirish
       // (lib/sync/reconcile.ts) bazani etalon deb yetishmagan qatorlarni qo'shadi.

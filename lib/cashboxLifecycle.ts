@@ -3,7 +3,7 @@ import { nextSeq, raiseSeq } from "@/lib/gamification/db";
 
 // TARIXI BOR KASSA O'CHIRILMAYDI, KASSA ID SI QAYTA BERILMAYDI (04.11.2026).
 //
-// HODISA (Temuriylar, 02.11 va 03.11 — ikki marta): yagona kassa o'chirildi,
+// HODISA (ikkinchi markaz, 02.11 va 03.11 — ikki marta): yagona kassa o'chirildi,
 // jurnali esa joyida qoldi. Yangi kassa id ni `max(id)+1` bilan oldi, ya'ni
 // o'sha eski raqamni. Eski to'lovlar yangi kassada ko'rina boshladi, ulardan
 // birini bekor qilish esa yangi kassadan pul ayirdi va balans −100 bo'ldi

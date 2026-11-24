@@ -29,7 +29,7 @@ export function isFullName(raw: string): boolean {
 /**
  * Ikki yozuv bitta odammi: biri ikkinchisining ichida to'liq bo'lsa ha.
  *
- * Teng bo'lish TALAB QILINMAYDI: Temuriylar kartalarining yarmida ism ustida
+ * Teng bo'lish TALAB QILINMAYDI: ikkinchi markaz kartalarining yarmida ism ustida
  * otasining ismi ham turibdi ("Vali Karim o'g'li" + "Aliyev"), ota-ona esa
  * "Aliyev Vali" deb yozadi. Bitta so'zi mos kelmasa — boshqa odam.
  */

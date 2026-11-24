@@ -275,16 +275,16 @@ qo'yilmaguncha workflow hech narsa qilmaydi (faqat eslatma chiqaradi).
 O'chirish: `authorized_keys` dan `github-actions-deploy` qatorini olib
 tashlash (kalit darhol kuchsiz bo'ladi) yoki Actions'da workflow'ni Disable.
 
-### Temuriylar (kichik markaz serveri) — avtomatik deploy (23.11.2026)
+### Ikkinchi markaz (kichik markaz serveri) — avtomatik deploy (23.11.2026)
 
-`.github/workflows/deploy-temuriylar.yml`: `main` ga push bo'lganda (yoki
-Actions → «Deploy Temuriylar» → Run workflow) GitHub to'plamni o'zi yig'adi
+`.github/workflows/deploy-center.yml`: `main` ga push bo'lganda (yoki
+Actions → «Deploy markaz» → Run workflow) GitHub to'plamni o'zi yig'adi
 (`build-center.sh` bilan bir xil: standalone, faqat `NEXT_PUBLIC_*`), uni SSH
 orqali serverga uzatadi; server kalitga bog'langan majburiy buyruq bilan
 to'plamni qabul qilib `deploy-standalone.sh` ni ishga tushiradi. Asosiy
-serverda endi Temuriylar uchun build qilish shart emas.
+serverda endi ikkinchi markaz uchun build qilish shart emas.
 
-Bir martalik sozlash (root sifatida, **Temuriylar serverida**):
+Bir martalik sozlash (root sifatida, **markaz serverida**):
 
 ```bash
 ls /var/www/crm/shared/deploy-standalone.sh          # bor bo'lishi kerak

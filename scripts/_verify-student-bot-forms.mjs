@@ -143,7 +143,7 @@ async function reset() {
   await db.command({ collMod: "pupils", validator: {} });
   const cols = await db.listCollections().toArray();
   await Promise.all(cols.map((c) => db.collection(c.name).deleteMany({})));
-  await db.collection("branches").insertOne({ id: 1, name: "Temuriylar" });
+  await db.collection("branches").insertOne({ id: 1, name: "Markaz" });
   await db.collection("pupils").insertMany([
     { ...base, id: 1, firstName: "Vali Karim o'g'li", lastName: "Aliyev", phone: "90 111 22 33" },
     { ...base, id: 2, firstName: "Sardor", lastName: "Aliyev", phone: "90 111 22 33" },

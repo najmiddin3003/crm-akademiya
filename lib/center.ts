@@ -13,7 +13,7 @@
 //
 // Bu fayl SERVERGA BOG'LIQ EMAS — mijoz va server kodi birdek import qiladi.
 
-// `??` ATAYIN (funksiya emas): qiymat build'da satrga aylangach `"Temuriylar…" ?? "Akademiya…"`
+// `??` ATAYIN (funksiya emas): qiymat build'da satrga aylangach `"Markaz…" ?? "Akademiya…"`
 // minifikatsiyada bitta satrga qisqaradi — boshqa markaz to'plamida Akademiya sukutlari
 // (nomi, telefoni) umuman qolmaydi. .env qiymatlari dotenv'da allaqachon kesilgan (trim).
 

@@ -1,4 +1,4 @@
-# Temuriylar markazi (kichik 1 GB VPS) ga avtomatik deploy — 23.11.2026.
+# Ikkinchi markaz (kichik 1 GB VPS) ga avtomatik deploy — 23.11.2026.
 #
 # Kichik serverda `next build` sig'maydi, shuning uchun to'plam shu yerda —
 # GitHub runner'ida — deploy/build-center.sh bilan bir xil tarzda yig'iladi
@@ -7,7 +7,7 @@
 # «majburiy buyruq» bilan to'plamni qabul qilib deploy-standalone.sh ni
 # ishga tushiradi (deploy/README.md, 12-band) — kalit boshqa hech narsa qila olmaydi.
 #
-# main ga push bo'lganda yoki Actions → «Deploy Temuriylar» → Run workflow.
+# main ga push bo'lganda yoki Actions → «Deploy markaz» → Run workflow.
 #
 # Maxfiy qiymatlar (repo → Settings → Secrets and variables → Actions):
 #   TEMURIYLAR_HOST         — server IP manzili
@@ -15,7 +15,7 @@
 #   TEMURIYLAR_CENTER_ENV   — serverdagi .env.local ning NEXT_PUBLIC_* qatorlari
 # Biror biri bo'lmasa workflow hech narsa qilmay to'xtaydi (xato bermaydi).
 
-name: Deploy Temuriylar
+name: Deploy markaz
 
 on:
   push:
@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-temuriylar
+  group: deploy-center
   cancel-in-progress: false
 
 permissions:

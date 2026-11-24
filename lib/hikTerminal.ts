@@ -5,8 +5,8 @@ import { notifyLate } from "@/lib/attendanceNotify";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
 
-// YUZ TERMINALI (Hikvision, 21.11.2026 — egasi: «temuriylarga shu kamerani
-// face idni ulashimiz kerak»; xodimlar + o'quvchilar, ISUP orqali).
+// YUZ TERMINALI (Hikvision, 21.11.2026 — egasi: ikkinchi markazga yuz
+// terminalini ulash; xodimlar + o'quvchilar, ISUP orqali).
 //
 // QURILMA: DS-K1T343MX (MinMoe). Voqea CRM'ga ikki yo'ldan keladi, ikkalasi
 // ham shu modulga tushadi (voqea shakli bir xil):

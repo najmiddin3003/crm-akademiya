@@ -7,7 +7,7 @@ import { uzDayKey } from "./uzTime";
 // Bildirishnomalar → «E'lonlar» varag'i, Yordam menyusidagi «N ta yangi»).
 //
 // BAZA YO'Q, ATAYIN: e'lon kod bilan birga chiqadi. Reliz qaysi markazga
-// (Akademiya, Temuriylar) chiqsa, e'loni ham o'sha yerda paydo bo'ladi —
+// chiqsa, e'loni ham o'sha yerda paydo bo'ladi —
 // hali chiqmagan imkoniyat haqida e'lon ko'rinib qolmaydi.
 //
 // QOIDALAR:

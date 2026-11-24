@@ -17,7 +17,7 @@ import { uzClock, type UzClock } from "@/lib/teacherLessons";
 // yo'q. Chala belgilangan guruh bu ro'yxatga kirmaydi.
 //
 // NEGA UMUMIY `settings` DA EMAS: `PUT /api/settings` istalgan kalitni yozadi va unga o'nlab
-// sahifaning ruxsati yetadi (lib/ai/settings.ts boshidagi sabab). Temuriylar'da o'qituvchi
+// sahifaning ruxsati yetadi (lib/ai/settings.ts boshidagi sabab). Ikkinchi markazda o'qituvchi
 // rolida 50 bo'lim ochiq — nazorat qilinayotgan odam xabarni o'zi o'chirib qo'ya olmasin.
 //
 // SUKUT — O'CHIQ: deploy o'zi hech kimga yozib yubormasin.

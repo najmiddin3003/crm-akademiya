@@ -31,7 +31,7 @@ export interface StudentBotConfig {
    * Botdagi «📝 Kursga yozilish» lid bilan birga O'QUVCHI KARTASI ham ochadimi
    * (lib/studentBot/signup.ts). Sukut — o'chiq: karta `pupils` ga yozadi, ya'ni
    * markaz buni ongli yoqadi (STUDENT_BOT_SIGNUP_PUPIL=true; 04.11.2026 dan
-   * Temuriylar). O'chiq markazda anketa faqat lid yaratadi.
+   * ikkinchi markaz). O'chiq markazda anketa faqat lid yaratadi.
    */
   signupCreatesPupil: boolean;
 }

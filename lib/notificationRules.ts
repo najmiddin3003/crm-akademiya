@@ -26,7 +26,7 @@ const KEY = "main";
 //   moderator — o'rnatilgan rol, hr_employees.turi "moderator".
 // Mos kelmagan qo'lda qo'shilgan rollar (Akademiya: «IT mutaxassisi», «Xizmat xodimi») ustun
 // olmaydi — ular faqat «Doim» qatorlarini (o'ziga tegishlisini) oladi. Har markazda rollar
-// boshqacha (Temuriylar) — sahifa ustun ostida qaysi rollar tushganini ko'rsatadi.
+// boshqacha — sahifa ustun ostida qaysi rollar tushganini ko'rsatadi.
 
 export const NOTIFY_COLUMNS = ["rahbar", "menejer", "qabul", "teacher", "moderator"] as const;
 export type NotifyColumn = (typeof NOTIFY_COLUMNS)[number];

@@ -1558,7 +1558,7 @@ Qaysi tartibda?
 **268. Bildirishnomalar: ustunlar va rollar** — ochiq
 Rasmdagi 5 ustun tizimda rol emas. Moslash nom bo'yicha: Rahbar = admin + nomida «rahbar/direktor/bosh admin»;
 Menejer = «menejer»; Qabul admin. = «qabul»; O'qituvchi, Moderator — o'rnatilgan rollar. «IT mutaxassisi», «Xizmat
-xodimi» ustunsiz («Doim» qatorlari). Temuriylar'da rollar boshqacha — ustun bo'sh qolishi mumkin («Bu markazda bunday
+xodimi» ustunsiz («Doim» qatorlari). Boshqa markazda rollar boshqacha — ustun bo'sh qolishi mumkin («Bu markazda bunday
 rol yo'q»). Muqobil: Rollar sahifasida har rolga ustun tanlash.
 
 **269. Bildirishnomalar: vaqtlar rasmdan farq qiladi** — taxmin
@@ -1725,7 +1725,7 @@ Yuqoriga/pastga surish kerakmi?
 **298. Tizim kanallari va «ro'yxatda yo'q» qatorlari** — taxmin
 «Sayt so'rovnomasi» va «Telegram bot» qatorlari doim turadi (🔒, amalsiz, «Bepul»). Lidlarda uchragan, ro'yxatda
 yo'q qiymatlar (eski «Sayt» — 98 lid, qo'lda yozilgan manbalar) alohida xira qatorda. Rasmdagi bot nomi
-(@akademiya_uz_bot) yozilmadi — «O'quvchilar boti» (Temuriylar'da boshqa bot).
+(@akademiya_uz_bot) yozilmadi — «O'quvchilar boti» (boshqa markazda boshqa bot).
 
 **299. Eski «O'quvchilar oqimi» diagrammasi** — ochiq
 Yangi versiyada `/sales-sources` — Sozlamalar → Manbalar; eski diagramma `?view=old` (sahifa pastida havola).

@@ -157,7 +157,7 @@ const PUBLIC_SITE_URL = "https://www.tizimli24.uz";
  * markazning tasdiqlangan shabloni bilan yuborsin deb serverga
  * `SMS_CENTER_SHORT` (masalan `Akademiya`) qo'yiladi. Qiymat ish vaqtida
  * o'qiladi — qayta build shart emas; olib tashlansa `CENTER_SHORT` ga qaytadi.
- * (02.11.2026: Temuriylar shabloni moderatsiyada edi.)
+ * (02.11.2026: ikkinchi markaz shabloni moderatsiyada edi.)
  */
 function smsCenterShort(): string {
   return (process.env.SMS_CENTER_SHORT || "").trim() || CENTER_SHORT;
@@ -203,7 +203,7 @@ function rejectReason(r: SendSmsResult): string {
  * Markaz nomli SMS (taklif, parol tiklash). Avval asosiy akkauntdan markazning o'z nomi bilan;
  * Eskiz uni rad etsa va zaxira akkaunt sozlangan bo'lsa — zaxira akkauntdan, uning tasdiqlangan
  * shablonidagi nom bilan. Shu bilan markazning o'z shabloni tasdiqlangan ZAHOTI SMS o'z matniga
- * o'tadi — hech narsani qayta sozlash shart emas (02.11.2026, Temuriylar: o'z shabloni egasining
+ * o'tadi — hech narsani qayta sozlash shart emas (02.11.2026, ikkinchi markaz: o'z shabloni egasining
  * akkauntida moderatsiyada edi, oraliqda Akademiya akkauntidagi tasdiqlangan shablon ishlatildi).
  */
 async function sendCenterSms(phone: string, build: (centerShort: string) => string): Promise<SendSmsResult> {

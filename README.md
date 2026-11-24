@@ -1433,7 +1433,7 @@ kiritilgan hammasi, `--since YYYY-MM-DD`; quruq rejim sukut, `--send`
 yuboradi. Bekor qilingan yozuv "BEKOR QILINDI" ko'rinishida ketadi.
 
 **Jadvalsiz markaz (2026-11-02).** Google Sheets ulanmagan serverda
-(`GOOGLE_*`/`SHEET_ID_*` yo'q — masalan Temuriylar) jadval qadami o'tkazib
+(`GOOGLE_*`/`SHEET_ID_*` yo'q — masalan ikkinchi markaz) jadval qadami o'tkazib
 yuboriladi va Telegram'ni TO'SMAYDI (`lib/sync/dispatch.ts`). Ilgari navbat
 "Google Sheets sozlanmagan (payment)" deb yiqilardi va to'lov guruhga umuman
 chiqmasdi. Jadval ULANGAN bo'lsa-yu Google vaqtincha javob bermasa — avvalgidek:
@@ -3220,7 +3220,7 @@ qo'shilgan rol uchun tanlov — «Faqat ruxsat bersin».
   filtrda «Boshqa rol», Oylik filtrida «Boshqa xodimlar».
 - Xodimga berilgan rolni o'chirish — 409 (`DELETE /api/roles/:id`).
 - **Lavozim o'zgarsa — hisob roli ham (2026-11-02, `lib/employeeRoleSync.ts`).**
-  Ilgari `users.role` faqat hisob yaratilganda yozilardi: Temuriylar'da admin
+  Ilgari `users.role` faqat hisob yaratilganda yozilardi: ikkinchi markazda admin
   «Moderator» qilinganda ham admin bo'lib qoldi. Endi PATCH
   `/api/hr-employees/:id` va `/api/temp-staff/:id` lavozim HAQIQATAN o'zgarsa
   bog'langan hisob(lar) rolini ham yozadi (ism/telefon tahriri rolga tegmaydi).
@@ -3334,8 +3334,8 @@ deploy to'xtardi). Foydalanuvchi (20.10): «ha, qil» — shriftlar loyihaga joy
 ## SMS'dagi markaz nomi: `SMS_CENTER_SHORT` (2026-11-02)
 
 Eskiz faqat moderatsiyadan o'tgan shablonga mos matnni yuboradi, boshqasini 400 bilan qaytaradi
-(«текст еще не прошёл модерацию»). Temuriylar ishga tushgan kuni yangi xodimga taklif SMS'i
-bormadi: «CRM-Temuriylar tizimida hisobingizni faollashtirish…» shabloni hali tasdiqlanmagan edi.
+(«текст еще не прошёл модерацию»). Ikkinchi markaz ishga tushgan kuni yangi xodimga taklif SMS'i
+bormadi: «CRM-<markaz> tizimida hisobingizni faollashtirish…» shabloni hali tasdiqlanmagan edi.
 Egasi (02.11): «hozircha akademiyadagi shablonda ketaversin».
 
 - `lib/invite.ts` — `activationMessage` va `resetMessage` markaz nomini `smsCenterShort()` dan
@@ -3352,7 +3352,7 @@ Egasi (02.11): «hozircha akademiyadagi shablonda ketaversin».
 ### Zaxira Eskiz akkaunti — o'z shabloni tasdiqlanganda o'zi o'tadi
 
 Egasi (02.11): «agar o'zimni akkauntimdagi sms shablon matni tasdiqlansa shundan foydalanadigan
-qilib qo'y». Temuriylar shabloni egasining O'Z Eskiz akkauntida moderatsiyada, Akademiya'niki boshqa
+qilib qo'y». Ikkinchi markaz shabloni egasining O'Z Eskiz akkauntida moderatsiyada, Akademiya'niki boshqa
 akkauntda — qachon tasdiqlanishini kutib qo'lda almashtirmaslik uchun:
 
 - `lib/eskiz.ts` — ikki akkaunt: asosiy (`ESKIZ_EMAIL/ESKIZ_PASSWORD/ESKIZ_FROM`) va ixtiyoriy

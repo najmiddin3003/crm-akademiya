@@ -10,13 +10,13 @@ import { addBotLinks, getBotUser, type StudentBotUser } from "@/lib/studentBot/u
 import * as V from "@/lib/studentBot/views";
 
 // 👪 OTA-ONA KIRISHI — farzandini ism familiyasi va telefon raqami bilan ulash
-// (04.11.2026, Temuriylar).
+// (04.11.2026, ikkinchi markaz).
 //
 // Foydalanuvchi: «farzandini ism familiyasini telefon raqamini kiritsa shu
 // o'quvchini ma'lumotlarini davomatini ko'rib turishi kerak ota-onasi».
 //
 // NEGA RAQAM BILAN KIRISH YETMAYDI. Telefon bilan kirish odamning O'Z raqamini
-// kartadan qidiradi, kartalarda esa ota-ona raqami deyarli yo'q (Temuriylar: 449
+// kartadan qidiradi, kartalarda esa ota-ona raqami deyarli yo'q (ikkinchi markaz: 449
 // kartaning hech birida `fatherPhone`/`motherPhone` to'ldirilmagan). Bu yo'lda raqam
 // kartadagi istalgan maydonda bo'lishi mumkin va ism bilan birga tekshiriladi.
 //

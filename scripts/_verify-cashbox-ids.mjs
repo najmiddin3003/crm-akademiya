@@ -129,7 +129,7 @@ try {
     assert.equal(await db.collection("transaction_entries").countDocuments({ cashboxId: id }), 0);
   });
 
-  await check("hozirgi Temuriylar holati: kassa #1, jurnal bo'sh, hisoblagich yo'q → keyingisi 2", async () => {
+  await check("ikkinchi markaz holati: kassa #1, jurnal bo'sh, hisoblagich yo'q → keyingisi 2", async () => {
     await db.collection("cashboxes").insertOne({ id: 1, name: "Muhsinjon rahbar kassa", balance: 0, methodTotals: {} });
     assert.equal((await create("Ikkinchi")).body.cashbox.id, 2);
   });

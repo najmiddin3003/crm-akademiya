@@ -8,7 +8,7 @@ import { normalizePhone } from "@/lib/eskiz";
 // NEGA KERAK: admin huquqi faqat `users.role === "admin"` dan (lib/adminOnly.ts,
 // lib/rolePermissions.ts dagi bypass). Bu maydon esa hisob yaratilganda lavozimdan BIR
 // MARTA yozilardi (lib/hrEmployeeCreate.ts, app/api/temp-staff/invite) va keyin hech
-// qayerda yangilanmasdi. Temuriylar'da (02.11.2026) admin xodimning lavozimi «Moderator»
+// qayerda yangilanmasdi. Ikkinchi markazda (02.11.2026) admin xodimning lavozimi «Moderator»
 // qilindi — u to'liq admin bo'lib qolaverdi. Teskarisi ham ishlamasdi: moderatorni
 // «Administrator» qilish admin huquqini bermasdi.
 //

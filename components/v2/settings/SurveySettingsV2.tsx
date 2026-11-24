@@ -142,7 +142,7 @@ export default function SurveySettingsV2() {
     };
   }, [version]);
 
-  // Havola — joriy domendan (har markaz o'z serverida: Akademiya, Temuriylar); serverda — bo'sh.
+  // Havola — joriy domendan (har markaz o'z serverida); serverda — bo'sh.
   const origin = useSyncExternalStore(
     noSubscribe,
     () => window.location.origin,
