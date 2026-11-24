@@ -59,7 +59,13 @@ jobs:
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          # Manzil va kalit qatori qo'lda nusxalanadi — ortiqcha bo'sh joy, «root@», boshqa IP
+          # yoki yetishmagan IP bo'lsa ham kalit qismini olib, aniq shu manzilga bog'laymiz.
+          HOST="$(printf '%s' "$HOST" | tr -d '[:space:]')"; HOST="${HOST#*@}"
+          HK="$(printf '%s\n' "$KNOWN" | grep -oE 'ssh-ed25519 [A-Za-z0-9+/=]+' | head -n1)"
+          [ -n "$HK" ] || { echo "::error::KNOWN_HOSTS da «ssh-ed25519 AAAA…» kalit topilmadi"; exit 1; }
+          printf '%s %s\n' "$HOST" "$HK" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -lf ~/.ssh/known_hosts | awk '{print "server kaliti (barmoq izi):", $2}'
           # Buyruq yuborilmaydi — server kalitga bog'langan deploy.sh ni o'zi ishga tushiradi.
           ssh -i ~/.ssh/deploy_key \
               -o BatchMode=yes -o StrictHostKeyChecking=yes \
