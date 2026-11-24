@@ -58,7 +58,7 @@ jobs:
           printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           # Serverning OCHIQ kaliti (maxfiy emas) — 24.11.2026 da egasi serverdan `cat
           # /etc/ssh/ssh_host_ed25519_key.pub` bilan ko'rsatdi. Server qayta o'rnatilsa — yangilanadi.
-          HOSTKEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDdLqx3+zf581yW46Mdw10zE6nHCwFzddOhICaR6pVif'
+          HOSTKEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDdLqx3+zf581yW46Mdwl0zE6nHCwFzddOhICaR6pVif'
           HOST="$(printf '%s' "$HOST" | tr -d '[:space:]')"; HOST="${HOST#*@}"
           printf '%s %s\n' "$HOST" "$HOSTKEY" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
           ssh-keygen -lf ~/.ssh/known_hosts | awk '{print "server kaliti (barmoq izi):", $2}'
