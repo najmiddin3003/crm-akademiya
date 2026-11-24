@@ -12,7 +12,6 @@
 # Kerakli maxfiy qiymatlar (repo → Settings → Secrets and variables → Actions):
 #   VPS_HOST         — server IP manzili
 #   VPS_SSH_KEY      — deploy kalitining MAXFIY qismi (butun fayl, BEGIN…END bilan)
-#   VPS_KNOWN_HOSTS  — `ssh-keyscan -t ed25519 <IP>` chiqishi (soxta serverga ulanmaslik uchun)
 # Ular qo'yilmagan bo'lsa workflow hech narsa qilmay to'xtaydi (xato bermaydi).
 
 name: Deploy VPS
@@ -41,10 +40,9 @@ jobs:
         env:
           HOST: ${{ secrets.VPS_HOST }}
           KEY: ${{ secrets.VPS_SSH_KEY }}
-          KNOWN: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
-          if [ -z "$HOST" ] || [ -z "$KEY" ] || [ -z "$KNOWN" ]; then
-            echo "::notice::VPS_HOST / VPS_SSH_KEY / VPS_KNOWN_HOSTS qo'yilmagan — deploy o'tkazib yuborildi (deploy/README.md, 12-band)."
+          if [ -z "$HOST" ] || [ -z "$KEY" ]; then
+            echo "::notice::VPS_HOST / VPS_SSH_KEY qo'yilmagan — deploy o'tkazib yuborildi (deploy/README.md, 12-band)."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -55,22 +53,25 @@ jobs:
         env:
           HOST: ${{ secrets.VPS_HOST }}
           KEY: ${{ secrets.VPS_SSH_KEY }}
-          KNOWN: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          # Manzil va kalit qatori qo'lda nusxalanadi — ortiqcha bo'sh joy, «root@», boshqa IP
-          # yoki yetishmagan IP bo'lsa ham kalit qismini olib, aniq shu manzilga bog'laymiz.
+          # Serverning OCHIQ kaliti (maxfiy emas) — 24.11.2026 da egasi serverdan `cat
+          # /etc/ssh/ssh_host_ed25519_key.pub` bilan ko'rsatdi. Server qayta o'rnatilsa — yangilanadi.
+          HOSTKEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDdLqx3+zf581yW46Mdw10zE6nHCwFzddOhICaR6pVif'
           HOST="$(printf '%s' "$HOST" | tr -d '[:space:]')"; HOST="${HOST#*@}"
-          HK="$(printf '%s\n' "$KNOWN" | grep -oE 'ssh-ed25519 [A-Za-z0-9+/=]+' | head -n1)"
-          [ -n "$HK" ] || { echo "::error::KNOWN_HOSTS da «ssh-ed25519 AAAA…» kalit topilmadi"; exit 1; }
-          printf '%s %s\n' "$HOST" "$HK" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          printf '%s %s\n' "$HOST" "$HOSTKEY" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
           ssh-keygen -lf ~/.ssh/known_hosts | awk '{print "server kaliti (barmoq izi):", $2}'
           # Buyruq yuborilmaydi — server kalitga bog'langan deploy.sh ni o'zi ishga tushiradi.
           ssh -i ~/.ssh/deploy_key \
               -o BatchMode=yes -o StrictHostKeyChecking=yes \
               -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 \
-              "crm@$HOST"
+              "crm@$HOST" || {
+            rc=$?
+            echo "ssh xato ($rc). Serverning haqiqiy ochiq kaliti (solishtirish uchun):"
+            ssh-keyscan -t ed25519 "$HOST" 2>/dev/null | cut -d' ' -f2- || true
+            exit $rc
+          }
 
       - name: Sayt javob beryaptimi
         if: steps.check.outputs.ready == 'true'

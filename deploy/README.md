@@ -263,13 +263,13 @@ echo "command=\"bash /var/www/crm/shared/deploy.sh\",restrict $(cat /root/gh-dep
 chown crm:crm /var/www/crm/.ssh/authorized_keys && chmod 600 /var/www/crm/.ssh/authorized_keys
 # 3) GitHub'ga qo'yiladigan qiymatlar
 cat /root/gh-deploy                      # → VPS_SSH_KEY (butun matn)
-echo "SERVER_IP $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"   # → VPS_KNOWN_HOSTS (SERVER_IP o'rniga IP)
+cat /etc/ssh/ssh_host_ed25519_key.pub    # ochiq kalit → workflow'dagi HOSTKEY (secret emas, 24.11.2026)
 # 4) GitHub'ga qo'yib bo'lgach maxfiy faylni o'chirish
 shred -u /root/gh-deploy
 ```
 
 GitHub → repo → Settings → Secrets and variables → Actions → New repository
-secret: `VPS_HOST` (server IP), `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`. Uchalasi
+secret: `VPS_HOST` (server IP), `VPS_SSH_KEY`. Ikkalasi
 qo'yilmaguncha workflow hech narsa qilmaydi (faqat eslatma chiqaradi).
 
 O'chirish: `authorized_keys` dan `github-actions-deploy` qatorini olib
@@ -293,13 +293,13 @@ install -o crm -g crm -m 700 -d /var/www/crm/.ssh
 printf 'command="f=/var/www/crm/shared/upload.tar.gz; cat > $f && bash /var/www/crm/shared/deploy-standalone.sh $f; rc=$?; rm -f $f; exit $rc",restrict %s\n' "$(cat /root/gh-deploy.pub)" >> /var/www/crm/.ssh/authorized_keys
 chown crm:crm /var/www/crm/.ssh/authorized_keys && chmod 600 /var/www/crm/.ssh/authorized_keys
 cat /root/gh-deploy                                                          # → TEMURIYLAR_SSH_KEY
-echo "SERVER_IP $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"        # → TEMURIYLAR_KNOWN_HOSTS
+cat /etc/ssh/ssh_host_ed25519_key.pub                                         # → workflow'dagi HOSTKEY
 grep '^NEXT_PUBLIC_' /var/www/crm/shared/.env.local                          # → TEMURIYLAR_CENTER_ENV
 shred -u /root/gh-deploy                                                     # GitHub'ga qo'ygach
 ```
 
 GitHub secrets: `TEMURIYLAR_HOST`, `TEMURIYLAR_SSH_KEY`,
-`TEMURIYLAR_KNOWN_HOSTS`, `TEMURIYLAR_CENTER_ENV`. `NEXT_PUBLIC_*` o'zgarsa
+`TEMURIYLAR_CENTER_ENV`. `NEXT_PUBLIC_*` o'zgarsa
 (markaz nomi, telefoni) — serverdagi `.env.local` bilan birga shu secret ham
 yangilanadi. Cron skriptlari (`cron-lessons.sh` va h.k.) to'plamga kirmaydi —
 avvalgidek qo'lda.
