@@ -1,7 +1,7 @@
 import type { Db } from "mongodb";
 import type { AttendanceMark, AttendanceParentSms } from "@/lib/attendance";
 import { CENTER_NAME, CENTER_PHONE, CENTER_SHORT, IS_AKADEMIYA } from "@/lib/center";
-import { sendSms } from "@/lib/eskiz";
+import { eskizConfigured, sendSms, type SendSmsResult } from "@/lib/eskiz";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import { pupilFullName } from "@/lib/pupilsData";
@@ -78,6 +78,21 @@ function addDaysIso(iso: string, days: number): string {
 
 type MarkDoc = AttendanceMark & { _id: unknown; absentAt?: Date };
 
+/**
+ * Asosiy akkaunt → rad etsa (shablon shu akkauntda tasdiqlanmagan: 400/401/403) zaxira akkaunt
+ * (ESKIZ_FALLBACK_*), lib/invite.ts sendCenterSms bilan bir qoida. Shunda shablon qaysi
+ * akkauntda tasdiqlansa ham SMS ketadi. Tarmoq xatosi / 5xx da qayta yuborilmaydi — SMS
+ * ketgan bo'lishi mumkin, ota-onaga ikki SMS bormasin.
+ */
+async function sendAbsenceSms(phone: string, text: string): Promise<SendSmsResult> {
+  const first = await sendSms(phone, text);
+  const rejected = !first.ok && (first.status === 400 || first.status === 401 || first.status === 403 || String(first.error ?? "").startsWith("Eskiz login xato"));
+  if (!rejected || !eskizConfigured("fallback")) return first;
+  const second = await sendSms(phone, text, "fallback");
+  if (second.ok) return { ...second, fallback: true };
+  return { ...second, error: `asosiy: ${first.error ?? "-"}; zaxira: ${second.error ?? "-"}` };
+}
+
 /** Bitta belgi uchun SMS — natijani qaytaradi, hech qachon otmaydi. */
 async function sendForMark(db: Db, m: MarkDoc): Promise<AttendanceParentSms> {
   const at = new Date().toISOString();
@@ -104,9 +119,9 @@ async function sendForMark(db: Db, m: MarkDoc): Promise<AttendanceParentSms> {
       centerPhone: phone,
     });
     parts = Math.max(parts, msg.size.parts);
-    let res: Awaited<ReturnType<typeof sendSms>>;
+    let res: SendSmsResult;
     try {
-      res = await sendSms(r.phone, msg.text);
+      res = await sendAbsenceSms(r.phone, msg.text);
     } catch (e) {
       res = { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
