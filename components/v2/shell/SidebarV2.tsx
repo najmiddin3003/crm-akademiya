@@ -246,33 +246,38 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
         </button>
       </div>
 
-      <BranchCard permissions={permissions} onNavigate={onNavigate} />
+      {/* Logotip qatoridan pastdagi hammasi kompyuterda menyu eniga qarab masshtablanadi
+          (lib/sidebarWidth.ts, `--sb-zoom` aside'da). Logotip qatori yuqori panel bilan
+          bir balandlikda (h-16) qolishi uchun masshtabdan tashqarida. */}
+      <div className="flex min-h-0 flex-1 flex-col" style={variant === "desktop" ? { zoom: "var(--sb-zoom, 1)" } : undefined}>
+        <BranchCard permissions={permissions} onNavigate={onNavigate} />
 
-      {/* Scroll — sayt uslubida (globals.css → .v2-scroll). Kompyuterda scroll joyi doim
-          ajratilgan (gutter): guruh ochilib scroll paydo bo'lganda bandlar eni sakramaydi;
-          o'ng chekka pr-0.5 + scroll eni (10px) = chapdagi pl-3. */}
-      <nav
-        aria-label={t("Asosiy menyu")}
-        className={`v2-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-3 ${variant === "desktop" ? "pl-3 pr-0.5 [scrollbar-gutter:stable]" : "px-3"}`}
-      >
-        {sections.map((s, si) => (
-          <div key={s.title ?? `s${si}`} className={si > 0 ? "mt-4" : "mt-1"}>
-            {s.title && <div className="px-3 pb-1 text-v2-caption text-v2-text-3">{t(s.title)}</div>}
-            <ul className="space-y-0.5">{s.items.map(renderItem)}</ul>
+        {/* Scroll — sayt uslubida (globals.css → .v2-scroll). Kompyuterda scroll joyi doim
+            ajratilgan (gutter): guruh ochilib scroll paydo bo'lganda bandlar eni sakramaydi;
+            o'ng chekka pr-0.5 + scroll eni (10px) = chapdagi pl-3. */}
+        <nav
+          aria-label={t("Asosiy menyu")}
+          className={`v2-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-3 ${variant === "desktop" ? "pl-3 pr-0.5 [scrollbar-gutter:stable]" : "px-3"}`}
+        >
+          {sections.map((s, si) => (
+            <div key={s.title ?? `s${si}`} className={si > 0 ? "mt-4" : "mt-1"}>
+              {s.title && <div className="px-3 pb-1 text-v2-caption text-v2-text-3">{t(s.title)}</div>}
+              <ul className="space-y-0.5">{s.items.map(renderItem)}</ul>
+            </div>
+          ))}
+        </nav>
+
+        {bottom.length > 0 && (
+          <div className="v2-scroll max-h-[50vh] shrink-0 overflow-y-auto border-t border-v2-border px-3 py-2">
+            <ul className="space-y-0.5">{bottom.map(renderItem)}</ul>
           </div>
-        ))}
-      </nav>
+        )}
 
-      {bottom.length > 0 && (
-        <div className="v2-scroll max-h-[50vh] shrink-0 overflow-y-auto border-t border-v2-border px-3 py-2">
-          <ul className="space-y-0.5">{bottom.map(renderItem)}</ul>
+        {/* O'tish davri: «Eski versiya | Yangi versiya» (lib/uiVersion.ts). Yuqori
+            panelda emas — u dizayndagidek to'la, qidiruvga joy qolsin. */}
+        <div className="shrink-0 border-t border-v2-border px-3 py-2.5">
+          <UiVersionSwitch current="v2" tone="v2" fill />
         </div>
-      )}
-
-      {/* O'tish davri: «Eski versiya | Yangi versiya» (lib/uiVersion.ts). Yuqori
-          panelda emas — u dizayndagidek to'la, qidiruvga joy qolsin. */}
-      <div className="shrink-0 border-t border-v2-border px-3 py-2.5">
-        <UiVersionSwitch current="v2" tone="v2" fill />
       </div>
     </div>
   );

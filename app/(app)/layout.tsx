@@ -9,7 +9,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { hiddenMenu } from "@/lib/features";
 import { gamificationEnabled } from "@/lib/gamification/settings";
 import { firstAllowedPath, isPathAllowed, PATHNAME_HEADER } from "@/lib/permissions";
-import { currentUiVersion, devNoticeHidden, shellRoleLabel, uiSwitchEnabled } from "@/lib/uiVersionServer";
+import { currentUiVersion, devNoticeHidden, shellRoleLabel, sidebarWidthFromCookie, uiSwitchEnabled } from "@/lib/uiVersionServer";
 
 // Sidebar+Navbar faqat shu guruhdagi (haqiqiy CRM) sahifalarga o'raladi.
 // (auth) sahifalari — login/register — bu qobiqsiz, to'liq ekranli.
@@ -64,6 +64,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
         isAdmin={user.role === "admin"}
         features={{ gamification: gamOn, ...Object.fromEntries(hidden.map((k) => [`hide:${k}`, true])) }}
         devNotice={!(await devNoticeHidden())}
+        sidebarWidth={await sidebarWidthFromCookie()}
       >
         <AiScreenRefresh>{children}</AiScreenRefresh>
         {/* Suzuvchi robot (SpeedFab) YO'Q: MohirAI yuqori paneldagi tugmadan ochiladi. */}

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import type { Db } from "mongodb";
 import { ROLE_LABELS } from "@/constants/employees";
 import { normalizeUiVersion, UI_COOKIE, UI_NOTICE_COOKIE, type UiVersion } from "@/lib/uiVersion";
+import { normalizeSidebarWidth, SIDEBAR_WIDTH_COOKIE } from "@/lib/sidebarWidth";
 
 // Versiya almashtirgichining server qismi (lib/uiVersion.ts izohi).
 
@@ -35,6 +36,11 @@ export async function currentUiVersion(): Promise<UiVersion> {
 /** «Ishlab chiqilmoqda» qatori bugun yopilganmi (lib/uiVersion.ts → hideDevNoticeForToday). */
 export async function devNoticeHidden(): Promise<boolean> {
   return (await cookies()).get(UI_NOTICE_COOKIE)?.value === "1";
+}
+
+/** Yangi versiya yon menyusi eni (lib/sidebarWidth.ts) — foydalanuvchi surib tanlagani, bo'lmasa sukut. */
+export async function sidebarWidthFromCookie(): Promise<number> {
+  return normalizeSidebarWidth((await cookies()).get(SIDEBAR_WIDTH_COOKIE)?.value);
 }
 
 /**

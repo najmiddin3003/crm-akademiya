@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 // Onest — dizayn shrifti (tokens.css → `--v2-font-sans: "Onest Variable"`). LOYIHA
 // ICHIDAN (npm @fontsource-variable/onest, 20.10.2026; design/v2/SAVOLLAR.md 4):
 // 17.10 dan beri brauzerda Google Fonts'dan olinardi, `next/font/google` esa build
@@ -15,11 +15,13 @@ import { NavbarSprite, SidebarSprite } from "@/components/shared/ShellSprites";
 import { TaskInboxProvider } from "@/components/shared/TaskInboxProvider";
 import TransferReturnNotice from "@/components/shared/TransferReturnNotice";
 import { isPathAllowed } from "@/lib/permissions";
+import { SIDEBAR_W_DEFAULT } from "@/lib/sidebarWidth";
 import ReceiptHost from "@/components/v2/finance/ReceiptHost";
 import AutoLock from "./AutoLock";
 import { DevNoticeBanner } from "./DevNotice";
 import { CreateProvider } from "./CreateContext";
 import { ShellProvider } from "./ShellContext";
+import SidebarResizer, { sidebarStyle } from "./SidebarResizer";
 import SidebarV2 from "./SidebarV2";
 import TopbarV2, { type ShellUserV2 } from "./TopbarV2";
 
@@ -47,6 +49,7 @@ export default function AppShellV2({
   isAdmin = false,
   features = {},
   devNotice = true,
+  sidebarWidth = SIDEBAR_W_DEFAULT,
 }: {
   children: React.ReactNode;
   /** Rol ruxsatlari — app/(app)/layout.tsx dan. `null` = cheklovsiz. */
@@ -58,6 +61,8 @@ export default function AppShellV2({
   features?: Record<string, boolean>;
   /** «Yangi versiya ishlab chiqilmoqda» qatori — bugun yopilmagan bo'lsa (./DevNotice.tsx). */
   devNotice?: boolean;
+  /** Kompyuterdagi yon menyu eni — cookie'dan (lib/sidebarWidth.ts). */
+  sidebarWidth?: number;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Kompyuterda yon menyuni yig'ish. Saqlanmaydi: sahifa yangilansa menyu
@@ -65,6 +70,9 @@ export default function AppShellV2({
   const [collapsed, setCollapsed] = useState(false);
   // Yopilsa shu sahifada darhol yo'qoladi; qayta yuklanganda server cookie'ni ko'radi.
   const [noticeOpen, setNoticeOpen] = useState(devNotice);
+  // Yon menyu eni — o'ng chekkasidan suriladi (./SidebarResizer), yozuvlar ham kattalashadi.
+  const [sbWidth, setSbWidth] = useState(sidebarWidth);
+  const asideRef = useRef<HTMLElement>(null);
 
   // Chekma menyu Esc bilan yopiladi.
   useEffect(() => {
@@ -95,10 +103,13 @@ export default function AppShellV2({
                 <div className="flex h-screen overflow-hidden">
                   {!collapsed && (
                     <aside
+                      ref={asideRef}
                       data-ui="v2"
-                      className="hidden w-62 shrink-0 flex-col border-r border-v2-border bg-v2-bg font-v2 text-v2-text lg:flex"
+                      style={sidebarStyle(sbWidth)}
+                      className="relative hidden shrink-0 flex-col border-r border-v2-border bg-v2-bg font-v2 text-v2-text lg:flex"
                     >
                       <SidebarV2 {...sidebarProps} variant="desktop" onClose={() => setCollapsed(true)} />
+                      <SidebarResizer asideRef={asideRef} width={sbWidth} onChange={setSbWidth} />
                     </aside>
                   )}
 
