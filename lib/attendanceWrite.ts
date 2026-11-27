@@ -11,6 +11,7 @@ import { withBranch, type BranchScope } from "./branchScope";
 import type { AdjustDeps } from "./cashboxAdjust";
 import type { GamActor } from "./gamification/actor";
 import { attendanceGuard, onAttendanceChanged, type AttendanceEvent } from "./gamification/attendance";
+import { markAbsentAt } from "./absenceSms";
 import type { Group } from "./groups";
 import { notifyAttendance } from "./studentBot/notify";
 import { toUz } from "./uzTime";
@@ -159,6 +160,9 @@ export async function saveAttendanceMark(
   // `before` — o'zgarishdan OLDINGI holat, atomik (gamifikatsiya hodisasi uchun).
   const prev = await col.findOneAndUpdate(key, { $set: mark }, { upsert: true, returnDocument: "before" });
   await writeHistory({ ...key, status, grade, reason: mark.reason ?? null, note: mark.note ?? null });
+  // OTA-ONAGA SMS (Akademiya'da emas, lib/absenceSms.ts): «sababsiz» ga O'TGAN lahza —
+  // cron bir necha daqiqadan keyin ota-onaga yuboradi (xato belgi tuzatilsa — ketmaydi).
+  if (status === "sababsiz" && prev?.status !== "sababsiz") await markAbsentAt(db, key);
   if (guard.active) await attendanceGamEvent(db, { ...key, before: prev?.status ?? null, after: status, staff: guard.staff });
 
   // O'QUVCHILAR BOTI — "davomat belgilandi" xabari. Belgi o'chirilganda

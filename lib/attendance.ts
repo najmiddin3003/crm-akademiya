@@ -106,6 +106,31 @@ export interface AttendanceMark {
   note?: string | null;
   /** O'quvchiga bot xabari ketdimi (lib/studentBot/notify.ts → notifyAttendance). */
   botNotice?: AttendanceBotNotice;
+  /** «Sababsiz» ga o'tgan lahza — ota-ona SMS navbati uchun (lib/absenceSms.ts, Akademiya'da yo'q). */
+  absentAt?: Date | string;
+  /** Ota-onaga «darsga kelmadi» SMS natijasi (lib/absenceSms.ts). */
+  parentSms?: AttendanceParentSms;
+}
+
+/**
+ * Ota-onaga SMS taqdiri — `attendance.parentSms` (27.11.2026). `state`:
+ *   sending   — yuborilmoqda (cron egalladi);
+ *   sent      — Eskiz kamida bitta raqamga qabul qildi;
+ *   simulated — Eskiz sozlanmagan / sinov rejimi, haqiqatda ketmadi;
+ *   failed    — Eskiz rad etdi (ko'pincha: shablon tasdiqlanmagan);
+ *   no_phone  — ota-onaning raqami yo'q;
+ *   no_pupil  — o'quvchi kartasi topilmadi.
+ */
+export interface AttendanceParentSms {
+  state: "sending" | "sent" | "simulated" | "failed" | "no_phone" | "no_pupil";
+  /** ISO lahza. */
+  at: string;
+  /** Nechta raqamga yuborildi. */
+  tried: number;
+  /** Shulardan nechtasini Eskiz qabul qildi. */
+  accepted: number;
+  /** Matn necha SMS bo'ldi (1 bo'lishi kerak). */
+  parts?: number;
 }
 
 /**

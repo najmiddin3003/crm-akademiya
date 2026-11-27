@@ -9,6 +9,7 @@ import { runGamificationNightly } from "@/lib/gamification/competition";
 import { runAutomation } from "@/lib/staffTasksServer";
 import { runTaskReminders } from "@/lib/staffTaskReminders";
 import { runDayReminders } from "@/lib/staffBot/dayReminders";
+import { runAbsenceSms } from "@/lib/absenceSms";
 
 // GET /api/sync/cron — kunlik tekshiruv (sutkasiga bir marta).
 //
@@ -91,9 +92,19 @@ async function handle(req: Request) {
   // botidagi 08:00 «Ishga keldim» eslatmasi va darsdan 10 daqiqa oldingi «Davomatni
   // boshlang» xabari (lib/staffBot/dayReminders.ts). 10 daqiqalik cron bu aniqlikka
   // yetmaydi; ish esa yengil — aktiv guruhlardan bitta so'rov.
+  // Shu yerda ota-onaga «darsga kelmadi» SMS navbati ham (lib/absenceSms.ts;
+  // Akademiya'da darhol qaytadi). Xatosi eslatmalarni yiqitmaydi.
   if (new URL(req.url).searchParams.get("only") === "lessons") {
     const db = await ensureIndexes();
-    return NextResponse.json({ ok: true, ...(await runDayReminders(db)) });
+    const reminders = await runDayReminders(db);
+    let absenceSms: unknown = null;
+    try {
+      absenceSms = await runAbsenceSms(db);
+    } catch (e) {
+      console.error("[absence-sms] cron:", e instanceof Error ? e.message : e);
+      absenceSms = { error: true };
+    }
+    return NextResponse.json({ ok: true, ...reminders, absenceSms });
   }
 
   // `?preview=digest` — oyliklar xulosasini YUBORMASDAN ko'rish.

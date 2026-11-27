@@ -10,7 +10,7 @@ export type SmsKind = "manual" | "auto" | "grouped";
  *
  * Nazorat > SMS analitikasi sahifasi shu bo'yicha guruhlaydi.
  */
-export type SmsPurpose = "payment" | "invite" | "password-reset" | "manual" | "other";
+export type SmsPurpose = "payment" | "attendance" | "invite" | "password-reset" | "manual" | "other";
 
 /**
  * Xabar QAYSI KANAL orqali ketgani.
@@ -35,6 +35,7 @@ export function smsChannelLabel(c: unknown): string {
 
 export const SMS_PURPOSE_LABELS: Record<SmsPurpose, string> = {
   payment: "To'lov qabul qilindi",
+  attendance: "Davomat: kelmadi",
   invite: "Xodim taklifi",
   "password-reset": "Parol tiklash",
   manual: "Qo'lda yuborilgan",

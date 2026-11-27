@@ -178,7 +178,7 @@ export default function NazoratSmsAnalyticsPage() {
       <div className="flex items-center gap-2 flex-wrap">
         <DateRangePicker value={dateRange} onChange={setDateRange} placeholder={t("Sana oralig'i")} />
         <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "Qabul qilindi", label: t("Eskiz qabul qildi") }, { value: "Yuborilmadi", label: t("Yuborilmadi") }, { value: "Kutilmoqda", label: t("Kutilmoqda") }]} placeholder={t("Barcha holatlar")} clearable />
-        <Select value={purpose} onChange={(v) => setPurpose(v)} options={[{ value: "payment", label: t("To'lov qabul qilindi") }, { value: "invite", label: t("Xodim taklifi") }, { value: "password-reset", label: t("Parol tiklash") }, { value: "manual", label: t("Qo'lda yuborilgan") }]} placeholder={t("Barcha maqsadlar")} clearable />
+        <Select value={purpose} onChange={(v) => setPurpose(v)} options={[{ value: "payment", label: t("To'lov qabul qilindi") }, { value: "attendance", label: t("Davomat: kelmadi") }, { value: "invite", label: t("Xodim taklifi") }, { value: "password-reset", label: t("Parol tiklash") }, { value: "manual", label: t("Qo'lda yuborilgan") }]} placeholder={t("Barcha maqsadlar")} clearable />
       </div>
 
       {/* Kesimlar */}
