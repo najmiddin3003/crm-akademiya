@@ -11586,3 +11586,44 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
   box-shadow: 0 0 0 2px var(--tile);
 }
 .fc-tile-badge svg { width: 10px; height: 10px; stroke-width: 3.2; }
+
+/* ---------- YANGI VERSIYA: scroll va silliq ochilish (yon menyu, 27.11.2026) ----------
+   .v2-scroll — brauzerning standart scroll'i o'rniga sayt uslubidagi ingichka tabletka:
+   izi shaffof, surgich Kuchli chiziq rangida, menyu ustiga kelganda to'qroq, surgichning
+   o'zida — Matn 3. Ko'rinadigan eni 4px (ustida 6px), ushlash joyi 10px (shaffof chegara).
+   Chrome/Edge/Safari — ::-webkit-scrollbar. Standart xossalar (scrollbar-width/color)
+   FAQAT Firefox'ga: Chrome 121+ da ular berilsa ::-webkit-scrollbar e'tiborsiz qoladi —
+   avvalgi `[scrollbar-width:thin]` aynan shuning uchun oddiy kulrang scroll chizardi.
+   overscroll-behavior — menyu oxiriga yetganda sahifa o'zi surilib ketmasin. */
+.v2-scroll { overscroll-behavior: contain; }
+.v2-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.v2-scroll::-webkit-scrollbar-track,
+.v2-scroll::-webkit-scrollbar-corner { background: transparent; }
+.v2-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--v2-border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+.v2-scroll:hover::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--v2-text-3) 55%, transparent); }
+.v2-scroll::-webkit-scrollbar-thumb:hover,
+.v2-scroll::-webkit-scrollbar-thumb:active { background-color: var(--v2-text-3); border-width: 2px; }
+@supports not selector(::-webkit-scrollbar) {
+  .v2-scroll { scrollbar-width: thin; scrollbar-color: var(--v2-border-strong) transparent; }
+}
+
+/* .v2-collapse — menyu guruhining ochilib-yopilishi (akkordeon): balandlik
+   grid-template-rows 0fr <-> 1fr bilan, o'lchashsiz (.ai-collapse bilan bir usul).
+   Ichki o'ram yon tomonga 2px kengaytirilgan — fokus chizig'i kesilmasin (ko'prog'i
+   menyuning o'ng chekkasidan (pr-0.5) toshib, yashirin gorizontal surilish beradi). */
+.v2-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .28s cubic-bezier(.2, .85, .25, 1), opacity .2s ease;
+}
+.v2-collapse[data-open] { grid-template-rows: 1fr; opacity: 1; }
+.v2-collapse > div { min-height: 0; overflow: hidden; margin: 0 -2px; padding: 0 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .v2-collapse { transition: none; }
+}

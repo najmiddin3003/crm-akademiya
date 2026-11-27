@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Building2,
   Check,
-  ChevronDown,
   ChevronRight,
   ChevronsUpDown,
   FileText,
@@ -187,13 +186,16 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
             <Icon className={`${ICON} ${open || inside ? "text-v2-brand" : ""}`} strokeWidth={1.75} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-left">{label}</span>
             {countEl}
-            {open ? (
-              <ChevronDown className="size-4 shrink-0 text-v2-text-3" aria-hidden />
-            ) : (
-              <ChevronRight className="size-4 shrink-0 text-v2-text-3" aria-hidden />
-            )}
+            <ChevronRight
+              className={`size-4 shrink-0 text-v2-text-3 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
+              aria-hidden
+            />
           </button>
-          {open && renderSubMenu(menuOf(item) ?? item.menu)}
+          {/* Silliq ochilish (globals.css → .v2-collapse): ichki menyu doim chiziladi, yopiq
+              holatda balandligi 0 va `inert` — Tab bilan ichiga kirilmaydi. */}
+          <div className="v2-collapse" data-open={open ? "" : undefined} inert={!open}>
+            <div>{renderSubMenu(menuOf(item) ?? item.menu)}</div>
+          </div>
         </li>
       );
     }
@@ -246,7 +248,13 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
 
       <BranchCard permissions={permissions} onNavigate={onNavigate} />
 
-      <nav aria-label={t("Asosiy menyu")} className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin]">
+      {/* Scroll — sayt uslubida (globals.css → .v2-scroll). Kompyuterda scroll joyi doim
+          ajratilgan (gutter): guruh ochilib scroll paydo bo'lganda bandlar eni sakramaydi;
+          o'ng chekka pr-0.5 + scroll eni (10px) = chapdagi pl-3. */}
+      <nav
+        aria-label={t("Asosiy menyu")}
+        className={`v2-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-3 ${variant === "desktop" ? "pl-3 pr-0.5 [scrollbar-gutter:stable]" : "px-3"}`}
+      >
         {sections.map((s, si) => (
           <div key={s.title ?? `s${si}`} className={si > 0 ? "mt-4" : "mt-1"}>
             {s.title && <div className="px-3 pb-1 text-v2-caption text-v2-text-3">{t(s.title)}</div>}
@@ -256,7 +264,7 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
       </nav>
 
       {bottom.length > 0 && (
-        <div className="max-h-[50vh] shrink-0 overflow-y-auto border-t border-v2-border px-3 py-2">
+        <div className="v2-scroll max-h-[50vh] shrink-0 overflow-y-auto border-t border-v2-border px-3 py-2">
           <ul className="space-y-0.5">{bottom.map(renderItem)}</ul>
         </div>
       )}
@@ -323,7 +331,7 @@ function BranchCard({ permissions, onNavigate }: { permissions: string[] | null;
       </button>
 
       {popOpen && (
-        <div className="absolute inset-x-3 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-v2-lg border border-v2-border bg-v2-surface p-1 shadow-v2-md">
+        <div className="v2-scroll absolute inset-x-3 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-v2-lg border border-v2-border bg-v2-surface p-1 shadow-v2-md">
           <div role="listbox" aria-label={t("Filialni tanlash")}>
             {list.map((b) => {
               const on = b.id === branchId;
