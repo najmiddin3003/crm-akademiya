@@ -12,14 +12,14 @@
 // matn bosqichma-bosqich qisqartiriladi (fitAbsenceText), shablon o'zgarmaydi.
 
 export const ABSENCE_SMS_TEMPLATE =
-  "Hurmatli {#ota_ona_ismi#}! Farzandingiz {#oquvchi_ismi#} {#sana#} kuni {#fan_nomi#} darsiga kelmadi. Iltimos, e'tibor qarating. {#markaz_nomi#} {#markaz_raqam#}";
+  "Hurmatli {#ota_ona_ismi#}! Farzandingiz {#oquvchi#} {#sana#} kuni {#fan#} darsiga kelmadi. Iltimos, e'tibor qarating. {#markaz#} {#markaz_raqam#}";
 
 export interface AbsenceSmsValues {
   ota_ona_ismi: string;
-  oquvchi_ismi: string;
+  oquvchi: string;
   sana: string;
-  fan_nomi: string;
-  markaz_nomi: string;
+  fan: string;
+  markaz: string;
   markaz_raqam: string;
 }
 
@@ -138,18 +138,18 @@ export function fitAbsenceText(i: AbsenceSmsInput): AbsenceSmsText {
   const givenParent = parentGivenName(i.parentName) || "ota-ona";
   const base: AbsenceSmsValues = {
     ota_ona_ismi: fullParent,
-    oquvchi_ismi: pupilGivenName(i.pupilFirstName, i.pupilLastName),
+    oquvchi: pupilGivenName(i.pupilFirstName, i.pupilLastName),
     sana: smsDate(i.date),
-    fan_nomi: smsClean(i.subject),
-    markaz_nomi: smsClean(i.centerName),
+    fan: smsClean(i.subject),
+    markaz: smsClean(i.centerName),
     markaz_raqam: smsClean(i.centerPhone).replace(/\s/g, ""),
   };
-  const short = smsClean(i.centerShort) || base.markaz_nomi;
+  const short = smsClean(i.centerShort) || base.markaz;
   const steps: AbsenceSmsValues[] = [
     base,
-    { ...base, markaz_nomi: short },
-    { ...base, markaz_nomi: short, sana: smsDate(i.date, false) },
-    { ...base, markaz_nomi: short, sana: smsDate(i.date, false), ota_ona_ismi: givenParent },
+    { ...base, markaz: short },
+    { ...base, markaz: short, sana: smsDate(i.date, false) },
+    { ...base, markaz: short, sana: smsDate(i.date, false), ota_ona_ismi: givenParent },
   ];
   let last: AbsenceSmsText | null = null;
   for (let step = 0; step < steps.length; step++) {
@@ -162,8 +162,8 @@ export function fitAbsenceText(i: AbsenceSmsInput): AbsenceSmsText {
   const v = steps[steps.length - 1];
   if (last && last.size.encoding === "GSM-7") {
     const over = last.size.length - 160;
-    const subj = v.fan_nomi.slice(0, Math.max(3, v.fan_nomi.length - over)).trim();
-    const text = renderAbsenceSms({ ...v, fan_nomi: subj });
+    const subj = v.fan.slice(0, Math.max(3, v.fan.length - over)).trim();
+    const text = renderAbsenceSms({ ...v, fan: subj });
     return { text, size: smsSize(text), step: 4 };
   }
   return last!;
